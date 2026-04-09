@@ -1,0 +1,250 @@
+/* ── Page layout ── */
+.cp-page { max-width: 1100px; }
+.cp-back {
+  border: none; background: none; color: var(--on-surface-variant);
+  font-size: 13px; cursor: pointer; margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 4px;
+  font-family: 'Manrope', sans-serif;
+}
+.cp-back:hover { color: var(--on-surface); }
+
+.cp-layout {
+  display: flex; gap: 24px; align-items: flex-start;
+}
+.cp-left { flex: 1; min-width: 0; }
+.cp-right {
+  width: 280px; flex-shrink: 0;
+  position: sticky; top: 24px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+@media (max-width: 860px) {
+  .cp-layout { flex-direction: column; }
+  .cp-right { width: 100%; position: static; }
+}
+
+/* ── Role + meta ── */
+.cp-role {
+  font-family: 'Manrope', sans-serif; font-weight: 800;
+  font-size: 24px; color: var(--on-surface); margin: 0 0 8px;
+}
+.cp-meta-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.cp-pill {
+  font-size: 11px; padding: 4px 12px; border-radius: 9999px;
+  background: var(--surface-container-high); color: var(--on-surface-variant);
+  font-weight: 600; white-space: nowrap;
+}
+.cp-pill--filled { background: var(--primary-container); color: var(--primary); }
+.cp-pill--hot { background: rgba(251,146,60,0.12); color: #f97316; }
+
+/* ── Stage badge ── */
+.cp-status-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.cp-stage {
+  display: inline-block; font-size: 11px; font-weight: 600;
+  padding: 4px 12px; border-radius: 9999px; border: 1px solid;
+}
+
+/* ── Skills ── */
+.cp-skills { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 16px; }
+.cp-skill {
+  font-size: 11px; padding: 3px 8px; border-radius: 6px;
+  background: var(--surface-container); color: var(--on-surface-variant);
+  border: 1px solid var(--outline-variant);
+}
+
+/* ── Shared card / block ── */
+.cp-sidebar-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px; padding: 18px;
+}
+.cp-details-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px; padding: 18px; margin-bottom: 14px;
+}
+.cp-card-title {
+  font-size: 12px; font-weight: 700; color: var(--on-surface);
+  margin-bottom: 10px;
+}
+.cp-card-title--locked {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--on-surface-variant);
+}
+.cp-card-header { margin-bottom: 10px; }
+.cp-pii-redacted { color: var(--outline-variant); letter-spacing: 2px; user-select: none; }
+
+/* ── Interview timeline ── */
+.cp-timeline-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px; padding: 18px; margin-bottom: 14px;
+}
+.cp-timeline { display: flex; flex-direction: column; gap: 0; }
+.cp-timeline-item { display: flex; align-items: flex-start; gap: 10px; position: relative; min-height: 40px; }
+.cp-timeline-dot {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--outline-variant); background: var(--surface-container-lowest);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--on-surface-variant); z-index: 1;
+}
+.cp-timeline-dot--pass {
+  background: var(--primary); border-color: var(--primary); color: white;
+}
+.cp-timeline-dot--fail {
+  border-color: var(--error); color: var(--error);
+}
+.cp-timeline-line {
+  position: absolute; left: 10px; top: 22px;
+  width: 2px; height: calc(100% - 22px);
+  background: var(--outline-variant);
+}
+.cp-timeline-line--pass { background: var(--primary); }
+.cp-timeline-label { padding-top: 2px; padding-bottom: 14px; }
+.cp-timeline-round { font-size: 12px; font-weight: 600; color: var(--on-surface); display: block; }
+.cp-timeline-note { font-size: 11px; color: var(--on-surface-variant); }
+.cp-timeline-note--fail { color: var(--error); }
+
+/* ── Strengths / Gaps / Feedback blocks ── */
+.cp-block {
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+}
+.cp-block--strengths {
+  background: rgba(75,108,76,0.05); border-left: 2px solid var(--tertiary);
+}
+.cp-block--gaps {
+  background: rgba(134,92,0,0.05); border-left: 2px solid var(--secondary);
+}
+.cp-block--feedback {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+}
+.cp-block-title { font-size: 12px; font-weight: 700; color: var(--on-surface); margin-bottom: 4px; }
+.cp-block-text { font-size: 13px; color: var(--on-surface-variant); line-height: 1.5; margin: 0; }
+
+/* ── Personal details (locked/unlocked) ── */
+.cp-pii-rows { }
+.cp-pii-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid var(--outline-variant);
+  font-size: 12px;
+}
+.cp-pii-row:last-child { border-bottom: none; }
+.cp-pii-label { color: var(--on-surface-variant); }
+.cp-pii-value { color: var(--on-surface); font-weight: 600; }
+
+/* ── CV section ── */
+.cp-cv-unlocked { display: flex; flex-direction: column; gap: 8px; }
+.cp-cv-download-btn {
+  width: 100%; padding: 10px; border-radius: 10px;
+  border: none; background: var(--primary); color: white;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+  transition: background 0.15s;
+}
+.cp-cv-download-btn:hover { background: var(--primary-dim); }
+.cp-cv-filename { font-size: 11px; color: var(--on-surface-variant); text-align: center; }
+
+.cp-cv-locked {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 8px 0; color: var(--on-surface-variant);
+}
+.cp-cv-locked-text { font-size: 12px; }
+.cp-cv-locked-btn {
+  width: 100%; padding: 10px; border-radius: 10px;
+  border: none; background: var(--surface-container-high);
+  color: var(--on-surface-variant); font-size: 13px; font-weight: 600;
+  cursor: default; opacity: 0.5;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* ── Right: Fee card ── */
+.cp-fee-number {
+  font-family: 'Manrope', sans-serif; font-weight: 800;
+  font-size: 28px; color: var(--primary);
+}
+.cp-fee-sub { font-size: 11px; color: var(--on-surface-variant); margin-bottom: 10px; }
+.cp-savings-box {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; border-radius: 12px;
+  background: var(--tertiary-container); margin-bottom: 10px;
+  font-size: 11px;
+}
+.cp-savings-left { color: var(--on-tertiary-container); }
+.cp-savings-right { font-weight: 700; color: var(--on-tertiary-container); }
+
+.cp-fee-divider { height: 1px; background: var(--outline-variant); margin-bottom: 12px; }
+
+.cp-unlock-btn {
+  width: 100%; padding: 12px; border-radius: 12px;
+  border: none; background: var(--primary); color: white;
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+  transition: background 0.15s;
+}
+.cp-unlock-btn:hover { background: var(--primary-dim); }
+.cp-unlock-btn--done {
+  background: var(--surface-container); color: var(--on-surface-variant);
+  cursor: default; pointer-events: none;
+}
+
+.cp-fee-note { font-size: 10px; color: var(--on-surface-variant); margin-top: 8px; text-align: center; }
+
+/* ── Right: Recommendation ── */
+.cp-rec-badge {
+  display: inline-block; padding: 4px 14px; border-radius: 9999px;
+  background: var(--primary-container); color: var(--primary);
+  font-size: 12px; font-weight: 700; margin-bottom: 6px;
+}
+.cp-rec-reason { font-size: 11px; color: var(--on-surface-variant); }
+
+/* ── Right: Contact details ── */
+.cp-contact-rows { display: flex; flex-direction: column; gap: 0; }
+.cp-contact-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--outline-variant);
+  font-size: 12px;
+}
+.cp-contact-row:last-child { border-bottom: none; }
+.cp-contact-label { color: var(--on-surface-variant); min-width: 52px; }
+.cp-contact-value { flex: 1; color: var(--on-surface); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-contact-locked { position: relative; }
+.cp-contact-unlock-btn {
+  margin-top: 10px; width: 100%; padding: 8px; border-radius: 12px;
+  border: 1px solid var(--outline-variant); background: transparent;
+  color: var(--on-surface); font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: 'Manrope', sans-serif;
+  transition: background 0.15s;
+}
+.cp-contact-unlock-btn:hover { background: var(--surface-container); }
+
+/* ── Copy button ── */
+.cp-copy-btn {
+  border: none; background: none; cursor: pointer; padding: 2px;
+  display: flex; align-items: center; flex-shrink: 0;
+  opacity: 0.6; transition: opacity 0.15s;
+}
+.cp-copy-btn:hover { opacity: 1; }
+
+/* ── Right: Referred by ── */
+.cp-referrer-row { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+.cp-referrer-avatar {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dim));
+  color: white; font-weight: 900; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.cp-referrer-name { font-size: 13px; font-weight: 700; color: var(--on-surface); }
+.cp-referrer-score { font-size: 11px; color: var(--secondary); }
+.cp-referrer-note { font-size: 11px; color: var(--on-surface-variant); }
+
+/* ── Mark as hired ── */
+.cp-hired-btn {
+  width: 100%; padding: 12px; border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container); color: var(--on-surface-variant);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cp-hired-btn:hover { background: var(--surface-container-high); border-color: var(--outline); }

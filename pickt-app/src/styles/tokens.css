@@ -1,0 +1,73 @@
+:root {
+  /* Core surfaces */
+  --bg:                      #fffcf1;
+  --surface:                 #fffcf1;
+  --surface-bright:          #fffcf1;
+  --surface-container:       #f6f4e7;
+  --surface-container-low:   #fcfaee;
+  --surface-container-high:  #f0eee1;
+  --surface-container-highest: #eae9db;
+  --surface-container-lowest: #ffffff;
+  --surface-dim:             #e4e3d4;
+  --surface-variant:         #eae9db;
+
+  /* Primary — forest green */
+  --primary:                 #2d7235;
+  --primary-dim:             #1f652a;
+  --primary-fixed:           #aaf4a8;
+  --primary-fixed-dim:       #9de69b;
+  --on-primary:              #ffffff;
+  --on-primary-fixed:        #004a15;
+  --on-primary-fixed-variant: #23682d;
+  --on-primary-container:    #175e24;
+  --primary-container:       #aaf4a8;
+  --inverse-primary:         #aaf4a8;
+  --surface-tint:            #2d7235;
+
+  /* Secondary — amber gold */
+  --secondary:               #865c00;
+  --secondary-dim:           #765100;
+  --secondary-fixed:         #ffc96e;
+  --secondary-fixed-dim:     #ffb622;
+  --secondary-container:     #ffc96e;
+  --on-secondary:            #ffffff;
+  --on-secondary-fixed:      #483000;
+  --on-secondary-fixed-variant: #6c4a00;
+  --on-secondary-container:  #604100;
+
+  /* Tertiary — sage */
+  --tertiary:                #4b6c4c;
+  --tertiary-dim:            #3f6041;
+  --tertiary-fixed:          #d7fed5;
+  --tertiary-fixed-dim:      #c9efc7;
+  --tertiary-container:      #d7fed5;
+  --on-tertiary:             #ffffff;
+  --on-tertiary-fixed:       #315133;
+  --on-tertiary-fixed-variant: #4d6e4e;
+  --on-tertiary-container:   #426344;
+
+  /* Neutral */
+  --background:              #fffcf1;
+  --on-background:           #383831;
+  --on-surface:              #383831;
+  --on-surface-variant:      #65655c;
+  --outline:                 #818178;
+  --outline-variant:         #bbbaaf;
+  --inverse-surface:         #0e0f09;
+  --inverse-on-surface:      #9e9d94;
+
+  /* Error */
+  --error:                   #be2d06;
+  --error-dim:               #b92902;
+  --error-container:         #f95630;
+  --on-error:                #ffffff;
+  --on-error-container:      #520c00;
+}
+
+/* Signature asymmetric card shape */
+.pikt-card {
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0;
+}

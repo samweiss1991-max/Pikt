@@ -1,0 +1,220 @@
+.placeholder-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 10rem);
+  text-align: center;
+  padding: 2.5rem 1.25rem;
+}
+
+.placeholder-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+  background: var(--primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.placeholder-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin-bottom: 0.5rem;
+}
+
+.placeholder-sub {
+  font-size: 14px;
+  color: var(--on-surface-variant);
+  max-width: 340px;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.placeholder-hint {
+  font-size: 12px;
+  color: var(--outline-variant);
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* ── Placeholder card grid ──────────────────────────────── */
+
+.placeholder-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 2rem;
+  max-width: 720px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .placeholder-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.placeholder-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid rgba(187,186,175,.15);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  transition: box-shadow 0.3s;
+}
+
+.placeholder-card:hover {
+  box-shadow: 0 24px 48px rgba(56,56,49,.06);
+}
+
+.placeholder-card-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: var(--surface-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+.placeholder-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.placeholder-card-desc {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  line-height: 1.5;
+}
+
+.placeholder-stat-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+
+.placeholder-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+
+.placeholder-stat-val {
+  font-size: 1.375rem;
+  font-weight: 300;
+  color: var(--on-surface);
+}
+
+/* ── Settings ────────────────────────────────────────────── */
+
+.settings-heading {
+  font-weight: 800;
+  font-size: 2.25rem;
+  color: var(--on-primary-fixed);
+  letter-spacing: -0.025em;
+  margin-bottom: 0.5rem;
+}
+
+.settings-sub {
+  font-size: 1.125rem;
+  color: var(--on-surface-variant);
+  margin-bottom: 2rem;
+}
+
+.settings-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 1rem;
+}
+
+/* ── Integration cards ───────────────────────────────────── */
+
+.integration-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: var(--surface-container-lowest);
+  border: 1px solid rgba(187,186,175,.15);
+  border-radius: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.integration-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.integration-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--outline-variant);
+  flex-shrink: 0;
+}
+.integration-dot--on {
+  background: var(--primary);
+}
+
+.integration-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin-bottom: 2px;
+}
+
+.integration-desc {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+
+.integration-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.integration-btn:hover {
+  background: var(--primary-dim);
+}
+
+.integration-btn--disabled {
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  cursor: default;
+}
+.integration-btn--disabled:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+}
+
+.integration-btn--danger {
+  background: var(--error);
+  color: white;
+}
+.integration-btn--danger:hover {
+  background: var(--error-dim);
+}

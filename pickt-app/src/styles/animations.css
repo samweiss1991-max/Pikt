@@ -1,0 +1,203 @@
+/* ═══════════════════════════════════════════════════════════
+   MICRO-INTERACTIONS & SCROLL ANIMATIONS
+   Subtle, premium feel — nothing flashy.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Scroll reveal base ──────────────────────────────────── */
+/* Elements start invisible + slightly offset, then animate in */
+
+[data-reveal],
+.reveal-fade-up {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+[data-reveal].revealed,
+.reveal-fade-up.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fade from left — for headings */
+.reveal-fade-left {
+  opacity: 0;
+  transform: translateX(-12px);
+  transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.reveal-fade-left.revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Scale in — for stat cards */
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 0.45s ease-out,
+              transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.reveal-scale.revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ── Text fade-in (word by word) ─────────────────────────── */
+
+.text-reveal {
+  overflow: hidden;
+}
+
+.text-reveal-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: textWordIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes textWordIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Card lift on hover ──────────────────────────────────── */
+
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(56, 56, 49, 0.08),
+              0 4px 8px rgba(56, 56, 49, 0.04);
+}
+
+/* ── Button press feel ───────────────────────────────────── */
+
+.press-scale {
+  transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.press-scale:active {
+  transform: scale(0.97);
+}
+
+/* ── Smooth page transition ──────────────────────────────── */
+
+.page-transition-enter {
+  animation: pageSlideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Parallax layers ─────────────────────────────────────── */
+
+[data-parallax-speed] {
+  will-change: transform;
+}
+
+/* ── Chip / pill hover ───────────────────────────────────── */
+
+.chip-hover {
+  transition: background 0.2s ease,
+              color 0.2s ease,
+              transform 0.15s ease;
+}
+
+.chip-hover:hover {
+  transform: translateY(-1px);
+}
+
+.chip-hover:active {
+  transform: translateY(0);
+}
+
+/* ── Nav link underline reveal ───────────────────────────── */
+
+.nav-underline {
+  position: relative;
+}
+
+.nav-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--primary);
+  transition: width 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.nav-underline:hover::after,
+.nav-underline.active::after {
+  width: 100%;
+}
+
+/* ── Skeleton shimmer (for loading states) ───────────────── */
+
+@keyframes shimmerSlide {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-container-high) 25%,
+    var(--surface-container-highest) 50%,
+    var(--surface-container-high) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmerSlide 1.8s ease-in-out infinite;
+}
+
+/* ── Tooltip fade ────────────────────────────────────────── */
+
+.tooltip-fade {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.tooltip-fade.visible,
+*:hover > .tooltip-fade {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Reduced motion ──────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  .reveal-fade-up,
+  .reveal-fade-left,
+  .reveal-scale,
+  .text-reveal-word,
+  .hover-lift,
+  .press-scale,
+  .page-transition-enter,
+  .chip-hover {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

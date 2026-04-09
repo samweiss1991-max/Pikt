@@ -1,0 +1,290 @@
+/* ═══ MARKETPLACE PAGE ═══ */
+.mk-page { max-width: 1400px; }
+
+/* ── Header ── */
+.mk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 3rem;
+  gap: 2rem;
+}
+.mk-header-left { max-width: 40rem; }
+.mk-heading {
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--on-primary-fixed);
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+.mk-heading-italic {
+  font-style: italic;
+  font-weight: 300;
+}
+.mk-subtitle {
+  font-size: 1.125rem;
+  color: var(--on-surface-variant);
+  font-weight: 500;
+  line-height: 1.6;
+}
+.mk-header-right {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.mk-filter-btn {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--surface-container-high);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-weight: 700; font-size: 0.875rem;
+  color: var(--on-surface);
+  cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+  transition: background 0.15s;
+}
+.mk-filter-btn:hover { background: var(--surface-container-highest); }
+.mk-filter-btn .material-symbols-outlined { font-size: 20px; }
+
+.mk-new-search-btn {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-weight: 700; font-size: 0.875rem;
+  cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+  box-shadow: 0 4px 12px rgba(45,114,53,0.2);
+  transition: transform 0.15s, opacity 0.15s;
+}
+.mk-new-search-btn:hover { transform: scale(1.02); }
+.mk-new-search-btn:active { transform: scale(0.95); }
+.mk-new-search-btn .material-symbols-outlined { font-size: 18px; }
+
+/* ── Candidate count ── */
+.mk-candidate-count {
+  font-size: 0.875rem;
+  color: var(--on-surface-variant);
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+/* ── View switcher ── */
+.mk-view-switcher {
+  display: flex; gap: 0; padding: 3px;
+  background: var(--surface-container);
+  border-radius: 9999px;
+  margin-bottom: 1.5rem;
+  width: fit-content;
+  border: 1px solid rgba(255,255,255,0.4);
+}
+.mk-view-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 14px; border: none; border-radius: 9999px;
+  background: transparent; color: var(--on-surface-variant);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: 'Manrope', sans-serif; transition: all 0.15s;
+  white-space: nowrap;
+}
+.mk-view-btn:hover { color: var(--primary); background: rgba(45,114,53,0.05); }
+.mk-view-btn--active {
+  background: var(--primary); color: var(--on-primary);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.mk-view-icon { font-size: 18px; }
+.mk-view-label { font-size: 12px; }
+
+/* ── Bento grid ── */
+.mk-bento {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+  padding-bottom: 5rem;
+}
+@media (max-width: 1024px) {
+  .mk-bento { grid-template-columns: 1fr; }
+  .mk-right { order: -1; }
+}
+
+.mk-left { min-width: 0; }
+.mk-left--transitioning { opacity: 0; transition: opacity 0.15s ease; }
+.mk-right { display: flex; flex-direction: column; gap: 1.5rem; }
+
+/* ── Grid layouts ── */
+.mk-grid-stack { display: flex; flex-direction: column; gap: 1.5rem; }
+.mk-grid-matrix { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+@media (max-width: 768px) { .mk-grid-matrix { grid-template-columns: 1fr; } }
+.mk-compact-list { border-top: 1px solid var(--outline-variant); }
+
+/* ── Carousel ── */
+.mk-carousel { position: relative; padding: 0 52px; }
+.mk-carousel-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 48px; height: 48px; border-radius: 50%;
+  border: none; background: var(--primary); color: var(--on-primary);
+  font-size: 24px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 2; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.15s;
+}
+.mk-carousel-arrow:hover { transform: translateY(-50%) scale(1.05); }
+.mk-carousel-arrow--left { left: 0; }
+.mk-carousel-arrow--right { right: 0; }
+.mk-carousel-dots { display: flex; justify-content: center; gap: 6px; margin-top: 1rem; }
+.mk-carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(187,186,175,0.4); cursor: pointer; transition: background 0.2s; }
+.mk-carousel-dot--active { background: var(--primary); }
+
+/* ── Tinder ── */
+.mk-tinder-wrap { max-width: 420px; margin: 0 auto; }
+.mk-tinder-counter { font-size: 12px; color: var(--on-surface-variant); text-align: center; margin-bottom: 1rem; }
+.mk-tinder-stack { position: relative; min-height: 380px; }
+.mk-tinder-card { position: absolute; top: 0; left: 0; right: 0; transition: transform 0.05s linear; }
+.mk-tinder-hint { position: absolute; top: 40%; font-size: 28px; font-weight: 900; z-index: 10; pointer-events: none; letter-spacing: 2px; }
+.mk-tinder-hint--save { right: 24px; color: var(--primary); }
+.mk-tinder-hint--skip { left: 24px; color: var(--error); }
+.mk-tinder-actions { display: flex; justify-content: center; gap: 1.5rem; margin-top: 400px; }
+.mk-tinder-btn {
+  width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--outline-variant);
+  background: var(--surface-container-lowest); font-size: 24px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.mk-tinder-btn:hover { transform: scale(1.1); }
+.mk-tinder-btn--skip { color: var(--error); }
+.mk-tinder-btn--skip:hover { border-color: var(--error); }
+.mk-tinder-btn--save { color: var(--primary); }
+.mk-tinder-btn--save:hover { border-color: var(--primary); }
+
+/* ── Focus ── */
+.mk-focus { position: relative; }
+.mk-focus-counter { position: absolute; top: 0; right: 0; font-size: 12px; color: var(--on-surface-variant); }
+.mk-focus-arrow {
+  position: fixed; top: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
+  border: none; background: var(--primary); color: var(--on-primary);
+  font-size: 24px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.15s;
+}
+.mk-focus-arrow:hover { transform: scale(1.05); }
+.mk-focus-arrow--left { left: 24px; }
+.mk-focus-arrow--right { right: 24px; }
+
+/* ═══ RIGHT INSIGHTS PANEL ═══ */
+.ri-panel { display: flex; flex-direction: column; gap: 1.5rem; }
+
+/* ── MarketPulseCard ── */
+.mp-card {
+  border-radius: 0.75rem;
+  background: var(--secondary-container);
+  padding: 1.5rem;
+  color: var(--on-secondary-container);
+}
+.mp-header {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.mp-icon { font-size: 20px; }
+.mp-label {
+  font-size: 0.8125rem; font-weight: 900;
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.mp-stat { font-size: 1.875rem; font-weight: 900; margin-bottom: 0.5rem; }
+.mp-subtitle { font-size: 0.8125rem; font-weight: 500; opacity: 0.8; margin-bottom: 1.5rem; }
+.mp-chart {
+  height: 6rem; width: 100%;
+  background: rgba(255,255,255,0.2);
+  border-radius: 0.5rem;
+  display: flex; align-items: flex-end; gap: 3px;
+  padding: 0.75rem;
+}
+.mp-bar {
+  flex: 1; border-radius: 2px 2px 0 0;
+  background: rgba(255,255,255,0.4);
+}
+.mp-bar--last { background: white; }
+
+/* ── TopReferrersCard ── */
+.tr-card {
+  border-radius: 0.75rem;
+  background: var(--surface-container-high);
+  padding: 1.5rem;
+}
+.tr-title {
+  font-size: 0.8125rem; font-weight: 900;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--on-surface);
+  margin-bottom: 1rem;
+}
+.tr-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.tr-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem;
+  background: var(--surface-container-lowest);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(187,186,175,0.1);
+}
+.tr-left { display: flex; align-items: center; gap: 0.5rem; }
+.tr-avatar {
+  width: 32px; height: 32px; border-radius: 9999px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.tr-name { font-size: 0.875rem; font-weight: 700; color: var(--on-surface); }
+.tr-picks { font-size: 11px; font-weight: 700; color: var(--on-surface-variant); }
+.tr-leaderboard-btn {
+  width: 100%; margin-top: 1rem;
+  padding: 0.75rem; border-radius: 0.5rem;
+  border: 1px solid var(--outline-variant);
+  background: transparent;
+  font-size: 0.875rem; font-weight: 700;
+  color: var(--on-surface);
+  cursor: pointer; font-family: 'Manrope', sans-serif;
+  transition: background 0.15s;
+}
+.tr-leaderboard-btn:hover { background: var(--surface-container-highest); }
+
+/* ── HiringCTACard ── */
+.hc-card {
+  border-radius: 0.75rem;
+  background: var(--primary-container);
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.hc-deco {
+  position: absolute;
+  right: -1rem; bottom: -1rem;
+  opacity: 0.1;
+}
+.hc-deco .material-symbols-outlined { font-size: 120px; }
+.hc-title {
+  font-weight: 900; color: var(--on-primary-container);
+  margin-bottom: 0.5rem;
+}
+.hc-body {
+  font-size: 0.875rem; font-weight: 500;
+  color: var(--on-primary-container);
+  opacity: 0.8;
+  margin-bottom: 1.5rem;
+}
+.hc-cta {
+  background: var(--primary); color: var(--on-primary);
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-size: 0.875rem; font-weight: 700;
+  cursor: pointer; font-family: 'Manrope', sans-serif;
+  transition: opacity 0.15s;
+}
+.hc-cta:hover { opacity: 0.9; }
+
+/* ── Responsive header ── */
+@media (max-width: 768px) {
+  .mk-header { flex-direction: column; align-items: flex-start; }
+  .mk-heading { font-size: 2rem; }
+  .mk-header-right { width: 100%; }
+}
