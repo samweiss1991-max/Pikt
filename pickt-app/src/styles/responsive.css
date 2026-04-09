@@ -1,0 +1,84 @@
+/* ═══ RESPONSIVE — per DESIGN_TOKENS.md breakpoints ═══ */
+
+/* ── md: 768px — sidebar hidden, reduced padding ── */
+@media (max-width: 768px) {
+  /* Shell: remove sidebar margin */
+  main { padding: 1rem !important; }
+
+  /* Topbar */
+  .topbar { padding: 0 1rem; }
+  .topbar-profile-label { display: none; }
+  .topbar-actions { gap: 0.125rem; }
+
+  /* Dashboard */
+  .db-heading { font-size: 1.75rem; }
+  .db-bento-grid { grid-template-columns: 1fr; }
+  .db-bento-grid > *:first-child { grid-column: span 1 !important; }
+  .db-section { margin-left: -1rem; margin-right: -1rem; padding: 1rem; }
+
+  /* Marketplace */
+  .mk-heading { font-size: 2rem; }
+  .mk-header { flex-direction: column; align-items: flex-start; }
+  .mk-bento { grid-template-columns: 1fr; }
+
+  /* Candidate card */
+  .cc-card-new { padding: 1.25rem; }
+  .cc-icon-box { width: 5rem; height: 5rem; }
+  .cc-icon-symbol { font-size: 2.5rem; }
+  .cc-inner { gap: 1rem; }
+  .cc-title { font-size: 1.5rem; }
+  .cc-referrer-badge { font-size: 9px; padding: 0.375rem 1rem; }
+
+  /* Profile */
+  .cp-layout { flex-direction: column; }
+  .cp-right { width: 100%; position: static; }
+  .cp-icon-box { width: 4rem; height: 4rem; }
+
+  /* Integrations */
+  .int-grid { grid-template-columns: 1fr; }
+}
+
+/* ── sm: 640px — single column, compact everything ── */
+@media (max-width: 640px) {
+  /* Cards go vertical */
+  .cc-inner { flex-direction: column; gap: 0.75rem; }
+  .cc-icon-box { width: 3.5rem; height: 3.5rem; }
+  .cc-icon-symbol { font-size: 1.75rem; }
+  .cc-title { font-size: 1.25rem; }
+  .cc-title-row { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+  .cc-skills { margin-bottom: 0.75rem; }
+  .cc-description { font-size: 0.8125rem; margin-bottom: 1rem; }
+  .cc-cta-row { flex-wrap: wrap; gap: 0.5rem; }
+  .cc-btn-primary { width: 100%; text-align: center; }
+
+  /* Grids */
+  .mk-grid-matrix { grid-template-columns: 1fr; }
+  .db-card-grid { grid-template-columns: 1fr; }
+  .sl-card-grid { grid-template-columns: 1fr; }
+  .sl-kanban { grid-template-columns: 1fr; }
+
+  /* Typography */
+  .db-heading, .mk-heading, .sl-heading, .int-heading { font-size: 1.5rem; }
+  .mk-subtitle, .db-subheading { font-size: 0.875rem; }
+
+  /* Profile */
+  .cp-role { font-size: 1.25rem; }
+  .cp-meta-pills { gap: 4px; }
+  .cp-sidebar-card { padding: 14px; }
+
+  /* Marketplace header buttons */
+  .mk-header-right { width: 100%; }
+  .mk-filter-btn, .mk-new-search-btn { flex: 1; justify-content: center; }
+
+  /* View switcher: scroll horizontal */
+  .mk-view-switcher { overflow-x: auto; width: 100%; }
+}
+
+/* ── Touch targets: minimum 44px for mobile ── */
+@media (max-width: 768px) {
+  .sl-btn, .cc-btn-primary, .cc-btn-secondary, .cc-bookmark,
+  .mk-view-btn, .db-chip, .sl-tab {
+    min-height: 44px;
+    display: flex; align-items: center;
+  }
+}

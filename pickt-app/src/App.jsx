@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Shell from './components/layout/Shell'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ViewModeProvider } from './context/ViewModeContext'
+import { SearchProvider } from './context/SearchContext'
 import Dashboard from './pages/Dashboard'
 import Discovery from './pages/Discovery'
 import Marketplace from './pages/Marketplace'
@@ -20,7 +21,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
-      <Route element={<ProtectedRoute><ViewModeProvider><Shell /></ViewModeProvider></ProtectedRoute>}>
+      <Route element={<ProtectedRoute><ViewModeProvider><SearchProvider><Shell /></SearchProvider></ViewModeProvider></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="marketplace" element={<Discovery />} />
         <Route path="marketplace/results" element={<Marketplace />} />

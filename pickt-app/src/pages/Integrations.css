@@ -1,0 +1,85 @@
+.int-page { max-width: 900px; }
+
+.int-header { margin-bottom: 2rem; }
+.int-heading {
+  font-weight: 900; font-size: 2.25rem;
+  color: var(--on-primary-fixed); letter-spacing: -0.03em;
+  margin-bottom: 0.25rem;
+}
+.int-subheading { font-size: 1rem; color: var(--on-surface-variant); }
+
+/* ── Cards grid ── */
+.int-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem; margin-bottom: 3rem;
+}
+@media (max-width: 768px) { .int-grid { grid-template-columns: 1fr; } }
+
+.int-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  display: flex; flex-direction: column;
+}
+.int-card-top { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; }
+.int-card-icon {
+  width: 40px; height: 40px; border-radius: 0.75rem;
+  background: var(--primary-container);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.int-card-icon .material-symbols-outlined { font-size: 22px; color: var(--on-primary-container); }
+.int-card-name { font-size: 1rem; font-weight: 700; color: var(--on-surface); }
+.int-card-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--on-surface-variant);
+}
+.int-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--outline-variant); }
+.int-dot--on { background: var(--primary); }
+.int-card-desc { font-size: 13px; color: var(--on-surface-variant); line-height: 1.5; margin-bottom: 1rem; flex: 1; }
+
+.int-card-btn {
+  width: 100%; padding: 0.625rem;
+  border-radius: 0.5rem; border: none;
+  background: var(--primary); color: var(--on-primary);
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: 'Manrope', sans-serif;
+  transition: opacity 0.15s;
+}
+.int-card-btn:hover { opacity: 0.9; }
+.int-card-btn--disconnect {
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  border: 1px solid var(--outline-variant);
+}
+.int-card-btn--disconnect:hover { background: var(--surface-container-highest); opacity: 1; }
+.int-card-btn--disabled {
+  background: var(--surface-dim);
+  color: var(--on-surface-variant);
+  cursor: default; opacity: 0.6;
+}
+
+/* ── How it works ── */
+.int-how { margin-bottom: 2rem; }
+.int-how-title {
+  font-size: 1.125rem; font-weight: 800;
+  color: var(--on-surface); margin-bottom: 1.25rem;
+}
+.int-how-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+@media (max-width: 640px) { .int-how-steps { grid-template-columns: 1fr; } }
+
+.int-how-step {
+  background: var(--surface-container);
+  border-radius: 1rem; padding: 1.25rem;
+  text-align: center;
+}
+.int-how-icon {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--primary-container);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 0.75rem;
+}
+.int-how-icon .material-symbols-outlined { font-size: 20px; color: var(--on-primary-container); }
+.int-how-step-title { font-size: 14px; font-weight: 700; color: var(--on-surface); margin-bottom: 4px; }
+.int-how-step-desc { font-size: 12px; color: var(--on-surface-variant); line-height: 1.5; margin: 0; }

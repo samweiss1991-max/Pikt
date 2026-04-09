@@ -2,32 +2,39 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK, WORK_HISTORY } from '../data/discoveryOptions'
+import { COPY } from '../lib/copy'
 import { getAvatarGradient } from '../lib/avatarGradients'
-import { useStaggerReveal } from '../hooks/useScrollReveal'
+import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
+import { getShortlist, removeFromShortlist, getStageOverrides, setStageOverride } from '../lib/shortlist'
+import EmptyState from '../components/shared/EmptyState'
+import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import './Shortlist.css'
 
 function mapC(c) {
   if (c.role && c.salaryLow !== undefined) return c
   return {
-    id: c.id, role: c.role_applied_for, seniority: c.seniority_level,
-    city: c.location_city, company: c.current_employer || c.referring_company || 'Unknown',
-    referringCompany: c.referring_company || 'Unknown',
-    skills: c.skills || [], interviews: c.interviews_completed || 0,
-    fee: c.fee_percentage || 8, salaryLow: c.salary_expectation_min || 0,
-    salaryHigh: c.salary_expectation_max || 0, years: c.years_experience || 0,
+    id: c.id, role: c.role_applied_for || c.role,
+    seniority: c.seniority_level || c.seniority,
+    city: c.location_city || c.city,
+    company: c.current_employer || c.referring_company || c.company || 'Unknown',
+    referringCompany: c.referring_company || c.referringCompany || c.company || 'Unknown',
+    skills: c.skills || [], interviews: c.interviews_completed ?? c.interviews ?? 0,
+    fee: c.fee_percentage ?? c.fee ?? 8,
+    salaryLow: c.salary_expectation_min ?? c.salaryLow ?? 0,
+    salaryHigh: c.salary_expectation_max ?? c.salaryHigh ?? 0,
+    years: c.years_experience ?? c.years ?? 0,
     recommendation: c.recommendation,
+    status: c.status || 'available',
   }
 }
 
-/* Assign a mock stage for Kanban based on interviews */
-function getStage(c) {
+function getDefaultStage(c) {
   if (c.interviews >= 4) return 'Offer'
   if (c.interviews >= 2) return 'Interview'
   if (c.interviews >= 1) return 'Screening'
   return 'New'
 }
 
-/* Assign a mock tier based on interviews + years */
 function getTier(c) {
   const score = (c.interviews || 0) * 2 + (c.years || 0)
   if (score >= 14) return 'A'
@@ -37,12 +44,16 @@ function getTier(c) {
 
 const STAGES = ['New', 'Screening', 'Interview', 'Offer']
 const TIERS = ['A', 'B', 'C']
-const VIEWS = ['kanban', 'compare', 'tier']
+const VIEWS = [
+  { key: 'kanban', icon: 'view_kanban', label: 'Kanban' },
+  { key: 'compare', icon: 'compare_arrows', label: 'Compare' },
+  { key: 'tier', icon: 'leaderboard', label: 'Tier' },
+]
 
-function WorkHistoryCompact({ history }) {
+function WorkHistoryCompact() {
   return (
     <div className="sl-work-history">
-      {history.slice(0, 3).map((w, i) => (
+      {WORK_HISTORY.slice(0, 3).map((w, i) => (
         <div key={i} className="sl-wh-item">
           {i > 0 && <div className="sl-wh-divider" />}
           <div className="sl-wh-top">
@@ -57,48 +68,41 @@ function WorkHistoryCompact({ history }) {
   )
 }
 
-function CandidateCardInline({ c, i, isLocked, navigate }) {
+function CandidateCardInline({ c, i, navigate, onRemove, draggable, onDragStart }) {
+  const unlocked = checkUnlocked(c.id) || c.status === 'unlocked'
+  const isLocked = !unlocked && c.interviews === 0
+
   return (
     <div
       className="sl-card pikt-card hover-lift"
       onClick={() => navigate(`/candidates/${c.id}`, { state: { candidate: c } })}
+      draggable={draggable}
+      onDragStart={onDragStart}
     >
       <div className="sl-card-top">
-        <div
-          className="sl-card-avatar"
-          style={{
-            background: isLocked ? 'var(--surface-container-high)' : getAvatarGradient(i),
-          }}
-        >
+        <div className="sl-card-avatar" style={{ background: isLocked ? 'var(--surface-container-high)' : getAvatarGradient(i) }}>
           {isLocked
             ? <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--on-surface-variant)' }}>lock</span>
-            : <span style={{ color: 'white', fontWeight: 900 }}>{c.role[0]}</span>
-          }
+            : <span style={{ color: 'white', fontWeight: 900 }}>{(c.role || 'X')[0]}</span>}
         </div>
         <div className="sl-card-info">
           <div className="sl-card-role">{c.role}</div>
-          <div className="sl-card-meta">{c.seniority} &bull; {c.city} &bull; {c.years} yrs</div>
+          <div className="sl-card-meta">{c.seniority} {'\u00B7'} {c.city} {'\u00B7'} {c.years} yrs</div>
         </div>
       </div>
-
       <div className="sl-card-skills">
-        {(c.skills || []).slice(0, 4).map(s => (
-          <span key={s} className="sl-skill">{s}</span>
-        ))}
+        {(c.skills || []).slice(0, 4).map(s => <span key={s} className="sl-skill">{s}</span>)}
       </div>
-
-      <WorkHistoryCompact history={WORK_HISTORY} />
-
+      <WorkHistoryCompact />
       <div className="sl-card-actions">
         {isLocked ? (
-          <button className="sl-btn sl-btn--unlock" onClick={e => { e.stopPropagation() }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>lock_open</span>
-            Unlock
+          <button className="sl-btn sl-btn--unlock press-scale" onClick={e => e.stopPropagation()}>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>lock_open</span> Unlock
           </button>
         ) : (
           <>
-            <button className="sl-btn sl-btn--keep" onClick={e => { e.stopPropagation() }}>Keep</button>
-            <button className="sl-btn sl-btn--remove" onClick={e => { e.stopPropagation() }}>Remove</button>
+            <button className="sl-btn sl-btn--keep press-scale" onClick={e => { e.stopPropagation(); navigate(`/candidates/${c.id}`, { state: { candidate: c } }) }}>View</button>
+            <button className="sl-btn sl-btn--remove press-scale" onClick={e => { e.stopPropagation(); onRemove?.(c.id) }}>Remove</button>
           </>
         )}
       </div>
@@ -111,106 +115,126 @@ export default function Shortlist() {
   const [tab, setTab] = useState('all')
   const [view, setView] = useState('kanban')
   const [search, setSearch] = useState('')
-  const [savedIds] = useState(() => { try { return JSON.parse(localStorage.getItem('pickt_shortlist') || '[]') } catch { return [] } })
   const [candidates, setCandidates] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [dragTarget, setDragTarget] = useState(null)
+
+  const stageOverrides = getStageOverrides()
+
+  function getStage(c) {
+    return stageOverrides[c.id] || getDefaultStage(c)
+  }
 
   useEffect(() => {
+    const shortlistIds = getShortlist()
     const all = getCandidates()
-    const pool = (all?.length > 0) ? all.map(mapC) : MOCK
-    setCandidates(pool.filter(c => savedIds.includes(c.id)))
-  }, [savedIds])
+    const pool = (all?.length > 0) ? all.map(mapC) : MOCK.map(mapC)
+    setCandidates(pool.filter(c => shortlistIds.includes(c.id)))
+    setLoading(false)
+  }, [])
 
-  const cardsRevealRef = useStaggerReveal({ staggerMs: 80 })
+  function handleRemove(id) {
+    removeFromShortlist(id)
+    setCandidates(prev => prev.filter(c => c.id !== id))
+  }
+
+  // Native drag-and-drop for kanban
+  function handleDragStart(e, candidateId) {
+    e.dataTransfer.setData('text/plain', candidateId)
+  }
+  function handleDragOver(e, stage) {
+    e.preventDefault()
+    setDragTarget(stage)
+  }
+  function handleDrop(e, stage) {
+    e.preventDefault()
+    const candidateId = e.dataTransfer.getData('text/plain')
+    if (candidateId) {
+      setStageOverride(candidateId, stage)
+      setCandidates([...candidates]) // force re-render
+    }
+    setDragTarget(null)
+  }
+  function handleDragLeave() { setDragTarget(null) }
+
+  const cardsRef = useStaggerReveal({ staggerMs: 80 })
 
   const filtered = candidates.filter(c => {
-    if (tab === 'unlocked') return c.interviews >= 1
-    if (tab === 'locked') return c.interviews === 0
+    if (tab === 'unlocked') return checkUnlocked(c.id) || c.status === 'unlocked'
+    if (tab === 'locked') return !checkUnlocked(c.id) && c.status !== 'unlocked'
     return true
   }).filter(c => {
     if (!search.trim()) return true
     const q = search.toLowerCase()
-    return c.role.toLowerCase().includes(q) || c.city?.toLowerCase().includes(q)
+    return c.role.toLowerCase().includes(q) || (c.city || '').toLowerCase().includes(q) || (c.skills || []).some(s => s.toLowerCase().includes(q))
   })
 
-  if (candidates.length === 0) return (
-    <div className="sl-empty">
-      <div className="sl-empty-icon">
-        <span className="material-symbols-outlined" style={{ fontSize: 32, color: 'var(--primary)' }}>favorite</span>
+  if (!loading && candidates.length === 0) {
+    return (
+      <div className="sl-page">
+        <h1 className="sl-heading">{COPY.nav.picktList}</h1>
+        <EmptyState icon="favorite" message={COPY.emptyStates.picktList} ctaLabel={COPY.emptyStates.picktListCta} onCta={() => navigate('/marketplace/results')} />
       </div>
-      <h2 className="sl-empty-title">Your shortlist is empty</h2>
-      <p className="sl-empty-sub">Save candidates from the marketplace to review them here.</p>
-      <button className="sl-empty-btn" onClick={() => navigate('/marketplace/results', { state: {} })}>Browse marketplace</button>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="sl-page">
       <div className="sl-header" data-parallax-speed="0.08">
-        <h1 className="sl-heading">Shortlist</h1>
-        <p className="sl-subheading">{candidates.length} candidate{candidates.length !== 1 ? 's' : ''} saved</p>
+        <h1 className="sl-heading">{COPY.nav.picktList}</h1>
+        <p className="sl-subheading">{filtered.length} candidate{filtered.length !== 1 ? 's' : ''}</p>
       </div>
 
-      {/* Tab strip */}
       <div className="sl-tabs">
         {['all', 'unlocked', 'locked'].map(t => (
-          <button
-            key={t}
-            className={`sl-tab ${tab === t ? 'sl-tab--active' : ''}`}
-            onClick={() => setTab(t)}
-          >
+          <button key={t} className={`sl-tab ${tab === t ? 'sl-tab--active' : ''}`} onClick={() => setTab(t)}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* View toggle */}
       <div className="sl-view-toggle">
         {VIEWS.map(v => (
-          <button
-            key={v}
-            className={`sl-view-btn ${view === v ? 'sl-view-btn--active' : ''}`}
-            onClick={() => setView(v)}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-              {v === 'kanban' ? 'view_kanban' : v === 'compare' ? 'compare_arrows' : 'leaderboard'}
-            </span>
-            {v.charAt(0).toUpperCase() + v.slice(1)}
+          <button key={v.key} className={`sl-view-btn ${view === v.key ? 'sl-view-btn--active' : ''}`} onClick={() => setView(v.key)}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{v.icon}</span>
+            {v.label}
           </button>
         ))}
       </div>
 
-      {/* Search bar */}
       <div className="sl-search-wrap">
         <span className="material-symbols-outlined sl-search-icon">search</span>
-        <input
-          type="text"
-          className="sl-search"
-          placeholder="Search candidates..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <input type="text" className="sl-search" placeholder="Search candidates..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {/* ═══ KANBAN VIEW ═══ */}
-      {view === 'kanban' && (
-        <div className="sl-kanban" ref={cardsRevealRef}>
+      {filtered.length === 0 && (
+        <EmptyState icon="search_off" message="No candidates match your filters" ctaLabel="Clear filters" onCta={() => { setTab('all'); setSearch('') }} />
+      )}
+
+      {/* KANBAN with drag-and-drop */}
+      {view === 'kanban' && filtered.length > 0 && (
+        <div className="sl-kanban" ref={cardsRef}>
           {STAGES.map(stage => {
-            const stageCandidates = filtered.filter(c => getStage(c) === stage)
+            const sc = filtered.filter(c => getStage(c) === stage)
             return (
-              <div key={stage} className="sl-kanban-col">
+              <div
+                key={stage}
+                className={`sl-kanban-col ${dragTarget === stage ? 'sl-kanban-col--drag-over' : ''}`}
+                onDragOver={e => handleDragOver(e, stage)}
+                onDrop={e => handleDrop(e, stage)}
+                onDragLeave={handleDragLeave}
+              >
                 <div className="sl-kanban-col-header">
                   <span className="sl-kanban-col-title">{stage}</span>
-                  <span className="sl-kanban-col-count">{stageCandidates.length}</span>
+                  <span className="sl-kanban-col-count">{sc.length}</span>
                 </div>
                 <div className="sl-kanban-col-body">
-                  {stageCandidates.map((c, i) => (
+                  {sc.map((c, i) => (
                     <div key={c.id} data-reveal>
-                      <CandidateCardInline c={c} i={i} isLocked={c.interviews === 0} navigate={navigate} />
+                      <CandidateCardInline c={c} i={i} navigate={navigate} onRemove={handleRemove} draggable onDragStart={e => handleDragStart(e, c.id)} />
                     </div>
                   ))}
-                  {stageCandidates.length === 0 && (
-                    <div className="sl-kanban-empty">No candidates</div>
-                  )}
+                  {sc.length === 0 && <div className="sl-kanban-empty">No candidates</div>}
                 </div>
               </div>
             )
@@ -218,94 +242,52 @@ export default function Shortlist() {
         </div>
       )}
 
-      {/* ═══ COMPARE VIEW ═══ */}
-      {view === 'compare' && (
-        <div className="sl-compare" ref={cardsRevealRef}>
-          <div className="sl-compare-grid">
-            {filtered.map((c, i) => {
-              const isLocked = c.interviews === 0
-              return (
-                <div key={c.id} className="sl-compare-col pikt-card" data-reveal>
-                  <div className="sl-compare-header">
-                    <div
-                      className="sl-card-avatar"
-                      style={{ background: isLocked ? 'var(--surface-container-high)' : getAvatarGradient(i) }}
-                    >
-                      {isLocked
-                        ? <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--on-surface-variant)' }}>lock</span>
-                        : <span style={{ color: 'white', fontWeight: 900 }}>{c.role[0]}</span>
-                      }
-                    </div>
-                    <div className="sl-compare-title">{c.role}</div>
-                    <div className="sl-compare-subtitle">{c.seniority} &bull; {c.city}</div>
+      {/* COMPARE */}
+      {view === 'compare' && filtered.length > 0 && (
+        <div className="sl-compare-grid" ref={cardsRef}>
+          {filtered.slice(0, 6).map((c, i) => {
+            const isLocked = !checkUnlocked(c.id) && c.status !== 'unlocked' && c.interviews === 0
+            return (
+              <div key={c.id} className="sl-compare-col pikt-card hover-lift" data-reveal>
+                <div className="sl-compare-header">
+                  <div className="sl-card-avatar" style={{ background: isLocked ? 'var(--surface-container-high)' : getAvatarGradient(i), margin: '0 auto 0.75rem' }}>
+                    {isLocked ? <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--on-surface-variant)' }}>lock</span> : <span style={{ color: 'white', fontWeight: 900 }}>{(c.role || 'X')[0]}</span>}
                   </div>
-
-                  <div className="sl-compare-stats">
-                    <div className="sl-compare-stat">
-                      <span className="sl-compare-stat-label">Experience</span>
-                      <span className="sl-compare-stat-value">{c.years} yrs</span>
-                    </div>
-                    <div className="sl-compare-stat">
-                      <span className="sl-compare-stat-label">Interviews</span>
-                      <span className="sl-compare-stat-value">{c.interviews}</span>
-                    </div>
-                    <div className="sl-compare-stat">
-                      <span className="sl-compare-stat-label">Fee</span>
-                      <span className="sl-compare-stat-value">{c.fee}%</span>
-                    </div>
-                    <div className="sl-compare-stat">
-                      <span className="sl-compare-stat-label">Salary</span>
-                      <span className="sl-compare-stat-value">${Math.round((c.salaryLow || 0) / 1000)}k–${Math.round((c.salaryHigh || 0) / 1000)}k</span>
-                    </div>
-                  </div>
-
-                  <div className="sl-compare-section-title">Skills</div>
-                  <div className="sl-card-skills">
-                    {(c.skills || []).slice(0, 6).map(s => (
-                      <span key={s} className="sl-skill">{s}</span>
-                    ))}
-                  </div>
-
-                  <div className="sl-compare-section-title">Work history</div>
-                  <WorkHistoryCompact history={WORK_HISTORY} />
-
-                  <div className="sl-card-actions" style={{ marginTop: 'auto', paddingTop: '1rem' }}>
-                    <button
-                      className="sl-btn sl-btn--keep"
-                      onClick={() => navigate(`/candidates/${c.id}`, { state: { candidate: c } })}
-                    >View Dossier</button>
-                  </div>
+                  <div className="sl-compare-title">{c.role}</div>
+                  <div className="sl-compare-subtitle">{c.seniority} {'\u00B7'} {c.city}</div>
                 </div>
-              )
-            })}
-          </div>
-          {filtered.length === 0 && (
-            <div className="sl-kanban-empty" style={{ textAlign: 'center', padding: '3rem' }}>No candidates match your filters</div>
-          )}
+                <div className="sl-compare-stats">
+                  <div className="sl-compare-stat"><span className="sl-compare-stat-label">Experience</span><span className="sl-compare-stat-value">{c.years} yrs</span></div>
+                  <div className="sl-compare-stat"><span className="sl-compare-stat-label">Interviews</span><span className="sl-compare-stat-value">{c.interviews}</span></div>
+                  <div className="sl-compare-stat"><span className="sl-compare-stat-label">Fee</span><span className="sl-compare-stat-value">{c.fee}%</span></div>
+                  <div className="sl-compare-stat"><span className="sl-compare-stat-label">Salary</span><span className="sl-compare-stat-value">${Math.round((c.salaryLow || 0) / 1000)}k{'\u2013'}${Math.round((c.salaryHigh || 0) / 1000)}k</span></div>
+                </div>
+                <div className="sl-compare-section-title">Skills</div>
+                <div className="sl-card-skills">{(c.skills || []).slice(0, 6).map(s => <span key={s} className="sl-skill">{s}</span>)}</div>
+                <div className="sl-card-actions" style={{ marginTop: 'auto', paddingTop: '1rem' }}>
+                  <button className="sl-btn sl-btn--keep press-scale" onClick={() => navigate(`/candidates/${c.id}`, { state: { candidate: c } })}>View Profile</button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
-      {/* ═══ TIER RANKING VIEW ═══ */}
-      {view === 'tier' && (
-        <div className="sl-tier" ref={cardsRevealRef}>
+      {/* TIER */}
+      {view === 'tier' && filtered.length > 0 && (
+        <div className="sl-tier" ref={cardsRef}>
           {TIERS.map(tier => {
-            const tierCandidates = filtered.filter(c => getTier(c) === tier)
+            const tc = filtered.filter(c => getTier(c) === tier)
             return (
               <div key={tier} className="sl-tier-group">
                 <div className="sl-tier-header">
                   <span className={`sl-tier-badge sl-tier-badge--${tier.toLowerCase()}`}>Tier {tier}</span>
-                  <span className="sl-tier-count">{tierCandidates.length} candidate{tierCandidates.length !== 1 ? 's' : ''}</span>
+                  <span className="sl-tier-count">{tc.length} candidate{tc.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="sl-card-grid">
-                  {tierCandidates.map((c, i) => (
-                    <div key={c.id} data-reveal>
-                      <CandidateCardInline c={c} i={i} isLocked={c.interviews === 0} navigate={navigate} />
-                    </div>
-                  ))}
+                  {tc.map((c, i) => <div key={c.id} data-reveal><CandidateCardInline c={c} i={i} navigate={navigate} onRemove={handleRemove} /></div>)}
                 </div>
-                {tierCandidates.length === 0 && (
-                  <div className="sl-kanban-empty">No candidates in this tier</div>
-                )}
+                {tc.length === 0 && <div className="sl-kanban-empty">No candidates in this tier</div>}
               </div>
             )
           })}

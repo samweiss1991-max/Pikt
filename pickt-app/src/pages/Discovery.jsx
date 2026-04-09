@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ALL_ROLES, INDUSTRIES, SENIORITY, LOCATIONS, SALARY_BANDS } from '../data/discoveryOptions'
+import { useScrollReveal } from '../hooks/useScrollReveal'
 import './Discovery.css'
 
 function StepDots({ current, total }) {
@@ -75,7 +76,7 @@ export default function Discovery() {
             <p className="discovery-sub">Pick a role or type your own below.</p>
             <div className="discovery-chips">
               {ALL_ROLES.slice(0, 16).map(r => (
-                <button key={r} className="discovery-chip" onClick={() => { setRole(r); setCustomRole(''); advance(2) }}>
+                <button key={r} className="discovery-chip hover-lift" onClick={() => { setRole(r); setCustomRole(''); advance(2) }}>
                   {r}
                 </button>
               ))}
@@ -90,7 +91,7 @@ export default function Discovery() {
                 onChange={e => setCustomRole(e.target.value)}
               />
               {customRole.trim().length >= 2 && (
-                <button className="discovery-continue-btn" onClick={() => { setRole(customRole.trim()); advance(2) }}>
+                <button className="discovery-continue-btn press-scale" onClick={() => { setRole(customRole.trim()); advance(2) }}>
                   Continue with &ldquo;{customRole.trim()}&rdquo;
                 </button>
               )}
@@ -109,7 +110,7 @@ export default function Discovery() {
             <p className="discovery-sub">Choose the sector that best matches your open role.</p>
             <div className="discovery-chips">
               {INDUSTRIES.map(ind => (
-                <button key={ind} className="discovery-chip" onClick={() => { setIndustry(ind); advance(3) }}>
+                <button key={ind} className="discovery-chip hover-lift" onClick={() => { setIndustry(ind); advance(3) }}>
                   {ind}
                 </button>
               ))}
@@ -125,7 +126,7 @@ export default function Discovery() {
             <p className="discovery-sub">We match this to candidate experience bands.</p>
             <div className="discovery-chips">
               {SENIORITY.map(s => (
-                <button key={s} className="discovery-chip" onClick={() => { setSeniority(s); advance(4) }}>
+                <button key={s} className="discovery-chip hover-lift" onClick={() => { setSeniority(s); advance(4) }}>
                   {s}
                 </button>
               ))}
@@ -141,7 +142,7 @@ export default function Discovery() {
             <p className="discovery-sub">Select a city or choose any location.</p>
             <div className="discovery-chips">
               {LOCATIONS.map(loc => (
-                <button key={loc} className="discovery-chip" onClick={() => { setLocation(loc); advance(5) }}>
+                <button key={loc} className="discovery-chip hover-lift" onClick={() => { setLocation(loc); advance(5) }}>
                   {loc}
                 </button>
               ))}
@@ -157,7 +158,7 @@ export default function Discovery() {
             <p className="discovery-sub">This helps us match candidates to your budget.</p>
             <div className="discovery-chips">
               {SALARY_BANDS.map(band => (
-                <button key={band} className="discovery-chip" onClick={() => handleComplete(band)}>
+                <button key={band} className="discovery-chip hover-lift" onClick={() => handleComplete(band)}>
                   {band}
                 </button>
               ))}

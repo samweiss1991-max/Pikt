@@ -278,6 +278,15 @@
 .cc-btn-ghost:hover { background: var(--surface-container); }
 .cc-btn-sm { padding: 4px 10px; }
 
+/* ── Bookmark ── */
+.cc-bookmark {
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--on-surface-variant); margin-left: auto;
+  display: flex; align-items: center;
+  transition: color 0.15s;
+}
+.cc-bookmark:hover { color: var(--primary); }
+
 /* ── Fee line (kept for backward compat) ── */
 .cc-fee-line {
   font-size: 11px; color: var(--on-surface-variant);

@@ -98,7 +98,7 @@
   outline: none;
 }
 .sl-search:focus {
-  box-shadow: 0 0 0 2px rgba(255,201,110,.5);
+  box-shadow: 0 0 0 2px rgba(45,114,53,0.2);
 }
 
 /* ── Card grid (shared) ──────────────────────────────────── */
@@ -313,6 +313,13 @@
 
 .sl-kanban-col-body .sl-card {
   /* Override pikt-card sizing in kanban columns */
+}
+
+.sl-kanban-col--drag-over {
+  background: rgba(45,114,53,0.05);
+  border-radius: 1rem;
+  outline: 2px dashed var(--primary);
+  outline-offset: -2px;
 }
 
 .sl-kanban-empty {

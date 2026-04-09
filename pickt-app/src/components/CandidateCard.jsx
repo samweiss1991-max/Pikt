@@ -3,41 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import UnlockModal from './unlock/UnlockModal'
 import { getAvatarGradient } from '../lib/avatarGradients'
 import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
+import { isInShortlist, addToShortlist, removeFromShortlist } from '../lib/shortlist'
 import { COPY } from '../lib/copy'
+import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
 import './CandidateCard.css'
-
-// Icon symbol based on role keywords
-function getIconForRole(role) {
-  const r = (role || '').toLowerCase()
-  if (r.includes('frontend') || r.includes('react') || r.includes('design')) return 'architecture'
-  if (r.includes('cloud') || r.includes('devops') || r.includes('platform')) return 'cloud'
-  if (r.includes('data') || r.includes('analytics') || r.includes('ml')) return 'database'
-  if (r.includes('security')) return 'shield'
-  if (r.includes('mobile')) return 'smartphone'
-  if (r.includes('product')) return 'category'
-  if (r.includes('sales') || r.includes('account') || r.includes('revenue')) return 'trending_up'
-  if (r.includes('marketing') || r.includes('growth') || r.includes('seo')) return 'campaign'
-  if (r.includes('hr') || r.includes('people') || r.includes('talent')) return 'groups'
-  if (r.includes('finance') || r.includes('cfo')) return 'account_balance'
-  if (r.includes('legal') || r.includes('compliance') || r.includes('privacy')) return 'gavel'
-  if (r.includes('operations') || r.includes('coo') || r.includes('project')) return 'settings'
-  if (r.includes('customer') || r.includes('success')) return 'support_agent'
-  return 'code'
-}
-
-// Gradient based on index
-const GRADIENTS = [
-  'from-primary-container to-secondary-container',
-  'from-tertiary-fixed to-primary-fixed-dim',
-  'from-secondary-container to-primary-container',
-  'from-primary-fixed-dim to-tertiary-container',
-  'from-tertiary-container to-secondary-container',
-  'from-secondary-fixed to-primary-container',
-]
-
-function getGradientClass(index) {
-  return GRADIENTS[index % GRADIENTS.length]
-}
 
 // Referrer badge variant based on index
 function getReferrerBadge(index, company) {
@@ -117,6 +86,13 @@ function NewCard({ candidate: c, viewMode, index, onSave, onSkip }) {
   const [showModal, setShowModal] = useState(false)
   const [unlocked, setUnlocked] = useState(c.status === 'unlocked' || checkUnlocked(c.id))
   const [expanded, setExpanded] = useState(false)
+  const [saved, setSaved] = useState(isInShortlist(c.id))
+
+  function toggleSave(e) {
+    e.stopPropagation()
+    if (saved) { removeFromShortlist(c.id); setSaved(false) }
+    else { addToShortlist(c.id); setSaved(true) }
+  }
 
   const matchScore = Math.min(99, 70 + (c.interviews || 0) * 5 + (c.daysAgo <= 3 ? 8 : 0))
   const roleMatch = Math.min(99, 65 + (c.interviews || 0) * 6)
@@ -279,11 +255,14 @@ function NewCard({ candidate: c, viewMode, index, onSave, onSkip }) {
             <p className="cc-description">{description}</p>
             <div className="cc-cta-row">
               {unlocked ? (
-                <button className="cc-btn-primary" onClick={goToProfile}>{'\u2713'} View full profile</button>
+                <button className="cc-btn-primary press-scale" onClick={goToProfile}>{'\u2713'} View full profile</button>
               ) : (
-                <button className="cc-btn-primary" onClick={() => setShowModal(true)}>{COPY.marketplace.requestInterview}</button>
+                <button className="cc-btn-primary press-scale" onClick={() => setShowModal(true)}>{COPY.marketplace.requestInterview}</button>
               )}
               <button className="cc-btn-secondary" onClick={goToProfile}>View profile <span className="material-symbols-outlined cc-arrow">arrow_forward</span></button>
+              <button className="cc-bookmark" onClick={toggleSave} title={saved ? 'Remove from Pickt List' : 'Save to Pickt List'}>
+                <span className="material-symbols-outlined" style={saved ? { fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" } : undefined}>{saved ? 'bookmark' : 'bookmark_border'}</span>
+              </button>
             </div>
           </div>
         </div>

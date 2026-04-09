@@ -2,9 +2,11 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import LiquidBackground from './LiquidBackground'
+import { useLayeredParallax } from '../../hooks/useParallax'
 
 export default function Shell() {
   const location = useLocation()
+  const mainRef = useLayeredParallax()
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
@@ -17,7 +19,7 @@ export default function Shell() {
         minHeight: '100vh',
       }}>
         <Topbar />
-        <main style={{
+        <main ref={mainRef} style={{
           flex: 1,
           padding: '2rem',
         }}>

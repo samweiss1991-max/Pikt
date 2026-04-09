@@ -4,11 +4,14 @@ import { getCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
 import { COPY } from '../lib/copy'
 import { useViewMode } from '../context/ViewModeContext'
+import { useSearch } from '../context/SearchContext'
+import { addToShortlist } from '../lib/shortlist'
 import CandidateCard from '../components/CandidateCard'
 import RightInsightsPanel from '../components/marketplace/RightInsightsPanel'
 import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import SkeletonCard from '../components/shared/SkeletonCard'
+import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import './Marketplace.css'
 
 const VIEW_MODES = [
@@ -153,6 +156,7 @@ function FocusView({ candidates }) {
 export default function Marketplace() {
   const navigate = useNavigate()
   const { viewMode, setViewMode } = useViewMode()
+  const { query: searchQuery } = useSearch()
 
   const [allCandidates, setAllCandidates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -180,7 +184,16 @@ export default function Marketplace() {
     finally { setLoading(false) }
   }, [])
 
-  const filtered = useMemo(() => allCandidates, [allCandidates])
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return allCandidates
+    const q = searchQuery.toLowerCase()
+    return allCandidates.filter(c =>
+      c.role.toLowerCase().includes(q) ||
+      (c.city || '').toLowerCase().includes(q) ||
+      (c.skills || []).some(s => s.toLowerCase().includes(q)) ||
+      (c.seniority || '').toLowerCase().includes(q)
+    )
+  }, [allCandidates, searchQuery])
 
   function switchView(mode) {
     if (mode === viewMode) return
@@ -191,24 +204,27 @@ export default function Marketplace() {
   const visibleModes = isMobile ? VIEW_MODES.filter(m => MOBILE_MODES.includes(m.key)) : VIEW_MODES
   const candidateCountText = COPY.marketplace.candidateCount(filtered.length)
 
+  const headerRef = useScrollReveal()
+  const cardsRef = useStaggerReveal({ staggerMs: 100 })
+
   return (
     <div className="mk-page">
       {/* ── Page header ── */}
-      <header className="mk-header">
+      <header className="mk-header reveal-fade-up" ref={headerRef} data-parallax-speed="0.08">
         <div className="mk-header-left">
-          <h2 className="mk-heading">
-            {COPY.marketplace.headingStart}
-            <span className="mk-heading-italic">{COPY.marketplace.headingItalic}</span>
-            {COPY.marketplace.headingEnd}
+          <h2 className="mk-heading text-reveal">
+            <span className="text-reveal-word" style={{ animationDelay: '100ms' }}>{COPY.marketplace.headingStart}</span>
+            <span className="text-reveal-word mk-heading-italic" style={{ animationDelay: '220ms' }}>{COPY.marketplace.headingItalic}</span>
+            <span className="text-reveal-word" style={{ animationDelay: '340ms' }}>{COPY.marketplace.headingEnd}</span>
           </h2>
-          <p className="mk-subtitle">{COPY.marketplace.subtitle}</p>
+          <p className="mk-subtitle text-reveal-word" style={{ animationDelay: '460ms' }}>{COPY.marketplace.subtitle}</p>
         </div>
         <div className="mk-header-right">
-          <button className="mk-filter-btn">
+          <button className="mk-filter-btn press-scale">
             <span className="material-symbols-outlined">filter_list</span>
             {COPY.marketplace.filterBtn}
           </button>
-          <button className="mk-new-search-btn">
+          <button className="mk-new-search-btn press-scale">
             <span className="material-symbols-outlined">add</span>
             {COPY.marketplace.newSearchBtn}
           </button>
@@ -243,13 +259,13 @@ export default function Marketplace() {
           {!loading && !error && filtered.length > 0 && (
             <>
               {viewMode === 'stack' && (
-                <div className="mk-grid-stack">{filtered.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="stack" index={i} />)}</div>
+                <div className="mk-grid-stack" ref={cardsRef}>{filtered.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="stack" index={i} /></div>)}</div>
               )}
               {viewMode === 'carousel' && <CarouselView candidates={filtered} />}
               {viewMode === 'matrix' && (
-                <div className="mk-grid-matrix">{filtered.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="matrix" index={i} />)}</div>
+                <div className="mk-grid-matrix" ref={cardsRef}>{filtered.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="matrix" index={i} /></div>)}</div>
               )}
-              {viewMode === 'tinder' && <TinderView candidates={filtered} />}
+              {viewMode === 'tinder' && <TinderView candidates={filtered} onSave={c => addToShortlist(c.id)} />}
               {viewMode === 'compact' && (
                 <div className="mk-compact-list">{filtered.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="compact" index={i} />)}</div>
               )}

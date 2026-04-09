@@ -1,6 +1,11 @@
 /* ═══ DASHBOARD PAGE ═══ */
 .db-page { max-width: 1400px; }
 
+/* ── Section bands ── */
+.db-section { margin-left: -2rem; margin-right: -2rem; padding: 2rem; }
+.db-section--alt { background: var(--surface-container-low); }
+.db-section--warm { background: var(--surface-container); }
+
 /* ── Header ── */
 .db-header { margin-bottom: 2rem; }
 .db-heading {

@@ -1,0 +1,44 @@
+.np-backdrop {
+  position: fixed; inset: 0; z-index: 45;
+}
+.np-panel {
+  position: absolute; top: 100%; right: 0; margin-top: 0.5rem;
+  width: 320px; max-height: 400px; overflow-y: auto;
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 1rem;
+  box-shadow: 0px 24px 48px rgba(56,56,49,0.06);
+  z-index: 50;
+}
+.np-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--outline-variant);
+}
+.np-title { font-size: 13px; font-weight: 700; color: var(--on-surface); }
+.np-mark-read {
+  font-size: 11px; font-weight: 600; color: var(--primary);
+  background: none; border: none; cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+}
+.np-mark-read:hover { text-decoration: underline; }
+
+.np-list { }
+.np-item {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--outline-variant);
+  transition: background 0.15s;
+}
+.np-item:last-child { border-bottom: none; }
+.np-item:hover { background: var(--surface-container); }
+.np-item--unread { background: rgba(45,114,53,0.03); }
+
+.np-icon { font-size: 20px; color: var(--on-surface-variant); flex-shrink: 0; margin-top: 2px; }
+.np-content { flex: 1; min-width: 0; }
+.np-text { font-size: 12px; color: var(--on-surface); line-height: 1.4; margin: 0; }
+.np-time { font-size: 10px; color: var(--on-surface-variant); margin-top: 2px; display: block; }
+.np-unread-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--primary); flex-shrink: 0; margin-top: 6px;
+}

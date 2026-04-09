@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { getCandidateById, getCandidateWithPii } from '../lib/seedData'
 import { isUnlocked as checkUnlocked, persistUnlock } from '../lib/sanitizeCandidate'
+import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
 import { CANDIDATES } from '../data/discoveryOptions'
 import UnlockModal from '../components/unlock/UnlockModal'
 import './CandidateProfile.css'
@@ -114,12 +115,17 @@ export default function CandidateProfile() {
   }
 
   return (
-    <div className="cp-page">
-      <button className="cp-back" onClick={() => navigate(-1)}>{'\u2190'} Back to marketplace</button>
+    <div className="cp-page page-enter">
+      <button className="cp-back press-scale" onClick={() => navigate(-1)}>{'\u2190'} Back to marketplace</button>
 
       <div className="cp-layout">
         {/* ── LEFT COLUMN ── */}
-        <div className="cp-left">
+        <div className="cp-left" data-parallax-speed="0.06">
+          {/* Icon box matching card */}
+          <div className={`cp-icon-box bg-gradient-to-br ${getGradientClass(0)}`}>
+            <span className="material-symbols-outlined cp-icon-symbol">{getIconForRole(c.role)}</span>
+          </div>
+
           {/* 1. Role + meta pills */}
           <h1 className="cp-role">{c.role}</h1>
           <div className="cp-meta-pills">
@@ -235,7 +241,7 @@ export default function CandidateProfile() {
         {/* ── RIGHT COLUMN ── */}
         <div className="cp-right">
           {/* Placement fee card */}
-          <div className="cp-sidebar-card">
+          <div className="cp-sidebar-card hover-lift">
             <div className="cp-fee-number">{c.fee}%</div>
             <div className="cp-fee-sub">of first-year salary</div>
 
@@ -259,14 +265,14 @@ export default function CandidateProfile() {
 
           {/* Recommendation card */}
           {c.recommendation && (
-            <div className="cp-sidebar-card">
+            <div className="cp-sidebar-card hover-lift">
               <div className="cp-rec-badge">{c.recommendation}</div>
               {c.why_not_hired && <div className="cp-rec-reason">{c.why_not_hired}</div>}
             </div>
           )}
 
           {/* Contact details card */}
-          <div className="cp-sidebar-card">
+          <div className="cp-sidebar-card hover-lift">
             <div className="cp-card-title">Contact details</div>
             {unlocked ? (
               <div className="cp-contact-rows">
@@ -299,7 +305,7 @@ export default function CandidateProfile() {
           </div>
 
           {/* Referred by card */}
-          <div className="cp-sidebar-card">
+          <div className="cp-sidebar-card hover-lift">
             <div className="cp-card-title">Referred by</div>
             <div className="cp-referrer-row">
               <div className="cp-referrer-avatar">{(c.referringCompany || 'U')[0]}</div>

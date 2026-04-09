@@ -76,6 +76,22 @@
 .topbar-icon-btn:hover { color: var(--primary); }
 .topbar-icon-btn .material-symbols-outlined { font-size: 22px; }
 
+.topbar-notif-wrap { position: relative; }
+.topbar-notif-dot {
+  position: absolute; top: 6px; right: 6px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--primary);
+}
+.topbar-search-clear {
+  position: absolute; right: 0.75rem; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--on-surface-variant); padding: 2px;
+  display: flex; align-items: center;
+  transition: color 0.15s;
+}
+.topbar-search-clear:hover { color: var(--on-surface); }
+
 .topbar-divider {
   width: 1px;
   height: 20px;
