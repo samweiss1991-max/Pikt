@@ -1,0 +1,172 @@
+/**
+ * Mobile-first responsive overrides.
+ * All existing styles are desktop-first — these add mobile behaviour.
+ * Import after global.css.
+ */
+
+/* ── Mobile: <= 640px ────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  /* Hide sidebar on mobile */
+  .sidebar,
+  aside[style*="width: 214"] {
+    display: none !important;
+  }
+
+  /* Marketplace grid: single column */
+  .marketplace-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Tile snapshot: handled by TileSnapshotTabs component */
+  .tile-snapshot-grid {
+    display: none !important;
+  }
+
+  /* Tile footer: stack vertically */
+  .tile-footer {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  /* Profile header: stack */
+  .profile-header {
+    flex-direction: column !important;
+  }
+
+  /* Hide fee from profile header on mobile (shown in sticky bar only) */
+  .profile-fee-header {
+    display: none !important;
+  }
+
+  /* Blurred CV: tighter padding, smaller text */
+  .cv-document {
+    padding: 16px !important;
+    font-size: 11px !important;
+  }
+
+  /* Sticky unlock bar: full width, taller */
+  .sticky-unlock-bar {
+    height: auto !important;
+    min-height: 64px !important;
+  }
+
+  .sticky-unlock-bar .unlock-btn {
+    width: 100% !important;
+  }
+
+  /* Page padding adjustments */
+  .page-content {
+    padding: 16px !important;
+    padding-bottom: calc(60px + 16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Cards: full width with tighter margins */
+  .card,
+  [class*="card"] {
+    border-radius: 10px;
+  }
+
+  /* Shortlist review buttons */
+  .review-btn {
+    min-height: 48px !important;
+    font-size: 14px !important;
+  }
+
+  /* Modal → bottom sheet override */
+  .modal-overlay {
+    align-items: flex-end !important;
+  }
+
+  .modal-content {
+    border-radius: 20px 20px 0 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 85vh !important;
+    animation: sheet-up 0.3s ease !important;
+  }
+
+  /* Topbar: hide title */
+  .topbar-title {
+    display: none !important;
+  }
+
+  /* Summary stat cards: stack vertically */
+  .summary-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Tables: horizontal scroll */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Filter sidebar: full screen overlay */
+  .filter-sidebar {
+    width: 100% !important;
+  }
+
+  /* Quick filter chips: allow horizontal scroll */
+  .chip-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .chip-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Similar candidates: horizontal scroll */
+  .similar-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Font size adjustments */
+  h1 {
+    font-size: 22px !important;
+  }
+}
+
+/* ── Tablet: 641–1024px ──────────────────────────────────────── */
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Marketplace grid: single column */
+  .marketplace-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Profile: hide sidebar similar panel */
+  .similar-sidebar {
+    display: none !important;
+  }
+
+  /* Summary cards: 2 columns */
+  .summary-row {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── Animations ──────────────────────────────────────────────── */
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}

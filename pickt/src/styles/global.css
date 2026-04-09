@@ -1,0 +1,112 @@
+@import "./tokens.css";
+@import "./responsive.css";
+
+/* ── Reset ──────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+/* ── Interactive transitions ────────────────────────────────── */
+
+a,
+button,
+input,
+select,
+textarea,
+[role="button"] {
+  transition: all 0.15s ease;
+}
+
+/* ── Typography ─────────────────────────────────────────────── */
+
+.font-serif {
+  font-family: "Instrument Serif", serif;
+}
+
+.font-sans {
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+/* ── Card base ──────────────────────────────────────────────── */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 1px 8px rgba(0, 0, 0, 0.03);
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+
+/* Touch targets: 44px minimum */
+@media (max-width: 640px) {
+  button,
+  a,
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Override for inline elements that shouldn't expand */
+  span[style*="borderRadius: 99"] {
+    min-height: auto;
+    min-width: auto;
+  }
+}
+
+/* Safe area padding for bottom nav */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .has-bottom-nav {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+}

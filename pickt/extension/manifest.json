@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "pickt — talent marketplace",
+  "version": "0.1.0",
+  "description": "Refer candidates and search pickt directly from your ATS.",
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.greenhouse.io/*",
+        "*://*.lever.co/*",
+        "*://*.workable.com/*",
+        "*://*.ashbyhq.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["drawer.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Open pickt",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

@@ -1,0 +1,331 @@
+Before implementing anything, critique this prompt for engineering 
+completeness, component architecture, state management, API contract 
+clarity, and anything that could cause problems during implementation. 
+List your improvements, rewrite the improved prompt, then execute it.
+
+---
+
+SCOPE: This prompt covers two things only:
+1. The marketplace results page — how candidate tiles are displayed 
+   and switched between views
+2. The candidate profile page — what a recruiter sees after clicking 
+   into a single candidate
+
+The view switcher (carousel, matrix, tinder, etc.) exists ONLY on the 
+marketplace results page. The candidate profile page is a separate 
+route with no view switching — it is a single fixed layout.
+
+---
+
+REFERENCE DESIGN — UNLOCK MODAL
+
+The unlock modal design is defined in the provided HTML file 
+(pickt_unlock_and_flows.html). Do not re-invent this design. 
+Implement it as a single shared React component called 
+<UnlockModal candidateId={id} onSuccess={fn} onCancel={fn} /> 
+that is imported and reused everywhere an unlock action exists. 
+The modal must never be duplicated — it is one component used in 
+multiple places.
+
+The modal contains exactly:
+- Lock icon: 56×56px border-radius 16px rounded square (NOT circle), 
+  rgba(200,240,96,0.1) bg, rgba(200,240,96,0.25) border, SVG padlock 
+  stroke #c8f060
+- Title: "Unlock" white + "profile" italic #c8f060 — Instrument Serif
+- Subtitle: "You're about to unlock full access to this candidate — 
+  including name, email, LinkedIn, and employer history."
+- Fee box (bg #1e2026, border-radius 14px, padding 4px 16px), 
+  4 rows separated by 1px solid #2a2d35:
+  Row 1: Placement fee → "8% of first-year salary" in #c8f060
+  Row 2: When charged → "On successful hire only"
+  Row 3: Referred by → "[Company] · [rep score]"
+  Row 4: Interviews completed → "[N] interviews"
+- Savings row (border-radius 12px, rgba(125,211,176,0.07) bg, 
+  rgba(125,211,176,0.18) border):
+  Left: "vs. typical agency (20–25%)" muted 11px
+  Right: "Save $14k–$20k" #7dd3b0 bold 12px
+- Terms: "By unlocking you agree to the placement terms (accent green 
+  link). The fee is only triggered when you confirm a hire through 
+  pick[t italic #c8f060]."
+- Two buttons (border-radius 12px, gap 8px):
+  Cancel — ghost (border #2a2d35, transparent bg, muted text)
+  Confirm & unlock — filled #c8f060, dark text #0e0f11, font-weight 500
+
+Overlay: rgba(14,15,17,0.85), backdrop-filter blur(2px), z-index 50
+Modal wrapper: border-radius 20px, bg #16181c, border 1px solid 
+#2a2d35, padding 32px 28px, width 340px, centred on screen.
+
+On "Confirm & unlock":
+- POST /api/unlocks
+- POST /api/ats/push-candidate
+- On success: call onSuccess() callback — the parent component 
+  handles what happens next (inline card update vs PII reveal)
+- On failure: show inline error message inside the modal, 
+  do not close it, allow retry
+
+---
+
+PART 1 — MARKETPLACE RESULTS PAGE
+Route: /app/dashboard/page.tsx (ranked results state, after 
+3-step discovery flow completes)
+
+ARCHITECTURE NOTE:
+Store the selected view mode in a React context (ViewModeContext) 
+with localStorage persistence (key: "pickt_view_mode"). Do not 
+read/write localStorage directly in components — use the context. 
+Also reflect the current view mode in the URL as a query param 
+(?view=stack) so that the URL is shareable and the view persists 
+on refresh.
+
+VIEW SWITCHER TOOLBAR:
+Sits directly above the candidate results area, below the filter pills.
+Renders as a segmented control: a pill-shaped container 
+(background var(--surface2), border-radius 10px, padding 3px) 
+containing icon + label toggle buttons for each view mode.
+Active view: background var(--surface), border-radius 8px, 
+text accent green #c8f060.
+Inactive: muted text, no background.
+Changing view mode triggers a 150ms opacity fade on the results 
+container (opacity 1 → 0 → 1) using CSS transition — not a 
+library — before swapping the layout.
+
+View mode options (icon + label):
+- Stack (default) ▤ — single column vertical scroll
+- Carousel ◁▷ — horizontal one-at-a-time navigation  
+- Matrix ⊞ — 2-column grid
+- Tinder ♠ — swipeable card stack
+- Compact ≡ — dense list rows
+- Focus ⊡ — full-area single card with prev/next
+
+On mobile (viewport < 768px):
+- Show only: Stack, Tinder, Compact
+- Hide: Carousel, Matrix, Focus
+- Default to Stack
+
+---
+
+CANDIDATE TILE — SHARED CARD COMPONENT
+
+Build a single <CandidateCard candidate={c} viewMode={mode} /> 
+component that adapts its layout based on viewMode prop. 
+Do not build separate card components per view — one component, 
+conditional rendering inside.
+
+Every card in every view shows these two CTA buttons:
+- "View profile" — ghost button (border-radius 10px) — navigates 
+  to /dashboard/candidates/[id]. This goes to the full profile page.
+- "Unlock candidate" — filled accent green button (border-radius 10px)
+  — opens <UnlockModal /> as an overlay on the CURRENT marketplace 
+  page. Does NOT navigate away. After successful unlock, the card 
+  updates inline to show "Profile unlocked ✓" and the "Unlock 
+  candidate" button changes to "View full profile" (navigates to 
+  profile page).
+
+These two buttons are always distinct and always present on cards 
+in Stack, Carousel, Matrix, and Focus views. In Tinder view, 
+buttons only appear when the card is expanded (tapped). In Compact 
+view, only "View" appears (unlock happens from profile page only).
+
+Card content per view:
+
+STACK VIEW (default):
+Full card, one per row, full width.
+- Top accent line (2px #c8f060) on top 3 ranked cards only
+- Rank badge top-right: 🏆 Top match / ⭐ Strong match / ✦ Good match
+- Role title (14px bold) + meta (seniority · years · city · work type)
+- Stage badge (colour-coded 99px pill) + interview count pill + 
+  recency pill (show 🔥 if ≤ 3 days ago) + match % pill
+- 3 mini match bars: Role match (accent green) · Interviews (teal) · 
+  Recency (amber) — each with % label right-aligned
+- Skill tags (border-radius 6px)
+- Bottom row: "[fee]% of first-year salary · referred by [company]"
+- Bottom right: "View profile" ghost + "Unlock candidate" accent green
+
+CAROUSEL VIEW:
+Single card fills full width. Left/right arrow buttons 
+(40×40px circle, border 1px solid var(--border), 
+background var(--surface2)) positioned at left and right edges, 
+vertically centred. Position dots below card (filled circle = 
+current position). Card content identical to Stack view. 
+Keyboard: left/right arrow keys navigate. 
+Touch: swipe left/right to navigate (use pointer events, 
+no external library).
+
+MATRIX VIEW:
+2-column CSS grid, gap 14px.
+Compact card variant — remove match bars to save space.
+Keep: role, meta, stage badge, interview count, match %, 
+top 3 skills, fee, referred by, both CTA buttons.
+Top 3 ranked cards retain accent top border.
+
+TINDER VIEW:
+Stacked cards with CSS transform: 
+card 2 behind at scale(0.97) translateY(6px), 
+card 3 at scale(0.94) translateY(12px).
+Front card shows: role title (18px bold), seniority + location, 
+stage badge, match % pill, interview count, top 3 skills only.
+Two action buttons below the stack:
+  ✗ in a coral (#f07060) circle (48×48px) — skip, advance to next
+  ✓ in an accent green circle (48×48px) — save to Saved list, 
+    advance to next
+Tapping the card body expands it in-place to show full card details 
+including both CTA buttons.
+Counter above stack: "[N] candidates remaining" in muted text.
+Swipe gesture: use pointer events (pointerdown, pointermove, 
+pointerup) — no external library. Swipe right = save, 
+swipe left = skip. Rotation follows drag: 
+rotate(${dragX * 0.1}deg).
+Show directional hint overlays during drag: 
+"SAVE ✓" in accent green (right side) / "SKIP ✗" in coral 
+(left side), opacity scales with drag distance.
+
+COMPACT VIEW:
+Dense table-like rows, border-bottom separator between each.
+One row per candidate: Role title · Stage badge · Match % · 
+Fee % · Interview count · "View" button (ghost, navigates to 
+profile page).
+No "Unlock" button in this view — unlock only available from 
+profile page.
+Row hover: background var(--surface2).
+Clicking anywhere on the row navigates to profile page.
+
+FOCUS MODE:
+Single candidate fills entire main content area.
+Role title: 28px Instrument Serif. Meta: 14px.
+All match bars at full width with percentage labels.
+Full skills list.
+Stage timeline shown inline.
+Strengths and gaps shown in full.
+Large "Unlock this candidate" button at the bottom, full width.
+Fixed previous/next arrows at left and right viewport edges.
+Keyboard: left/right arrow keys navigate.
+Show "Candidate [N] of [total]" counter top right.
+
+---
+
+EMPTY AND ERROR STATES (all views):
+- 0 candidates returned from API: centred card with 
+  "No candidates match your search" + "Refine your search" 
+  button that returns to step 1 of discovery flow
+- API error: centred card with "Something went wrong" + 
+  "Try again" retry button that re-calls /api/candidates/ranked
+- Unlock API failure: inline error inside UnlockModal 
+  (do not close modal, show red error text, allow retry)
+- All empty/error states use border-radius 16px cards, dark theme
+
+---
+
+LOADING STATE:
+While /api/candidates/ranked is fetching, show 3 skeleton cards 
+(border-radius 16px, animated CSS pulse using 
+@keyframes pulse with opacity 0.4 → 1 → 0.4, 1.5s infinite).
+Do not use a spinner. Skeletons match the approximate height 
+of real cards in the current view mode.
+
+---
+
+PART 2 — CANDIDATE PROFILE PAGE
+Route: /app/dashboard/candidates/[id]/page.tsx
+
+This is a SEPARATE fixed-layout page. There is NO view switcher here.
+A recruiter arrives here by clicking "View profile" on any 
+marketplace card.
+
+The profile is NOT a CV. It is a structured summary built from 
+the interview feedback and role data entered when the candidate 
+was referred.
+
+LEFT COLUMN (scrollable, flex:1):
+
+1. Role title (Instrument Serif 24px) + meta pills (border-radius 99px):
+   seniority · years exp · city · work type · residency status
+
+2. Stage badge (colour-coded border-radius 99px) + 
+   interview count pill + recency pill
+
+3. Skills row (border-radius 6px chips)
+
+4. Interview stages timeline — one item per round:
+   Pass: filled accent green dot + ✓ + round name + brief note
+   Not hired: outlined dot + ✗ + reason
+
+5. Strengths block (border-radius 12px, 2px solid #7dd3b0 left border,
+   bg rgba(125,211,176,0.05))
+
+6. Development areas block (border-radius 12px, 
+   2px solid #f0b860 left border, bg rgba(240,184,96,0.05))
+
+7. Feedback summary block (border-radius 12px, 
+   border 1px solid var(--border))
+
+8. Personal details card (border-radius 16px):
+   Rows: Full name · Email · Mobile · LinkedIn · Current employer
+   LOCKED state: all values have CSS filter: blur(5px), 
+   user-select: none. Label at top of card: "Personal details — 
+   locked" in muted text with lock icon.
+   UNLOCKED state: filter: blur(0), transition: filter 0.5s ease. 
+   Label changes to "Personal details" with no lock icon.
+
+9. CV section card (border-radius 16px, shown below personal details):
+   LOCKED state: muted text "CV available after unlocking" + 
+   lock icon. Button greyed out and disabled.
+   UNLOCKED state: "Download CV" button (accent green, 
+   border-radius 10px, full width) — on click: calls 
+   /api/candidates/[id]/cv-url which generates a fresh signed 
+   Supabase Storage URL (1 hour expiry) and triggers browser 
+   download. Show cv_filename below button. 
+   The CV button is ONLY rendered and accessible after a 
+   valid candidate_unlock record exists for this company.
+   Never expose the raw Supabase Storage path to the client.
+
+RIGHT COLUMN (280px, position sticky, top 24px):
+
+Placement fee card (border-radius 16px):
+- "8%" Instrument Serif 28px #c8f060
+- "of first-year salary" 11px muted
+- Savings box (border-radius 12px, teal tinted bg/border):
+  "vs. typical agency (20–25%)" left · "Save $14k–$20k" right teal
+- Divider
+- PRIMARY CTA BUTTON: "Unlock this candidate" 
+  (border-radius 12px, full width, bg #c8f060, dark text, 
+  14px font-weight 500, padding 12px)
+  This button is ALWAYS VISIBLE on the profile page.
+  Clicking it opens <UnlockModal /> as an overlay.
+  After successful unlock: button changes to "Profile unlocked ✓" 
+  disabled state (bg var(--surface2), muted text, no pointer events)
+- "Fee only due on successful hire" 10px muted below button
+- ATS status indicator (border-radius 99px pill):
+  Connected: teal bg "Hire tracking active — we'll detect this"
+  Not connected: "Connect your ATS" muted link → /settings/ats
+
+Recommendation card (border-radius 16px):
+- Recommendation badge (border-radius 99px, accent green tinted)
+- Why not hired note (11px muted)
+
+Contact details card (border-radius 16px):
+- LOCKED: all values blurred, "Unlock to view" ghost button 
+  (border-radius 12px) that opens <UnlockModal />
+- UNLOCKED: values revealed, copy-to-clipboard icon on each row
+
+Referred by card (border-radius 16px):
+- Company avatar (border-radius 10px, gradient bg) 
+- Company name + reputation score
+- "[N] successful placements" note
+
+"Mark as hired" button (border-radius 12px, full width, 
+bg var(--surface2), border 1px solid var(--border), muted text):
+- Only rendered if candidate is unlocked AND requesting company 
+  is the same company that performed the unlock
+- Opens salary confirmation modal → triggers Stripe payment flow
+
+---
+
+GLOBAL DESIGN TOKENS (apply everywhere):
+bg #0e0f11 · surface #16181c · surface2 #1e2026 · border #2a2d35
+text #e8e9eb · muted #6b7280 · accent #c8f060 · teal #7dd3b0
+amber #f0b860 · coral #f07060 · purple #a78bfa
+Fonts: DM Sans (body) · Instrument Serif (display/logo/headings)
+Rounded scale: modals 20px · cards 16px · fee box 14px · 
+buttons/inputs 12px · tags/pills 99px · nav items 10px · 
+avatars 10px
+All view transitions: 150ms opacity fade using CSS transition only
