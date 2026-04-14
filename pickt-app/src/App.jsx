@@ -8,11 +8,11 @@ import Discovery from './pages/Discovery'
 import Marketplace from './pages/Marketplace'
 import CandidateProfile from './pages/CandidateProfile'
 import Shortlist from './pages/Shortlist'
-import Saved from './pages/Saved'
 import MyCandidates from './pages/MyCandidates'
 import Placements from './pages/Placements'
 import Earnings from './pages/Earnings'
 import Integrations from './pages/Integrations'
+import Refer from './pages/Refer'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 
@@ -27,10 +27,10 @@ export default function App() {
         <Route path="marketplace/results" element={<Marketplace />} />
         <Route path="candidates/:id" element={<CandidateProfile />} />
         <Route path="shortlist" element={<Shortlist />} />
-        <Route path="saved" element={<Saved />} />
         <Route path="my-candidates" element={<MyCandidates />} />
         <Route path="placements" element={<Placements />} />
         <Route path="earnings" element={<Earnings />} />
+        <Route path="refer" element={<Refer />} />
         <Route path="integrations" element={<Integrations />} />
       </Route>
     </Routes>

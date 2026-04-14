@@ -7,12 +7,41 @@ import { useViewMode } from '../context/ViewModeContext'
 import { useSearch } from '../context/SearchContext'
 import { addToShortlist } from '../lib/shortlist'
 import CandidateCard from '../components/CandidateCard'
+import GhostCandidateCard from '../components/GhostCandidateCard'
 import RightInsightsPanel from '../components/marketplace/RightInsightsPanel'
 import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import SkeletonCard from '../components/shared/SkeletonCard'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
+import { computeCategoryCounts } from '../lib/roleCategories'
 import './Marketplace.css'
+
+const GHOST_DELAYS = [0, 0.15, 0.3, 0.1, 0.25, 0.4]
+
+const CATEGORY_CHIPS = [
+  { key: 'Engineering', icon: '\uD83D\uDCBB' },
+  { key: 'Sales', icon: '\uD83D\uDCC8' },
+  { key: 'Product', icon: '\uD83C\uDFA8' },
+  { key: 'Data', icon: '\uD83D\uDCCA' },
+  { key: 'Operations', icon: '\u2699\uFE0F' },
+  { key: 'Finance', icon: '\uD83D\uDCB3' },
+  { key: 'Final round', icon: '\uD83C\uDFC6' },
+  { key: 'Remote', icon: '\uD83C\uDF0F' },
+]
+
+const DEFAULT_ROLES = [
+  'Account Executive', 'Backend Engineer', 'Customer Success Manager',
+  'Data Analyst', 'DevOps Engineer', 'Frontend Engineer',
+  'Head of Product', 'Head of Sales', 'ML / AI Engineer',
+  'Product Manager', 'Solutions Architect', 'UX / UI Designer',
+]
+
+const EXPANDED_ROLES = [
+  'Analytics Engineer', 'Brand Manager', 'CFO / Finance Director',
+  'Compliance Manager', 'Content / SEO', 'Data Engineer',
+  'Data Scientist', 'Growth Marketer', 'Head of CS',
+  'Head of Data', 'SDR / BDR', 'Talent Acquisition',
+]
 
 const VIEW_MODES = [
   { key: 'stack', label: COPY.viewModes.stack, icon: 'view_agenda' },
@@ -164,6 +193,16 @@ export default function Marketplace() {
   const [transitioning, setTransitioning] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
+  // ── Discovery / tray state ──
+  const [activeCategories, setActiveCategories] = useState([])
+  const [activeRole, setActiveRole] = useState(null)
+  const [totalCount, setTotalCount] = useState(0)
+  const [categoryCounts, setCategoryCounts] = useState({})
+  const [ghostBlur, setGhostBlur] = useState(4)
+  const [ghostOpacity, setGhostOpacity] = useState(0.6)
+  const [discoveryConfirmed, setDiscoveryConfirmed] = useState(false)
+  const [showAllRoles, setShowAllRoles] = useState(false)
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
     check()
@@ -183,6 +222,32 @@ export default function Marketplace() {
     } catch (err) { setError(err.message) }
     finally { setLoading(false) }
   }, [])
+
+  // Compute category counts from loaded candidates
+  useEffect(() => {
+    if (allCandidates.length === 0) return
+    const { totalCount: t, categoryCounts: c } = computeCategoryCounts(allCandidates)
+    setTotalCount(t)
+    setCategoryCounts(c)
+  }, [allCandidates])
+
+  // Ghost blur/opacity reacts to filter state
+  useEffect(() => {
+    if (activeCategories.length > 0) {
+      setGhostBlur(0); setGhostOpacity(1)
+    } else if (activeRole !== null) {
+      setGhostBlur(1); setGhostOpacity(0.85)
+    } else {
+      setGhostBlur(4); setGhostOpacity(0.6)
+    }
+  }, [activeCategories, activeRole])
+
+  const displayCount = useMemo(() => {
+    if (activeCategories.length > 0) {
+      return activeCategories.reduce((sum, cat) => sum + (categoryCounts[cat] || 0), 0)
+    }
+    return totalCount
+  }, [activeCategories, categoryCounts, totalCount])
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return allCandidates
@@ -208,7 +273,7 @@ export default function Marketplace() {
   const cardsRef = useStaggerReveal({ staggerMs: 100 })
 
   return (
-    <div className="mk-page">
+    <div className="mk-page" style={{ position: 'relative', minHeight: 'calc(100vh - 4rem)', paddingBottom: discoveryConfirmed ? undefined : 360 }}>
       {/* ── Page header ── */}
       <header className="mk-header reveal-fade-up" ref={headerRef} data-parallax-speed="0.08">
         <div className="mk-header-left">
@@ -246,30 +311,40 @@ export default function Marketplace() {
 
       {/* ── Bento grid ── */}
       <div className="mk-bento">
-        {/* Left: candidate list */}
+        {/* Left: candidate list OR ghost grid */}
         <div className={`mk-left ${transitioning ? 'mk-left--transitioning' : ''}`}>
-          {loading && <SkeletonCard count={3} />}
-
-          {!loading && error && <ErrorBanner message={error} onRetry={() => { setError(null); setLoading(true); try { const s = getCandidates(); setAllCandidates((s && s.length > 0) ? s.map(mapDbCandidate) : MOCK_CANDIDATES.map(mapDbCandidate)) } catch (e) { setError(e.message) } finally { setLoading(false) } }} />}
-
-          {!loading && !error && filtered.length === 0 && (
-            <EmptyState icon="search_off" message={COPY.emptyStates.marketplace} ctaLabel={COPY.emptyStates.marketplaceCta} onCta={() => navigate('/marketplace')} />
-          )}
-
-          {!loading && !error && filtered.length > 0 && (
+          {!discoveryConfirmed ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '20px 0' }}>
+              {GHOST_DELAYS.map((delay, i) => (
+                <GhostCandidateCard key={i} animationDelay={delay} blur={ghostBlur} opacity={ghostOpacity} />
+              ))}
+            </div>
+          ) : (
             <>
-              {viewMode === 'stack' && (
-                <div className="mk-grid-stack" ref={cardsRef}>{filtered.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="stack" index={i} /></div>)}</div>
+              {loading && <SkeletonCard count={3} />}
+
+              {!loading && error && <ErrorBanner message={error} onRetry={() => { setError(null); setLoading(true); try { const s = getCandidates(); setAllCandidates((s && s.length > 0) ? s.map(mapDbCandidate) : MOCK_CANDIDATES.map(mapDbCandidate)) } catch (e) { setError(e.message) } finally { setLoading(false) } }} />}
+
+              {!loading && !error && filtered.length === 0 && (
+                <EmptyState icon="search_off" message={COPY.emptyStates.marketplace} ctaLabel={COPY.emptyStates.marketplaceCta} onCta={() => navigate('/marketplace')} />
               )}
-              {viewMode === 'carousel' && <CarouselView candidates={filtered} />}
-              {viewMode === 'matrix' && (
-                <div className="mk-grid-matrix" ref={cardsRef}>{filtered.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="matrix" index={i} /></div>)}</div>
+
+              {!loading && !error && filtered.length > 0 && (
+                <>
+                  {viewMode === 'stack' && (
+                    <div className="mk-grid-stack" ref={cardsRef}>{filtered.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="stack" index={i} /></div>)}</div>
+                  )}
+                  {viewMode === 'carousel' && <CarouselView candidates={filtered} />}
+                  {viewMode === 'matrix' && (
+                    <div className="mk-grid-matrix" ref={cardsRef}>{filtered.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="matrix" index={i} /></div>)}</div>
+                  )}
+                  {viewMode === 'tinder' && <TinderView candidates={filtered} onSave={c => addToShortlist(c.id)} />}
+                  {viewMode === 'compact' && (
+                    <div className="mk-compact-list">{filtered.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="compact" index={i} />)}</div>
+                  )}
+                  {viewMode === 'focus' && <FocusView candidates={filtered} />}
+                </>
               )}
-              {viewMode === 'tinder' && <TinderView candidates={filtered} onSave={c => addToShortlist(c.id)} />}
-              {viewMode === 'compact' && (
-                <div className="mk-compact-list">{filtered.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="compact" index={i} />)}</div>
-              )}
-              {viewMode === 'focus' && <FocusView candidates={filtered} />}
             </>
           )}
         </div>
@@ -279,6 +354,137 @@ export default function Marketplace() {
           <RightInsightsPanel />
         </div>
       </div>
+
+      {/* ── Discovery tray (visible until confirmed) ── */}
+      {!discoveryConfirmed && (
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 20 }}>
+          {/* Gradient fade */}
+          <div style={{ height: 80, background: 'linear-gradient(to bottom, rgba(255,252,241,0) 0%, rgba(255,252,241,0.95) 100%)', pointerEvents: 'none' }} />
+
+          {/* Tray */}
+          <div style={{ background: '#ffffff', borderTop: '1px solid var(--outline-variant)', borderRadius: '20px 20px 0 0', boxShadow: '0 -6px 32px rgba(0,0,0,0.09)' }}>
+            {/* Handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--outline-variant)' }} />
+            </div>
+
+            {/* Tray inner */}
+            <div style={{ padding: '16px 24px 20px' }}>
+              {/* Top row */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface)', lineHeight: 1.2, margin: 0 }}>
+                    Find the right{' '}
+                    <span style={{ color: 'var(--primary)', fontStyle: 'italic' }}>candidate</span>
+                  </h3>
+                  <p style={{ marginTop: 4, marginBottom: 0, fontSize: 12, fontWeight: 400, color: 'var(--on-surface-variant)' }}>
+                    Filter by category or pick a specific role below
+                  </p>
+                </div>
+                <div style={{ flexShrink: 0, marginTop: 2, background: 'var(--tertiary-container)', color: 'var(--primary)', borderRadius: 99, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+                  {totalCount > 0 ? (
+                    <>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)' }} />
+                      {displayCount} candidates ready
+                    </>
+                  ) : ('Loading\u2026')}
+                </div>
+              </div>
+
+              {/* Category chips */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {CATEGORY_CHIPS.map(({ key, icon }) => {
+                  const active = activeCategories.includes(key)
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
+                      style={{
+                        padding: '7px 14px', borderRadius: 10,
+                        border: `1px solid ${active ? 'var(--primary)' : 'var(--outline-variant)'}`,
+                        background: active ? 'var(--tertiary-container)' : 'var(--surface-container-low)',
+                        fontSize: 12, fontWeight: 600,
+                        color: active ? 'var(--primary)' : 'var(--on-surface-variant)',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                        display: 'flex', alignItems: 'center', gap: 7,
+                      }}
+                    >
+                      <span>{icon}</span>
+                      {key}
+                      <span style={{ fontSize: 10, fontWeight: 700, background: active ? 'var(--primary)' : 'var(--tertiary-container)', color: active ? '#ffffff' : 'var(--primary)', padding: '1px 5px', borderRadius: 99 }}>
+                        {categoryCounts[key] || 0}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: 'var(--outline-variant)', margin: '14px 0 12px' }} />
+
+              {/* Role chips section */}
+              <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px', color: 'var(--on-surface-variant)', marginBottom: 10, marginTop: 0 }}>
+                Or pick a specific role
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 10 }}>
+                {(showAllRoles ? [...DEFAULT_ROLES, ...EXPANDED_ROLES] : DEFAULT_ROLES).map(r => {
+                  const active = activeRole === r
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => {
+                        if (activeRole === r) { setActiveRole(null) }
+                        else { setActiveRole(r); setActiveCategories([]) }
+                      }}
+                      style={{
+                        padding: '6px 14px', borderRadius: 8,
+                        border: `1.5px solid ${active ? 'var(--primary)' : 'var(--outline-variant)'}`,
+                        background: active ? 'var(--tertiary-container)' : 'var(--surface-container-low)',
+                        fontSize: 12, fontWeight: 600,
+                        color: active ? 'var(--primary)' : 'var(--on-surface-variant)',
+                        cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.15s',
+                      }}
+                    >
+                      {r}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Show all toggle + confirm button */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAllRoles(v => !v)}
+                  style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', padding: 0 }}
+                >
+                  {showAllRoles ? 'Show less \u2191' : 'See all roles \u2192'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiscoveryConfirmed(true)}
+                  style={{ background: 'var(--primary)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 99, fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(45,114,53,0.25)' }}
+                >
+                  Show me candidates &rarr;
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset to discovery button (only after confirmed) */}
+      {discoveryConfirmed && (
+        <button
+          type="button"
+          onClick={() => setDiscoveryConfirmed(false)}
+          style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 50, background: 'var(--primary)', color: '#fff', border: 'none', padding: '10px 14px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+        >
+          ↺ Back to discovery
+        </button>
+      )}
     </div>
   )
 }

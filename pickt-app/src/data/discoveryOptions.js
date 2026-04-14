@@ -1,3 +1,6 @@
+/** @typedef {typeof INDUSTRIES[number]} Industry */
+/** @typedef {typeof SENIORITY[number]} SeniorityOption */
+
 export const INDUSTRIES = [
   "Technology", "Sales & Revenue", "Finance & FinTech", "Marketing & Growth",
   "Product & Design", "Operations", "Data & Analytics", "People & HR",
@@ -21,8 +24,10 @@ export const ALL_ROLES = [...new Set(Object.values(ROLES).flat())].sort()
 
 export const SENIORITY = [
   "Junior (0\u20132 yrs)", "Mid-level (3\u20135 yrs)", "Senior (5\u20138 yrs)",
-  "Lead/Principal", "Head of/Director", "VP/C-suite", "Any level",
+  "Lead/Principal", "Head of/Director", "VP/C-suite", "Any level \u2014 show all",
 ]
+
+export const SENIORITY_OPTIONS = SENIORITY
 
 export const LOCATIONS = [
   "Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Canberra", "Remote", "Any location",

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { persistUnlock } from '../../lib/sanitizeCandidate'
+import { unlockCandidate } from '../../lib/supabaseQueries'
 import './UnlockModal.css'
 
 export default function UnlockModal({ candidateId, candidate: c, onSuccess, onCancel }) {
@@ -14,22 +15,9 @@ export default function UnlockModal({ candidateId, candidate: c, onSuccess, onCa
     setLoading(true)
     setError(null)
     try {
-      // POST /api/unlocks
-      const res1 = await fetch('/api/unlocks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateId: candidateId || c.id }),
-      })
-      if (!res1.ok) throw new Error('Unlock failed')
-
-      // POST /api/ats/push-candidate
-      await fetch('/api/ats/push-candidate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateId: candidateId || c.id }),
-      }).catch(() => {}) // non-blocking
-
-      persistUnlock(candidateId || c.id)
+      const id = candidateId || c.id
+      await unlockCandidate(id)
+      persistUnlock(id)
       onSuccess()
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')

@@ -10,11 +10,11 @@ export const COPY = {
     dashboard: 'Dashboard',
     picktList: 'Pickt List',
     marketplace: 'Marketplace',
-    saved: 'Saved',
     candidates: 'My candidates',
     placements: 'Placements',
     earnings: 'Earnings',
     integrations: 'Integrations',
+    refer: 'Refer a candidate',
   },
   user: {
     name: 'Admin Terminal',
@@ -49,8 +49,6 @@ export const COPY = {
     hiringCta: 'Contact Sales',
   },
   emptyStates: {
-    saved: 'Nothing saved yet.',
-    savedCta: 'Browse Marketplace',
     picktList: 'Your Pickt list is empty.',
     picktListCta: 'Browse Marketplace',
     candidates: 'No active candidates.',

@@ -4,23 +4,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pikt is a browser-based table tennis game rendered with HTML5 Canvas. It is a single-file application (`Pikt v1.html`) — no build tools, dependencies, or package manager.
+This repo contains two projects:
 
-## Running
+1. **pickt-app/** — The main project. A Vite React SPA for a talent recruitment marketplace (pickt). This is the source of truth for all frontend and backend logic.
+2. **Pikt v1.html** — A legacy browser-based table tennis game (HTML5 Canvas, single file).
 
-Open `Pikt v1.html` directly in a browser. No server or build step required.
+## Running pickt-app
 
-## Architecture
+```bash
+cd pickt-app
+npm install
+npm run dev       # Vite dev server on http://localhost:5173
+```
 
-The game is a single HTML file containing inline CSS and JavaScript:
+## pickt-app Architecture
 
-- **Rendering**: HTML5 Canvas (2D context), 500x700px, using `requestAnimationFrame` for the game loop
-- **Input**: Mouse-driven — player paddle follows cursor X position; click to start/restart
-- **AI**: Simple tracking AI that follows the ball's X position with a speed cap
-- **Physics**: Custom ball-paddle collision with angle-based deflection (up to 60°) and incremental speed increases (capped at 10)
-- **Scoring**: First to 7 points wins; score tracked in DOM overlay elements
+- **Framework**: React 19 + Vite 8 + React Router DOM 7
+- **Styling**: Tailwind CSS 4 + custom CSS with design tokens (`src/styles/tokens.css`)
+- **Backend**: Supabase (auth, database, storage, edge functions)
+- **Design**: Light cream/forest green palette, Manrope font
 
-Key constants: `TABLE` defines the play area with 30px margins; `PADDLE_W=70`, `PADDLE_H=12`; ball radius 8px with an 8-frame trail effect.
+### Key directories
+
+- `src/pages/` — Route pages (Dashboard, Discovery, Marketplace, Shortlist, Refer, etc.)
+- `src/components/` — Reusable components (layout, marketplace, shared, filters, unlock)
+- `src/context/` — React contexts (Auth, Search, ViewMode)
+- `src/lib/` — Utilities (supabase client, queries, ranking, sanitization, types)
+- `src/data/` — Discovery options, mock data
+- `src/styles/` — Global CSS, tokens, animations, responsive
+- `supabase/functions/` — 3 Edge Functions (create-candidate, cv-url, unlock-candidate)
+- `db/migrations/` — 18 Supabase migration SQL files
+- `extension/` — Chrome extension for ATS integration
+- `docs/` — Design specs (DESIGN_TOKENS.md, REDESIGN.md, prompt.txt)
+
+### Data flow
+
+- Most reads go directly to Supabase via `src/lib/supabaseQueries.js` (RLS-protected)
+- Server-only operations (CV signed URLs, unlock + email, candidate creation) use Supabase Edge Functions called via `supabase.functions.invoke()`
+- Seed data in `src/lib/candidatesSeed.ts` and `src/lib/seedData.js` for dev/demo mode
+
+### Important patterns
+
+- Never strip parallax, scroll reveal, hover-lift, or press-scale animations when rewriting pages
+- Candidate discovery (ghost cards, tray, chips) lives in Marketplace, NOT Dashboard
+- The app has 6 view modes: stack, carousel, matrix, tinder, compact, focus
 
 ## Git Workflow
 

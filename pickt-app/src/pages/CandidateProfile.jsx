@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { getCandidateById, getCandidateWithPii } from '../lib/seedData'
 import { isUnlocked as checkUnlocked, persistUnlock } from '../lib/sanitizeCandidate'
 import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
+import { getCvUrl } from '../lib/supabaseQueries'
 import { CANDIDATES } from '../data/discoveryOptions'
 import UnlockModal from '../components/unlock/UnlockModal'
 import './CandidateProfile.css'
@@ -105,10 +106,8 @@ export default function CandidateProfile() {
 
   async function handleCvDownload() {
     try {
-      const res = await fetch(`/api/candidates/${c.id}/cv-url`)
-      if (!res.ok) throw new Error()
-      const { url } = await res.json()
-      window.open(url, '_blank')
+      const data = await getCvUrl(c.id)
+      window.open(data.signedUrl, '_blank')
     } catch {
       alert('Could not download CV. Please try again.')
     }
