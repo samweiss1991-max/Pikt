@@ -209,6 +209,11 @@ export default function Marketplace() {
   const [trayDismissing, setTrayDismissing] = useState(false)
   const [showAllRoles, setShowAllRoles] = useState(false)
 
+  // ── Pill filters ──
+  const [availability, setAvailability] = useState([])
+  const [workPreference, setWorkPreference] = useState([])
+  const [locations, setLocations] = useState([])
+
   // ── Salary & experience filters ──
   const [salaryMax, setSalaryMax] = useState(300)
   const [minExperience, setMinExperience] = useState(0)
@@ -238,6 +243,7 @@ export default function Marketplace() {
     workPreferences = [],
     locations = [],
     interviewDepth = null,
+    availability = [],
   } = {}) {
     // Load raw candidates (seed data or mock fallback)
     if (allCandidatesRef.current.length === 0) {
@@ -307,6 +313,20 @@ export default function Marketplace() {
       }
     }
 
+    // Filter by availability (based on notice_period_days)
+    if (availability.length > 0) {
+      result = result.filter(c => {
+        const notice = c.notice_period_days ?? 30
+        return availability.some(a => {
+          if (a === 'Available now') return notice <= 0
+          if (a === '2 weeks') return notice <= 14
+          if (a === '1 month') return notice <= 30
+          if (a === 'Flexible') return true
+          return false
+        })
+      })
+    }
+
     // Filter by search query (role, city, skills, seniority)
     if (query.trim()) {
       const q = query.toLowerCase()
@@ -331,6 +351,9 @@ export default function Marketplace() {
         query: searchQuery,
         salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
         minExperience: minExperience > 0 ? minExperience : null,
+        workPreferences: workPreference,
+        locations,
+        availability,
       })
       if (result.error) {
         setError(result.error)
@@ -409,6 +432,9 @@ export default function Marketplace() {
     setTrayQuery('')
     setSalaryMax(300)
     setMinExperience(0)
+    setAvailability([])
+    setWorkPreference([])
+    setLocations([])
     setViewMode('stack')
   }
 
@@ -421,6 +447,24 @@ export default function Marketplace() {
       query: trayQuery || searchQuery,
       salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
       minExperience: next > 0 ? next : null,
+    })
+    setCandidates(result.candidates)
+    setTotal(result.total)
+    confirmDiscovery()
+  }
+
+  function togglePillFilter(arr, value, setter, filterKey) {
+    const next = arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value]
+    setter(next)
+    const result = fetchCandidates({
+      categories: activeCategories,
+      role: activeRole,
+      query: trayQuery || searchQuery,
+      salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
+      minExperience: minExperience > 0 ? minExperience : null,
+      workPreferences: filterKey === 'workPreferences' ? next : workPreference,
+      locations: filterKey === 'locations' ? next : locations,
+      availability: filterKey === 'availability' ? next : availability,
     })
     setCandidates(result.candidates)
     setTotal(result.total)
@@ -807,6 +851,47 @@ export default function Marketplace() {
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mk-tray-divider" />
+
+              <div className="mk-tray-pill-row">
+                <div className="mk-tray-pill-group">
+                  <span className="mk-tray-salary-label">Availability</span>
+                  <div className="mk-tray-pills">
+                    {['Available now', '2 weeks', '1 month', 'Flexible'].map(v => (
+                      <button key={v} type="button" className={`mk-tray-pill ${availability.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(availability, v, setAvailability, 'availability')}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mk-tray-quant-sep" />
+
+                <div className="mk-tray-pill-group">
+                  <span className="mk-tray-salary-label">Work preference</span>
+                  <div className="mk-tray-pills">
+                    {['Remote', 'Hybrid', 'On-site'].map(v => (
+                      <button key={v} type="button" className={`mk-tray-pill ${workPreference.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(workPreference, v, setWorkPreference, 'workPreferences')}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mk-tray-quant-sep" />
+
+                <div className="mk-tray-pill-group">
+                  <span className="mk-tray-salary-label">Location</span>
+                  <div className="mk-tray-pills">
+                    {['Sydney', 'Melbourne', 'Brisbane', 'Remote AU'].map(v => (
+                      <button key={v} type="button" className={`mk-tray-pill ${locations.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(locations, v, setLocations, 'locations')}>
+                        {v}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
