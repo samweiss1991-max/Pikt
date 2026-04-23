@@ -19,14 +19,14 @@ import './Marketplace.css'
 const GHOST_DELAYS = [0, 0.15, 0.3, 0.1, 0.25, 0.4]
 
 const CATEGORY_CHIPS = [
-  { key: 'Engineering', icon: '\uD83D\uDCBB' },
-  { key: 'Sales', icon: '\uD83D\uDCC8' },
-  { key: 'Product', icon: '\uD83C\uDFA8' },
-  { key: 'Data', icon: '\uD83D\uDCCA' },
-  { key: 'Operations', icon: '\u2699\uFE0F' },
-  { key: 'Finance', icon: '\uD83D\uDCB3' },
-  { key: 'Final round', icon: '\uD83C\uDFC6' },
-  { key: 'Remote', icon: '\uD83C\uDF0F' },
+  { key: 'Engineering', icon: 'code' },
+  { key: 'Sales', icon: 'trending_up' },
+  { key: 'Product', icon: 'palette' },
+  { key: 'Data', icon: 'bar_chart' },
+  { key: 'Operations', icon: 'settings' },
+  { key: 'Finance', icon: 'account_balance' },
+  { key: 'Final round', icon: 'emoji_events' },
+  { key: 'Remote', icon: 'public' },
 ]
 
 const DEFAULT_ROLES = [
@@ -77,6 +77,7 @@ function mapDbCandidate(c) {
     industry: c.industry,
     status: c.status || 'available',
     preferred_work_type: c.preferred_work_type || 'Hybrid',
+    workHistory: c.workHistory || c.work_history || [],
   }
 }
 
@@ -358,100 +359,58 @@ export default function Marketplace() {
 
       {/* ── Discovery tray (floating card, visible until confirmed) ── */}
       {!discoveryConfirmed && (
-        <div style={{
-          position: 'fixed', bottom: 24, left: 0, right: 0, zIndex: 50,
-          pointerEvents: 'none',
-          opacity: trayDismissing ? 0 : 1,
-          transform: trayDismissing ? 'translateY(12px)' : 'translateY(0)',
-          transition: 'opacity 0.2s ease, transform 0.2s ease',
-        }}>
-          {/* Floating tray card */}
-          <div style={{
-            pointerEvents: 'auto',
-            maxWidth: 780,
-            width: 'calc(100% - 48px)',
-            margin: '0 auto',
-            background: 'var(--surface-container-lowest, #ffffff)',
-            border: '1px solid var(--outline-variant, #e8e4d9)',
-            borderRadius: 20,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-            padding: '16px 24px 20px',
-          }}>
-              {/* Top row */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div className={`mk-tray-wrap ${trayDismissing ? 'mk-tray-wrap--dismissing' : ''}`}>
+          <div className="mk-tray">
+              <div className="mk-tray-top">
                 <div>
-                  <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface)', lineHeight: 1.2, margin: 0 }}>
+                  <h3 className="mk-tray-title">
                     Find the right{' '}
-                    <span style={{ color: 'var(--primary)', fontStyle: 'italic' }}>candidate</span>
+                    <span className="mk-tray-title-accent">candidate</span>
                   </h3>
-                  <p style={{ marginTop: 4, marginBottom: 0, fontSize: 12, fontWeight: 400, color: 'var(--on-surface-variant)' }}>
-                    Filter by category or pick a specific role below
-                  </p>
+                  <p className="mk-tray-subtitle">Filter by category or pick a specific role below</p>
                 </div>
-                <div style={{ flexShrink: 0, marginTop: 2, background: 'var(--tertiary-container)', color: 'var(--primary)', borderRadius: 99, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+                <div className="mk-tray-badge">
                   {totalCount > 0 ? (
                     <>
-                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)' }} />
+                      <span className="mk-tray-badge-dot" />
                       {displayCount} candidates ready
                     </>
                   ) : ('Loading\u2026')}
                 </div>
               </div>
 
-              {/* Category chips */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <div className="mk-tray-chips">
                 {CATEGORY_CHIPS.map(({ key, icon }) => {
                   const active = activeCategories.includes(key)
                   return (
                     <button
                       key={key}
                       type="button"
+                      className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''}`}
                       onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
-                      style={{
-                        padding: '7px 14px', borderRadius: 10,
-                        border: `1px solid ${active ? 'var(--primary)' : 'var(--outline-variant)'}`,
-                        background: active ? 'var(--tertiary-container)' : 'var(--surface-container-low)',
-                        fontSize: 12, fontWeight: 600,
-                        color: active ? 'var(--primary)' : 'var(--on-surface-variant)',
-                        cursor: 'pointer', transition: 'all 0.15s',
-                        display: 'flex', alignItems: 'center', gap: 7,
-                      }}
                     >
-                      <span>{icon}</span>
+                      <span className="material-symbols-outlined mk-tray-chip-icon">{icon}</span>
                       {key}
-                      <span style={{ fontSize: 10, fontWeight: 700, background: active ? 'var(--primary)' : 'var(--tertiary-container)', color: active ? '#ffffff' : 'var(--primary)', padding: '1px 5px', borderRadius: 99 }}>
-                        {categoryCounts[key] || 0}
-                      </span>
+                      <span className="mk-tray-chip-count">{categoryCounts[key] || 0}</span>
                     </button>
                   )
                 })}
               </div>
 
-              {/* Divider */}
-              <div style={{ height: 1, background: 'var(--outline-variant)', margin: '14px 0 12px' }} />
+              <div className="mk-tray-divider" />
 
-              {/* Role chips section */}
-              <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.7px', color: 'var(--on-surface-variant)', marginBottom: 10, marginTop: 0 }}>
-                Or pick a specific role
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 10 }}>
+              <p className="mk-tray-role-label">Or pick a specific role</p>
+              <div className="mk-tray-roles">
                 {(showAllRoles ? [...DEFAULT_ROLES, ...EXPANDED_ROLES] : DEFAULT_ROLES).map(r => {
                   const active = activeRole === r
                   return (
                     <button
                       key={r}
                       type="button"
+                      className={`mk-tray-role ${active ? 'mk-tray-role--active' : ''}`}
                       onClick={() => {
                         if (activeRole === r) { setActiveRole(null) }
                         else { setActiveRole(r); setActiveCategories([]) }
-                      }}
-                      style={{
-                        padding: '6px 14px', borderRadius: 8,
-                        border: `1.5px solid ${active ? 'var(--primary)' : 'var(--outline-variant)'}`,
-                        background: active ? 'var(--tertiary-container)' : 'var(--surface-container-low)',
-                        fontSize: 12, fontWeight: 600,
-                        color: active ? 'var(--primary)' : 'var(--on-surface-variant)',
-                        cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.15s',
                       }}
                     >
                       {r}
@@ -460,22 +419,17 @@ export default function Marketplace() {
                 })}
               </div>
 
-              {/* Show all toggle + confirm button */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowAllRoles(v => !v)}
-                  style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', padding: 0 }}
-                >
+              <div className="mk-tray-bottom">
+                <button type="button" className="mk-tray-toggle press-scale" onClick={() => setShowAllRoles(v => !v)}>
                   {showAllRoles ? 'Show less \u2191' : 'See all roles \u2192'}
                 </button>
                 <button
                   type="button"
+                  className="mk-tray-confirm press-scale"
                   onClick={() => {
                     setTrayDismissing(true)
                     setTimeout(() => { setDiscoveryConfirmed(true); setTrayDismissing(false) }, 200)
                   }}
-                  style={{ background: 'var(--primary)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 99, fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(45,114,53,0.25)' }}
                 >
                   Show me candidates &rarr;
                 </button>
@@ -486,12 +440,8 @@ export default function Marketplace() {
 
       {/* Reset to discovery button (only after confirmed) */}
       {discoveryConfirmed && (
-        <button
-          type="button"
-          onClick={() => setDiscoveryConfirmed(false)}
-          style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 50, background: 'var(--primary)', color: '#fff', border: 'none', padding: '10px 14px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-        >
-          ↺ Back to discovery
+        <button type="button" className="mk-discovery-fab press-scale" onClick={() => setDiscoveryConfirmed(false)} title="Back to discovery">
+          <span className="material-symbols-outlined">tune</span>
         </button>
       )}
     </div>

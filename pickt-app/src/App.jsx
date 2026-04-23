@@ -6,7 +6,6 @@ import { ViewModeProvider } from './context/ViewModeContext'
 import { SearchProvider } from './context/SearchContext'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Discovery = lazy(() => import('./pages/Discovery'))
 const Marketplace = lazy(() => import('./pages/Marketplace'))
 const CandidateProfile = lazy(() => import('./pages/CandidateProfile'))
 const Shortlist = lazy(() => import('./pages/Shortlist'))
@@ -26,8 +25,7 @@ export default function App() {
       <Route path="/signup" element={<Signup />} />
       <Route element={<ProtectedRoute><ViewModeProvider><SearchProvider><Shell /></SearchProvider></ViewModeProvider></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
-        <Route path="marketplace" element={<Discovery />} />
-        <Route path="marketplace/results" element={<Marketplace />} />
+        <Route path="marketplace" element={<Marketplace />} />
         <Route path="candidates/:id" element={<CandidateProfile />} />
         <Route path="shortlist" element={<Shortlist />} />
         <Route path="my-candidates" element={<MyCandidates />} />

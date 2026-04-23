@@ -30,6 +30,25 @@ function StageBadge({ stage }) {
   )
 }
 
+function WorkHistory({ history }) {
+  if (!history || history.length === 0) return null
+  return (
+    <div className="cc-work-history">
+      {history.slice(0, 3).map((w, i) => (
+        <div key={i} className="cc-wh-entry">
+          {i > 0 && <div className="cc-wh-divider" />}
+          <div className="cc-wh-top">
+            <div className="cc-wh-dot" />
+            <span className="cc-wh-company">{w.company}</span>
+            <span className="cc-wh-title">{w.title}</span>
+          </div>
+          <div className="cc-wh-dates">{w.dates}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function MatchBar({ label, value, color }) {
   return (
     <div className="cc-bar-row">
@@ -145,6 +164,7 @@ function NewCard({ candidate: c, viewMode, index }) {
                 <span className="cc-pill-score">{matchScore}%</span>
               </div>
               <div className="cc-skills">{(c.skills || []).slice(0, 3).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
+              <WorkHistory history={c.workHistory} />
             </div>
           </div>
           {expanded && (
@@ -179,6 +199,7 @@ function NewCard({ candidate: c, viewMode, index }) {
               {salaryStr && <span className="cc-salary">{salaryStr}</span>}
               <div className="cc-meta-line">{c.seniority} {'\u00B7'} {c.years} yrs {'\u00B7'} {c.city} {'\u00B7'} {workType}</div>
               <div className="cc-skills">{(c.skills || []).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
+              <WorkHistory history={c.workHistory} />
               <p className="cc-description cc-description--full">{description}</p>
               <div className="cc-bars-block">
                 <MatchBar label="Role match" value={roleMatch} color="var(--primary)" />
@@ -220,6 +241,7 @@ function NewCard({ candidate: c, viewMode, index }) {
             <h3 className="cc-title">{c.role}</h3>
             {salaryStr && <span className="cc-salary cc-salary--sm">{salaryStr}</span>}
             <div className="cc-skills">{(c.skills || []).slice(0, 3).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
+            <WorkHistory history={c.workHistory} />
             <div className="cc-cta-row cc-cta-row--stack">
               {unlocked ? (
                 <button className="cc-btn-primary cc-btn-primary--sm" onClick={goToProfile}>{'\u2713'} Unlocked</button>
@@ -249,17 +271,7 @@ function NewCard({ candidate: c, viewMode, index }) {
               {salaryStr && <span className="cc-salary">{salaryStr}</span>}
             </div>
             <div className="cc-skills">{(c.skills || []).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
-            {(c.workHistory || []).length > 0 && (
-              <div className="cc-work-history">
-                {c.workHistory.slice(0, 3).map((w, i) => (
-                  <div key={i} className="cc-wh-entry">
-                    <div className="cc-wh-title">{w.title}</div>
-                    <div className="cc-wh-meta">{w.company} {'\u00B7'} {w.city}</div>
-                    <div className="cc-wh-dates">{w.dates}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <WorkHistory history={c.workHistory} />
             <p className="cc-description">{description}</p>
             <div className="cc-cta-row">
               {unlocked ? (

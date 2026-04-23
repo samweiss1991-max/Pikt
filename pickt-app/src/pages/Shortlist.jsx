@@ -170,7 +170,7 @@ export default function Shortlist() {
     return (
       <div className="sl-page">
         <h1 className="sl-heading">{COPY.nav.picktList}</h1>
-        <EmptyState icon="favorite" message={COPY.emptyStates.picktList} ctaLabel={COPY.emptyStates.picktListCta} onCta={() => navigate('/marketplace/results')} />
+        <EmptyState icon="favorite" message={COPY.emptyStates.picktList} ctaLabel={COPY.emptyStates.picktListCta} onCta={() => navigate('/marketplace')} />
       </div>
     )
   }

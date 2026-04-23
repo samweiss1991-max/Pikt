@@ -134,7 +134,7 @@ export default function Dashboard() {
         {!loading && error && <ErrorBanner message={error} onRetry={loadCandidates} />}
 
         {!loading && !error && candidates.length === 0 && (
-          <EmptyState icon="group" message="No candidates yet" ctaLabel="Go to Marketplace" onCta={() => navigate('/marketplace/results')} />
+          <EmptyState icon="group" message="No candidates yet" ctaLabel="Go to Marketplace" onCta={() => navigate('/marketplace')} />
         )}
 
         {!loading && !error && displayCandidates.length > 0 && (
@@ -149,7 +149,7 @@ export default function Dashboard() {
             <div className="db-promo-card pikt-card reveal-fade-up" ref={promoRef}>
               <h2 className="db-promo-heading">Unlock the full<br />talent network</h2>
               <p className="db-promo-body">Access 800+ pre-vetted candidates with verified efficiency scores and referral histories.</p>
-              <button className="db-promo-btn press-scale" onClick={() => navigate('/marketplace/results')}>Get Started</button>
+              <button className="db-promo-btn press-scale" onClick={() => navigate('/marketplace')}>Get Started</button>
               <div className="db-promo-corner" />
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function Dashboard() {
       {/* Load more */}
       {!loading && candidates.length > 6 && (
         <div className="db-load-more">
-          <button className="db-load-btn press-scale" onClick={() => navigate('/marketplace/results')}>View All Candidates</button>
+          <button className="db-load-btn press-scale" onClick={() => navigate('/marketplace')}>View All Candidates</button>
           <span className="db-load-caption">Showing {displayCandidates.length} of {candidates.length} candidates</span>
         </div>
       )}
@@ -172,7 +172,7 @@ export default function Dashboard() {
           </button>
         </div>
         <div className="db-fab-wrap">
-          <button className="db-fab db-fab--green press-scale" title="Advanced Filters" onClick={() => navigate('/marketplace/results')}>
+          <button className="db-fab db-fab--green press-scale" title="Advanced Filters" onClick={() => navigate('/marketplace')}>
             <span className="material-symbols-outlined">filter_list</span>
           </button>
         </div>
