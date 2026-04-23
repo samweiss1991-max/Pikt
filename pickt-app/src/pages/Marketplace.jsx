@@ -13,7 +13,7 @@ import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import SkeletonCard from '../components/shared/SkeletonCard'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
-import { computeCategoryCounts } from '../lib/roleCategories'
+import { computeCategoryCounts, ROLE_TO_CATEGORY } from '../lib/roleCategories'
 import './Marketplace.css'
 
 const GHOST_DELAYS = [0, 0.15, 0.3, 0.1, 0.25, 0.4]
@@ -189,7 +189,8 @@ export default function Marketplace() {
   const { viewMode, setViewMode } = useViewMode()
   const { query: searchQuery } = useSearch()
 
-  const [allCandidates, setAllCandidates] = useState([])
+  const [candidates, setCandidates] = useState([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [transitioning, setTransitioning] = useState(false)
@@ -207,6 +208,87 @@ export default function Marketplace() {
   })
   const [trayDismissing, setTrayDismissing] = useState(false)
   const [showAllRoles, setShowAllRoles] = useState(false)
+
+  // ── Central data loader ──
+  // Single source of truth for loading + filtering candidates.
+  // Returns { candidates, total } and updates component state.
+
+  const allCandidatesRef = useRef([])
+
+  function fetchCandidates({ categories = [], role = null, query = '' } = {}) {
+    // Load raw candidates (seed data or mock fallback)
+    if (allCandidatesRef.current.length === 0) {
+      try {
+        const stored = getCandidates()
+        allCandidatesRef.current = (stored && stored.length > 0)
+          ? stored.map(mapDbCandidate)
+          : MOCK_CANDIDATES.map(mapDbCandidate)
+      } catch (err) {
+        return { candidates: [], total: 0, error: err.message }
+      }
+    }
+
+    let result = allCandidatesRef.current
+
+    // Filter by category (role → category mapping)
+    if (categories.length > 0) {
+      result = result.filter(c => {
+        const cat = ROLE_TO_CATEGORY[c.role]
+        if (cat && categories.includes(cat)) return true
+        // Special categories
+        if (categories.includes('Final round') && (c.interview_stage_reached || '').toLowerCase().includes('final')) return true
+        if (categories.includes('Remote') && (c.preferred_work_type || '').toLowerCase() === 'remote') return true
+        return false
+      })
+    }
+
+    // Filter by specific role
+    if (role) {
+      result = result.filter(c => c.role === role)
+    }
+
+    // Filter by search query
+    if (query.trim()) {
+      const q = query.toLowerCase()
+      result = result.filter(c =>
+        c.role.toLowerCase().includes(q) ||
+        (c.city || '').toLowerCase().includes(q) ||
+        (c.skills || []).some(s => s.toLowerCase().includes(q)) ||
+        (c.seniority || '').toLowerCase().includes(q)
+      )
+    }
+
+    return { candidates: result, total: result.length }
+  }
+
+  function loadCandidates() {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = fetchCandidates({
+        categories: activeCategories,
+        role: activeRole,
+        query: searchQuery,
+      })
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setCandidates(result.candidates)
+        setTotal(result.total)
+      }
+
+      // Always compute category counts from the full uncandidates set
+      if (allCandidatesRef.current.length > 0) {
+        const { totalCount: t, categoryCounts: c } = computeCategoryCounts(allCandidatesRef.current)
+        setTotalCount(t)
+        setCategoryCounts(c)
+      }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Reset discovery state when navigating to this page with sessionStorage cleared
   useEffect(() => {
@@ -230,22 +312,10 @@ export default function Marketplace() {
     if (isMobile && !MOBILE_MODES.includes(viewMode)) setViewMode('stack')
   }, [isMobile, viewMode, setViewMode])
 
+  // Load candidates on mount + whenever filters change
   useEffect(() => {
-    setLoading(true); setError(null)
-    try {
-      const stored = getCandidates()
-      setAllCandidates((stored && stored.length > 0) ? stored.map(mapDbCandidate) : MOCK_CANDIDATES.map(mapDbCandidate))
-    } catch (err) { setError(err.message) }
-    finally { setLoading(false) }
-  }, [])
-
-  // Compute category counts from loaded candidates
-  useEffect(() => {
-    if (allCandidates.length === 0) return
-    const { totalCount: t, categoryCounts: c } = computeCategoryCounts(allCandidates)
-    setTotalCount(t)
-    setCategoryCounts(c)
-  }, [allCandidates])
+    loadCandidates()
+  }, [activeCategories, activeRole, searchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ghost blur/opacity reacts to filter state
   useEffect(() => {
@@ -284,17 +354,6 @@ export default function Marketplace() {
     return totalCount
   }, [activeCategories, categoryCounts, totalCount])
 
-  const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return allCandidates
-    const q = searchQuery.toLowerCase()
-    return allCandidates.filter(c =>
-      c.role.toLowerCase().includes(q) ||
-      (c.city || '').toLowerCase().includes(q) ||
-      (c.skills || []).some(s => s.toLowerCase().includes(q)) ||
-      (c.seniority || '').toLowerCase().includes(q)
-    )
-  }, [allCandidates, searchQuery])
-
   function switchView(mode) {
     if (mode === viewMode) return
     setTransitioning(true)
@@ -302,7 +361,7 @@ export default function Marketplace() {
   }
 
   const visibleModes = isMobile ? VIEW_MODES.filter(m => MOBILE_MODES.includes(m.key)) : VIEW_MODES
-  const candidateCountText = COPY.marketplace.candidateCount(filtered.length)
+  const candidateCountText = COPY.marketplace.candidateCount(total)
 
   const headerRef = useScrollReveal()
   const cardsRef = useStaggerReveal({ staggerMs: 100 })
@@ -358,26 +417,26 @@ export default function Marketplace() {
             <>
               {loading && <SkeletonCard count={3} />}
 
-              {!loading && error && <ErrorBanner message={error} onRetry={() => { setError(null); setLoading(true); try { const s = getCandidates(); setAllCandidates((s && s.length > 0) ? s.map(mapDbCandidate) : MOCK_CANDIDATES.map(mapDbCandidate)) } catch (e) { setError(e.message) } finally { setLoading(false) } }} />}
+              {!loading && error && <ErrorBanner message={error} onRetry={() => { allCandidatesRef.current = []; loadCandidates() }} />}
 
-              {!loading && !error && filtered.length === 0 && (
+              {!loading && !error && candidates.length === 0 && (
                 <EmptyState icon="search_off" message={COPY.emptyStates.marketplace} ctaLabel={COPY.emptyStates.marketplaceCta} onCta={() => navigate('/marketplace')} />
               )}
 
-              {!loading && !error && filtered.length > 0 && (
+              {!loading && !error && candidates.length > 0 && (
                 <>
                   {viewMode === 'stack' && (
-                    <div className="mk-grid-stack" ref={cardsRef}>{filtered.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="stack" index={i} /></div>)}</div>
+                    <div className="mk-grid-stack" ref={cardsRef}>{candidates.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="stack" index={i} /></div>)}</div>
                   )}
-                  {viewMode === 'carousel' && <CarouselView candidates={filtered} />}
+                  {viewMode === 'carousel' && <CarouselView candidates={candidates} />}
                   {viewMode === 'matrix' && (
-                    <div className="mk-grid-matrix" ref={cardsRef}>{filtered.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="matrix" index={i} /></div>)}</div>
+                    <div className="mk-grid-matrix" ref={cardsRef}>{candidates.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="matrix" index={i} /></div>)}</div>
                   )}
-                  {viewMode === 'tinder' && <TinderView candidates={filtered} onSave={c => addToShortlist(c.id)} />}
+                  {viewMode === 'tinder' && <TinderView candidates={candidates} onSave={c => addToShortlist(c.id)} />}
                   {viewMode === 'compact' && (
-                    <div className="mk-compact-list">{filtered.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="compact" index={i} />)}</div>
+                    <div className="mk-compact-list">{candidates.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="compact" index={i} />)}</div>
                   )}
-                  {viewMode === 'focus' && <FocusView candidates={filtered} />}
+                  {viewMode === 'focus' && <FocusView candidates={candidates} />}
                 </>
               )}
             </>
