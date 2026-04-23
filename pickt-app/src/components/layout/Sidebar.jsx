@@ -42,7 +42,13 @@ export default function Sidebar({ badges = {} }) {
             <a
               key={item.path}
               className={`nav-item ${active ? 'nav-item--active' : ''}`}
-              onClick={e => { e.preventDefault(); navigate(item.path) }}
+              onClick={e => {
+                e.preventDefault()
+                if (item.path === '/marketplace') {
+                  try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
+                }
+                navigate(item.path)
+              }}
               href={item.path}
             >
               <span

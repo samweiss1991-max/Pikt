@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { getCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
 import { COPY } from '../lib/copy'
@@ -185,6 +185,7 @@ function FocusView({ candidates }) {
 // ══ MAIN ══
 export default function Marketplace() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { viewMode, setViewMode } = useViewMode()
   const { query: searchQuery } = useSearch()
 
@@ -201,9 +202,22 @@ export default function Marketplace() {
   const [categoryCounts, setCategoryCounts] = useState({})
   const [ghostBlur, setGhostBlur] = useState(4)
   const [ghostOpacity, setGhostOpacity] = useState(0.6)
-  const [discoveryConfirmed, setDiscoveryConfirmed] = useState(false)
+  const [discoveryConfirmed, setDiscoveryConfirmed] = useState(() => {
+    try { return sessionStorage.getItem('pickt_discovery_confirmed') === 'true' } catch { return false }
+  })
   const [trayDismissing, setTrayDismissing] = useState(false)
   const [showAllRoles, setShowAllRoles] = useState(false)
+
+  // Reset discovery state when navigating to this page with sessionStorage cleared
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('pickt_discovery_confirmed') !== 'true' && discoveryConfirmed) {
+        setDiscoveryConfirmed(false)
+        setActiveCategories([])
+        setActiveRole(null)
+      }
+    } catch { /* ignore */ }
+  }, [location.key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -243,6 +257,25 @@ export default function Marketplace() {
       setGhostBlur(4); setGhostOpacity(0.6)
     }
   }, [activeCategories, activeRole])
+
+  function confirmDiscovery() {
+    if (!discoveryConfirmed) {
+      setTrayDismissing(true)
+      setTimeout(() => {
+        setDiscoveryConfirmed(true)
+        setTrayDismissing(false)
+        try { sessionStorage.setItem('pickt_discovery_confirmed', 'true') } catch { /* ignore */ }
+      }, 200)
+    }
+  }
+
+  function resetMarketplace() {
+    try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
+    setDiscoveryConfirmed(false)
+    setActiveCategories([])
+    setActiveRole(null)
+    setViewMode('stack')
+  }
 
   const displayCount = useMemo(() => {
     if (activeCategories.length > 0) {
@@ -387,7 +420,7 @@ export default function Marketplace() {
                       key={key}
                       type="button"
                       className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''}`}
-                      onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
+                      onClick={() => { setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]); confirmDiscovery() }}
                     >
                       <span className="material-symbols-outlined mk-tray-chip-icon">{icon}</span>
                       {key}
@@ -411,6 +444,7 @@ export default function Marketplace() {
                       onClick={() => {
                         if (activeRole === r) { setActiveRole(null) }
                         else { setActiveRole(r); setActiveCategories([]) }
+                        confirmDiscovery()
                       }}
                     >
                       {r}
@@ -423,16 +457,6 @@ export default function Marketplace() {
                 <button type="button" className="mk-tray-toggle press-scale" onClick={() => setShowAllRoles(v => !v)}>
                   {showAllRoles ? 'Show less \u2191' : 'See all roles \u2192'}
                 </button>
-                <button
-                  type="button"
-                  className="mk-tray-confirm press-scale"
-                  onClick={() => {
-                    setTrayDismissing(true)
-                    setTimeout(() => { setDiscoveryConfirmed(true); setTrayDismissing(false) }, 200)
-                  }}
-                >
-                  Show me candidates &rarr;
-                </button>
               </div>
           </div>
         </div>
@@ -440,7 +464,7 @@ export default function Marketplace() {
 
       {/* Reset to discovery button (only after confirmed) */}
       {discoveryConfirmed && (
-        <button type="button" className="mk-discovery-fab press-scale" onClick={() => setDiscoveryConfirmed(false)} title="Back to discovery">
+        <button type="button" className="mk-discovery-fab press-scale" onClick={resetMarketplace} title="Back to discovery">
           <span className="material-symbols-outlined">tune</span>
         </button>
       )}
