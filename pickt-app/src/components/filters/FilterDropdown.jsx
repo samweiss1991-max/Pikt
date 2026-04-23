@@ -56,7 +56,7 @@ export default function FilterDropdown({ label, options, selected, onChange, ico
             {options.map(opt => {
               const isSelected = selected.includes(opt)
               return (
-                <label key={opt} className={`fd-option ${isSelected ? 'fd-option--selected' : ''}`}>
+                <label key={opt} className={`fd-option ${isSelected ? 'fd-option--selected' : ''}`} onClick={() => toggle(opt)}>
                   <span className={`fd-checkbox ${isSelected ? 'fd-checkbox--checked' : ''}`}>
                     {isSelected && (
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>

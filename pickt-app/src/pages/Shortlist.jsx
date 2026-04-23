@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK, WORK_HISTORY } from '../data/discoveryOptions'
@@ -7,7 +7,7 @@ import { getAvatarGradient } from '../lib/avatarGradients'
 import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
 import { getShortlist, removeFromShortlist, getStageOverrides, setStageOverride } from '../lib/shortlist'
 import EmptyState from '../components/shared/EmptyState'
-import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
+import { useStaggerReveal } from '../hooks/useScrollReveal'
 import './Shortlist.css'
 
 function mapC(c) {
@@ -115,8 +115,13 @@ export default function Shortlist() {
   const [tab, setTab] = useState('all')
   const [view, setView] = useState('kanban')
   const [search, setSearch] = useState('')
-  const [candidates, setCandidates] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [candidates, setCandidates] = useState(() => {
+    const shortlistIds = getShortlist()
+    const all = getCandidates()
+    const pool = (all?.length > 0) ? all.map(mapC) : MOCK.map(mapC)
+    return pool.filter(c => shortlistIds.includes(c.id))
+  })
+  const [loading] = useState(false)
   const [dragTarget, setDragTarget] = useState(null)
 
   const stageOverrides = getStageOverrides()
@@ -124,14 +129,6 @@ export default function Shortlist() {
   function getStage(c) {
     return stageOverrides[c.id] || getDefaultStage(c)
   }
-
-  useEffect(() => {
-    const shortlistIds = getShortlist()
-    const all = getCandidates()
-    const pool = (all?.length > 0) ? all.map(mapC) : MOCK.map(mapC)
-    setCandidates(pool.filter(c => shortlistIds.includes(c.id)))
-    setLoading(false)
-  }, [])
 
   function handleRemove(id) {
     removeFromShortlist(id)

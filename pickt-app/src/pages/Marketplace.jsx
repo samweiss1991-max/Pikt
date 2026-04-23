@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { getCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
 import { COPY } from '../lib/copy'
@@ -201,6 +201,7 @@ export default function Marketplace() {
   const [ghostBlur, setGhostBlur] = useState(4)
   const [ghostOpacity, setGhostOpacity] = useState(0.6)
   const [discoveryConfirmed, setDiscoveryConfirmed] = useState(false)
+  const [trayDismissing, setTrayDismissing] = useState(false)
   const [showAllRoles, setShowAllRoles] = useState(false)
 
   useEffect(() => {
@@ -273,7 +274,7 @@ export default function Marketplace() {
   const cardsRef = useStaggerReveal({ staggerMs: 100 })
 
   return (
-    <div className="mk-page" style={{ position: 'relative', minHeight: 'calc(100vh - 4rem)', paddingBottom: discoveryConfirmed ? undefined : 360 }}>
+    <div className="mk-page" style={{ position: 'relative', minHeight: 'calc(100vh - 4rem)' }}>
       {/* ── Page header ── */}
       <header className="mk-header reveal-fade-up" ref={headerRef} data-parallax-speed="0.08">
         <div className="mk-header-left">
@@ -314,7 +315,7 @@ export default function Marketplace() {
         {/* Left: candidate list OR ghost grid */}
         <div className={`mk-left ${transitioning ? 'mk-left--transitioning' : ''}`}>
           {!discoveryConfirmed ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '20px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '20px 0 160px' }}>
               {GHOST_DELAYS.map((delay, i) => (
                 <GhostCandidateCard key={i} animationDelay={delay} blur={ghostBlur} opacity={ghostOpacity} />
               ))}
@@ -355,21 +356,27 @@ export default function Marketplace() {
         </div>
       </div>
 
-      {/* ── Discovery tray (visible until confirmed) ── */}
+      {/* ── Discovery tray (floating card, visible until confirmed) ── */}
       {!discoveryConfirmed && (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 20 }}>
-          {/* Gradient fade */}
-          <div style={{ height: 80, background: 'linear-gradient(to bottom, rgba(255,252,241,0) 0%, rgba(255,252,241,0.95) 100%)', pointerEvents: 'none' }} />
-
-          {/* Tray */}
-          <div style={{ background: '#ffffff', borderTop: '1px solid var(--outline-variant)', borderRadius: '20px 20px 0 0', boxShadow: '0 -6px 32px rgba(0,0,0,0.09)' }}>
-            {/* Handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10 }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--outline-variant)' }} />
-            </div>
-
-            {/* Tray inner */}
-            <div style={{ padding: '16px 24px 20px' }}>
+        <div style={{
+          position: 'fixed', bottom: 24, left: 0, right: 0, zIndex: 50,
+          pointerEvents: 'none',
+          opacity: trayDismissing ? 0 : 1,
+          transform: trayDismissing ? 'translateY(12px)' : 'translateY(0)',
+          transition: 'opacity 0.2s ease, transform 0.2s ease',
+        }}>
+          {/* Floating tray card */}
+          <div style={{
+            pointerEvents: 'auto',
+            maxWidth: 780,
+            width: 'calc(100% - 48px)',
+            margin: '0 auto',
+            background: 'var(--surface-container-lowest, #ffffff)',
+            border: '1px solid var(--outline-variant, #e8e4d9)',
+            borderRadius: 20,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+            padding: '16px 24px 20px',
+          }}>
               {/* Top row */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div>
@@ -464,13 +471,15 @@ export default function Marketplace() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDiscoveryConfirmed(true)}
+                  onClick={() => {
+                    setTrayDismissing(true)
+                    setTimeout(() => { setDiscoveryConfirmed(true); setTrayDismissing(false) }, 200)
+                  }}
                   style={{ background: 'var(--primary)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 99, fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(45,114,53,0.25)' }}
                 >
                   Show me candidates &rarr;
                 </button>
               </div>
-            </div>
           </div>
         </div>
       )}

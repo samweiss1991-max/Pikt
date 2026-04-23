@@ -39,10 +39,26 @@ export const SALARY_BANDS = [
 ]
 
 export const CANDIDATES = [
-  { id: "1", role: "Senior Backend Engineer", seniority: "Senior", city: "Sydney", company: "Canva", skills: ["Go","PostgreSQL","Kubernetes"], interviews: 4, fee: 8, salaryLow: 170000, salaryHigh: 195000, years: 7, daysAgo: 2, popular: true },
-  { id: "2", role: "Product Manager", seniority: "Mid-level", city: "Melbourne", company: "Atlassian", skills: ["Product Strategy","SQL","Figma"], interviews: 3, fee: 8, salaryLow: 140000, salaryHigh: 160000, years: 5, daysAgo: 5, popular: false },
-  { id: "3", role: "Staff Frontend Engineer", seniority: "Staff/Lead", city: "Brisbane", company: "SafetyCulture", skills: ["React","TypeScript","GraphQL"], interviews: 5, fee: 8, salaryLow: 190000, salaryHigh: 220000, years: 9, daysAgo: 1, popular: true },
-  { id: "4", role: "Data Engineer", seniority: "Senior", city: "Sydney", company: "Zip Co", skills: ["Python","Spark","Airflow","dbt"], interviews: 3, fee: 10, salaryLow: 155000, salaryHigh: 175000, years: 6, daysAgo: 14, popular: false },
+  { id: "1", role: "Senior Backend Engineer", seniority: "Senior", city: "Sydney", company: "Canva", skills: ["Go","PostgreSQL","Kubernetes"], interviews: 4, fee: 8, salaryLow: 170000, salaryHigh: 195000, years: 7, daysAgo: 2, popular: true, workHistory: [
+    { title: "Senior Backend Engineer", company: "Canva", city: "Sydney", dates: "Jan 2022 \u2013 Present" },
+    { title: "Backend Engineer", company: "Atlassian", city: "Sydney", dates: "Mar 2020 \u2013 Dec 2021" },
+    { title: "Software Engineer", company: "Zip Co", city: "Sydney", dates: "Jul 2018 \u2013 Feb 2020" },
+  ]},
+  { id: "2", role: "Product Manager", seniority: "Mid-level", city: "Melbourne", company: "Atlassian", skills: ["Product Strategy","SQL","Figma"], interviews: 3, fee: 8, salaryLow: 140000, salaryHigh: 160000, years: 5, daysAgo: 5, popular: false, workHistory: [
+    { title: "Product Manager", company: "Atlassian", city: "Melbourne", dates: "Jun 2022 \u2013 Present" },
+    { title: "Associate PM", company: "Canva", city: "Sydney", dates: "Feb 2020 \u2013 May 2022" },
+    { title: "Business Analyst", company: "Xero", city: "Melbourne", dates: "Jan 2019 \u2013 Jan 2020" },
+  ]},
+  { id: "3", role: "Staff Frontend Engineer", seniority: "Staff/Lead", city: "Brisbane", company: "SafetyCulture", skills: ["React","TypeScript","GraphQL"], interviews: 5, fee: 8, salaryLow: 190000, salaryHigh: 220000, years: 9, daysAgo: 1, popular: true, workHistory: [
+    { title: "Staff Frontend Engineer", company: "SafetyCulture", city: "Brisbane", dates: "Apr 2023 \u2013 Present" },
+    { title: "Senior Frontend Engineer", company: "Buildkite", city: "Melbourne", dates: "Aug 2020 \u2013 Mar 2023" },
+    { title: "Frontend Developer", company: "Culture Amp", city: "Melbourne", dates: "Jan 2018 \u2013 Jul 2020" },
+  ]},
+  { id: "4", role: "Data Engineer", seniority: "Senior", city: "Sydney", company: "Zip Co", skills: ["Python","Spark","Airflow","dbt"], interviews: 3, fee: 10, salaryLow: 155000, salaryHigh: 175000, years: 6, daysAgo: 14, popular: false, workHistory: [
+    { title: "Senior Data Engineer", company: "Zip Co", city: "Sydney", dates: "Mar 2022 \u2013 Present" },
+    { title: "Data Engineer", company: "Quantium", city: "Sydney", dates: "Jun 2020 \u2013 Feb 2022" },
+    { title: "Junior Data Engineer", company: "Woolworths Group", city: "Sydney", dates: "Jan 2019 \u2013 May 2020" },
+  ]},
 ]
 
 export const WORK_HISTORY = [

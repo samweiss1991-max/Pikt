@@ -1,4 +1,3 @@
-import { supabase } from './supabase'
 import { sanitizeForMarketplace, sanitizeForProfile, isUnlocked } from './sanitizeCandidate'
 
 const FAKE_CANDIDATES = [

@@ -154,7 +154,6 @@ export default function CandidateProfile() {
             <div className="cp-timeline">
               {INTERVIEW_ROUNDS.map((round, i) => {
                 const passed = i < c.interviews
-                const isCurrent = i === c.interviews
                 const isLast = round === c.interview_stage_reached && !passed
                 return (
                   <div key={round} className="cp-timeline-item">

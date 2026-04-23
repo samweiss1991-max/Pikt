@@ -32,6 +32,7 @@ function mapDbCandidate(c) {
     industry: c.industry,
     status: c.status || 'available',
     preferred_work_type: c.preferred_work_type || 'Hybrid',
+    workHistory: c.workHistory || c.work_history || [],
   }
 }
 

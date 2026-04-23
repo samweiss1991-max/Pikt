@@ -285,7 +285,7 @@ export default function Refer() {
 
     try {
       // Will be replaced with supabase.functions.invoke('create-candidate', ...) once Edge Functions are deployed
-      const { data, error } = await supabase.functions.invoke("create-candidate", {
+      const { error } = await supabase.functions.invoke("create-candidate", {
         body,
       });
       if (error) throw new Error(error.message || "Failed to publish");

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ALL_ROLES, INDUSTRIES, SENIORITY, LOCATIONS, SALARY_BANDS } from '../data/discoveryOptions'
-import { useScrollReveal } from '../hooks/useScrollReveal'
 import './Discovery.css'
 
 function StepDots({ current, total }) {

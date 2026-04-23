@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import UnlockModal from './unlock/UnlockModal'
-import { getAvatarGradient } from '../lib/avatarGradients'
 import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
 import { isInShortlist, addToShortlist, removeFromShortlist } from '../lib/shortlist'
 import { COPY } from '../lib/copy'
@@ -43,8 +42,7 @@ function MatchBar({ label, value, color }) {
   )
 }
 
-export default function CandidateCard({ candidate: c, viewMode = 'stack', index = 0, onSave, onSkip, ...legacyProps }) {
-  const navigate = useNavigate()
+export default function CandidateCard({ candidate: c, viewMode = 'stack', index = 0, ...legacyProps }) {
 
   // Legacy fallback for Dashboard page
   if (!c && legacyProps.role) {
@@ -52,11 +50,11 @@ export default function CandidateCard({ candidate: c, viewMode = 'stack', index 
   }
   if (!c) return null
 
-  return <NewCard candidate={c} viewMode={viewMode} index={index} onSave={onSave} onSkip={onSkip} />
+  return <NewCard candidate={c} viewMode={viewMode} index={index} />
 }
 
 // Legacy card (Dashboard compatibility)
-function LegacyCard({ index = 0, initials = 'XX', role = '', id = '', experience = '', skills = [], badge, badgeText, efficiencyMetric, efficiencyDesc, referralName, referralInitials, ctaLabel = 'View Dossier', candidateId, workHistory = [] }) {
+function LegacyCard({ index = 0, role = '', skills = [], efficiencyMetric, ctaLabel = 'View Dossier', candidateId }) {
   const navigate = useNavigate()
   return (
     <div className="cc-card-new" style={{ cursor: candidateId ? 'pointer' : undefined }} onClick={() => candidateId && navigate(`/candidates/${candidateId}`)}>
@@ -81,7 +79,7 @@ function LegacyCard({ index = 0, initials = 'XX', role = '', id = '', experience
   )
 }
 
-function NewCard({ candidate: c, viewMode, index, onSave, onSkip }) {
+function NewCard({ candidate: c, viewMode, index }) {
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
   const [unlocked, setUnlocked] = useState(c.status === 'unlocked' || checkUnlocked(c.id))
@@ -91,7 +89,7 @@ function NewCard({ candidate: c, viewMode, index, onSave, onSkip }) {
   function toggleSave(e) {
     e.stopPropagation()
     if (saved) { removeFromShortlist(c.id); setSaved(false) }
-    else { addToShortlist(c.id); setSaved(true) }
+    else { addToShortlist(c.id); setSaved(true); navigate('/shortlist') }
   }
 
   const matchScore = Math.min(99, 70 + (c.interviews || 0) * 5 + (c.daysAgo <= 3 ? 8 : 0))
@@ -99,7 +97,6 @@ function NewCard({ candidate: c, viewMode, index, onSave, onSkip }) {
   const interviewMatch = Math.min(99, (c.interviews || 0) * 20)
   const recencyMatch = Math.max(10, 100 - (c.daysAgo || 5) * 8)
   const workType = c.preferred_work_type || c.workType || 'Hybrid'
-  const isRecent = (c.daysAgo || 99) <= 3
   const salaryStr = c.salaryLow && c.salaryHigh
     ? `$${Math.round(c.salaryLow / 1000)}k - $${Math.round(c.salaryHigh / 1000)}k`
     : null
@@ -252,12 +249,23 @@ function NewCard({ candidate: c, viewMode, index, onSave, onSkip }) {
               {salaryStr && <span className="cc-salary">{salaryStr}</span>}
             </div>
             <div className="cc-skills">{(c.skills || []).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
+            {(c.workHistory || []).length > 0 && (
+              <div className="cc-work-history">
+                {c.workHistory.slice(0, 3).map((w, i) => (
+                  <div key={i} className="cc-wh-entry">
+                    <div className="cc-wh-title">{w.title}</div>
+                    <div className="cc-wh-meta">{w.company} {'\u00B7'} {w.city}</div>
+                    <div className="cc-wh-dates">{w.dates}</div>
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="cc-description">{description}</p>
             <div className="cc-cta-row">
               {unlocked ? (
                 <button className="cc-btn-primary press-scale" onClick={goToProfile}>{'\u2713'} View full profile</button>
               ) : (
-                <button className="cc-btn-primary press-scale" onClick={() => setShowModal(true)}>{COPY.marketplace.requestInterview}</button>
+                <button className="cc-btn-primary press-scale" onClick={() => setShowModal(true)}>Unlock</button>
               )}
               <button className="cc-btn-secondary" onClick={goToProfile}>View profile <span className="material-symbols-outlined cc-arrow">arrow_forward</span></button>
               <button className="cc-bookmark" onClick={toggleSave} title={saved ? 'Remove from Pickt List' : 'Save to Pickt List'}>

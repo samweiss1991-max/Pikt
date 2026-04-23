@@ -15,7 +15,7 @@ export function ViewModeProvider({ children }) {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored && VALID_MODES.includes(stored)) return stored
-    } catch {}
+    } catch { /* localStorage unavailable */ }
     return 'stack'
   }
 
@@ -24,7 +24,7 @@ export function ViewModeProvider({ children }) {
   const setViewMode = useCallback((mode) => {
     if (!VALID_MODES.includes(mode)) return
     setViewModeState(mode)
-    try { localStorage.setItem(STORAGE_KEY, mode) } catch {}
+    try { localStorage.setItem(STORAGE_KEY, mode) } catch { /* localStorage unavailable */ }
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
       next.set('view', mode)
@@ -51,6 +51,7 @@ export function ViewModeProvider({ children }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useViewMode() {
   return useContext(ViewModeContext)
 }

@@ -20,6 +20,7 @@ const NEVER_EXPOSE = ['date_of_birth', 'gender']
  */
 function sanitizeInterviewNotes(notes) {
   if (!Array.isArray(notes)) return notes
+  // eslint-disable-next-line no-unused-vars
   return notes.map(({ interviewer_name, ...rest }) => rest)
 }
 
