@@ -450,7 +450,6 @@ export default function Marketplace() {
     })
     setCandidates(result.candidates)
     setTotal(result.total)
-    confirmDiscovery()
   }
 
   function togglePillFilter(arr, value, setter, filterKey) {
@@ -468,7 +467,6 @@ export default function Marketplace() {
     })
     setCandidates(result.candidates)
     setTotal(result.total)
-    confirmDiscovery()
   }
 
   function handleSalaryChange(val) {
@@ -484,7 +482,6 @@ export default function Marketplace() {
       })
       setCandidates(result.candidates)
       setTotal(result.total)
-      confirmDiscovery()
     }, 500)
   }
 
@@ -547,8 +544,6 @@ export default function Marketplace() {
     setCandidates(result.candidates)
     setTotal(result.total)
     setLoading(false)
-
-    confirmDiscovery()
   }
 
   function clearSearch() {
@@ -581,7 +576,6 @@ export default function Marketplace() {
         })
         setCandidates(result.candidates)
         setTotal(result.total)
-        confirmDiscovery()
       }, 300)
     } else {
       setSuggestions([])
@@ -613,6 +607,9 @@ export default function Marketplace() {
     setTransitioning(true)
     setTimeout(() => { setViewMode(mode); setTimeout(() => setTransitioning(false), 20) }, 150)
   }
+
+  const hasActiveFilters = activeCategories.length > 0 || activeRole !== null || trayQuery.length >= 2 || salaryMax < 300 || minExperience > 0 || availability.length > 0 || workPreference.length > 0 || locations.length > 0
+  const showCandidates = discoveryConfirmed || hasActiveFilters
 
   const visibleModes = isMobile ? VIEW_MODES.filter(m => MOBILE_MODES.includes(m.key)) : VIEW_MODES
   const candidateCountText = COPY.marketplace.candidateCount(total)
@@ -661,7 +658,7 @@ export default function Marketplace() {
       <div className="mk-bento">
         {/* Left: candidate list OR ghost grid */}
         <div className={`mk-left ${transitioning ? 'mk-left--transitioning' : ''}`}>
-          {!discoveryConfirmed ? (
+          {!showCandidates ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '20px 0 160px' }}>
               {GHOST_DELAYS.map((delay, i) => (
                 <GhostCandidateCard key={i} animationDelay={delay} blur={ghostBlur} opacity={ghostOpacity} />
@@ -763,7 +760,7 @@ export default function Marketplace() {
                       key={key}
                       type="button"
                       className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''}`}
-                      onClick={() => { setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]); confirmDiscovery() }}
+                      onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
                     >
                       <span className="material-symbols-outlined mk-tray-chip-icon">{icon}</span>
                       {key}
@@ -787,7 +784,6 @@ export default function Marketplace() {
                       onClick={() => {
                         if (activeRole === r) { setActiveRole(null) }
                         else { setActiveRole(r); setActiveCategories([]) }
-                        confirmDiscovery()
                       }}
                     >
                       {r}
@@ -899,6 +895,9 @@ export default function Marketplace() {
               <div className="mk-tray-bottom">
                 <button type="button" className="mk-tray-toggle press-scale" onClick={() => setShowAllRoles(v => !v)}>
                   {showAllRoles ? 'Show less \u2191' : 'See all roles \u2192'}
+                </button>
+                <button type="button" className="mk-tray-confirm press-scale" onClick={confirmDiscovery}>
+                  Show me candidates &rarr;
                 </button>
               </div>
           </div>
