@@ -209,13 +209,36 @@ export default function Marketplace() {
   const [trayDismissing, setTrayDismissing] = useState(false)
   const [showAllRoles, setShowAllRoles] = useState(false)
 
+  // ── Salary & experience filters ──
+  const [salaryMax, setSalaryMax] = useState(300)
+  const [minExperience, setMinExperience] = useState(0)
+  const salaryDebounceRef = useRef(null)
+
+  // ── Tray search state ──
+  const [trayQuery, setTrayQuery] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const traySearchRef = useRef(null)
+  const debounceRef = useRef(null)
+
   // ── Central data loader ──
   // Single source of truth for loading + filtering candidates.
   // Returns { candidates, total } and updates component state.
 
   const allCandidatesRef = useRef([])
 
-  function fetchCandidates({ categories = [], role = null, query = '' } = {}) {
+  const WORK_TYPE_MAP = { 'Remote': 'remote', 'Hybrid': 'hybrid', 'On-site': 'on_site', 'On-Site': 'on_site' }
+
+  function fetchCandidates({
+    categories = [],
+    role = null,
+    query = '',
+    salaryMax = null,
+    minExperience = null,
+    workPreferences = [],
+    locations = [],
+    interviewDepth = null,
+  } = {}) {
     // Load raw candidates (seed data or mock fallback)
     if (allCandidatesRef.current.length === 0) {
       try {
@@ -235,7 +258,6 @@ export default function Marketplace() {
       result = result.filter(c => {
         const cat = ROLE_TO_CATEGORY[c.role]
         if (cat && categories.includes(cat)) return true
-        // Special categories
         if (categories.includes('Final round') && (c.interview_stage_reached || '').toLowerCase().includes('final')) return true
         if (categories.includes('Remote') && (c.preferred_work_type || '').toLowerCase() === 'remote') return true
         return false
@@ -247,7 +269,45 @@ export default function Marketplace() {
       result = result.filter(c => c.role === role)
     }
 
-    // Filter by search query
+    // Filter by work preference (Remote, Hybrid, On-site)
+    if (workPreferences.length > 0) {
+      const mapped = workPreferences.map(w => (WORK_TYPE_MAP[w] || w).toLowerCase())
+      result = result.filter(c => mapped.includes((c.preferred_work_type || '').toLowerCase()))
+    }
+
+    // Filter by location (city match, or remote if "Remote AU" is selected)
+    if (locations.length > 0) {
+      const nonRemote = locations.filter(l => l !== 'Remote AU' && l !== 'Remote')
+      const includesRemote = locations.some(l => l === 'Remote AU' || l === 'Remote')
+      result = result.filter(c => {
+        if (includesRemote && (c.preferred_work_type || '').toLowerCase() === 'remote') return true
+        if (nonRemote.length > 0 && nonRemote.some(l => (c.city || '').toLowerCase() === l.toLowerCase())) return true
+        return nonRemote.length === 0 && includesRemote
+      })
+    }
+
+    // Filter by salary (candidate's min salary must be ≤ salaryMax)
+    if (salaryMax != null) {
+      result = result.filter(c => (c.salaryLow || 0) <= salaryMax)
+    }
+
+    // Filter by minimum years experience
+    if (minExperience != null) {
+      result = result.filter(c => (c.years || 0) >= minExperience)
+    }
+
+    // Filter by interview depth
+    if (interviewDepth) {
+      if (interviewDepth === '2+') {
+        result = result.filter(c => (c.interviews || 0) >= 2)
+      } else if (interviewDepth === '3+') {
+        result = result.filter(c => (c.interviews || 0) >= 3)
+      } else if (interviewDepth === 'Final only') {
+        result = result.filter(c => (c.interview_stage_reached || '').toLowerCase().includes('final'))
+      }
+    }
+
+    // Filter by search query (role, city, skills, seniority)
     if (query.trim()) {
       const q = query.toLowerCase()
       result = result.filter(c =>
@@ -269,6 +329,8 @@ export default function Marketplace() {
         categories: activeCategories,
         role: activeRole,
         query: searchQuery,
+        salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
+        minExperience: minExperience > 0 ? minExperience : null,
       })
       if (result.error) {
         setError(result.error)
@@ -344,8 +406,156 @@ export default function Marketplace() {
     setDiscoveryConfirmed(false)
     setActiveCategories([])
     setActiveRole(null)
+    setTrayQuery('')
+    setSalaryMax(300)
+    setMinExperience(0)
     setViewMode('stack')
   }
+
+  function handleExperienceChange(direction) {
+    const next = Math.max(0, Math.min(20, minExperience + direction))
+    setMinExperience(next)
+    const result = fetchCandidates({
+      categories: activeCategories,
+      role: activeRole,
+      query: trayQuery || searchQuery,
+      salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
+      minExperience: next > 0 ? next : null,
+    })
+    setCandidates(result.candidates)
+    setTotal(result.total)
+    confirmDiscovery()
+  }
+
+  function handleSalaryChange(val) {
+    setSalaryMax(val)
+    clearTimeout(salaryDebounceRef.current)
+    salaryDebounceRef.current = setTimeout(() => {
+      const result = fetchCandidates({
+        categories: activeCategories,
+        role: activeRole,
+        query: trayQuery || searchQuery,
+        salaryMax: val < 300 ? val * 1000 : null,
+        minExperience: minExperience > 0 ? minExperience : null,
+      })
+      setCandidates(result.candidates)
+      setTotal(result.total)
+      confirmDiscovery()
+    }, 500)
+  }
+
+  // ── Tray search: suggestions ──
+
+  function computeSuggestions(q) {
+    if (!q || q.length < 2 || allCandidatesRef.current.length === 0) return []
+    const lower = q.toLowerCase()
+    const seen = new Set()
+    const results = []
+
+    // Roles
+    for (const c of allCandidatesRef.current) {
+      if (c.role && c.role.toLowerCase().includes(lower) && !seen.has('role:' + c.role)) {
+        seen.add('role:' + c.role)
+        results.push({ text: c.role, type: 'role', icon: 'work' })
+      }
+    }
+    // Skills
+    for (const c of allCandidatesRef.current) {
+      for (const s of (c.skills || [])) {
+        if (s.toLowerCase().includes(lower) && !seen.has('skill:' + s)) {
+          seen.add('skill:' + s)
+          results.push({ text: s, type: 'skill', icon: 'build' })
+        }
+      }
+    }
+    // Companies (referred by)
+    for (const c of allCandidatesRef.current) {
+      const co = c.referringCompany || c.company
+      if (co && co.toLowerCase().includes(lower) && !seen.has('company:' + co)) {
+        seen.add('company:' + co)
+        results.push({ text: co, type: 'company', icon: 'business' })
+      }
+    }
+
+    return results.slice(0, 6)
+  }
+
+  function applySuggestion(text, type) {
+    setTrayQuery(text)
+    setShowSuggestions(false)
+
+    // Auto-select matching role chip if applicable
+    if (type === 'role') {
+      const allRoles = [...DEFAULT_ROLES, ...EXPANDED_ROLES]
+      if (allRoles.includes(text)) {
+        setActiveRole(text)
+        setActiveCategories([])
+      }
+    }
+
+    // Load candidates with this query + current filters
+    setLoading(true)
+    const result = fetchCandidates({
+      categories: activeCategories,
+      role: type === 'role' ? text : activeRole,
+      query: text,
+    })
+    setCandidates(result.candidates)
+    setTotal(result.total)
+    setLoading(false)
+
+    confirmDiscovery()
+  }
+
+  function clearSearch() {
+    setTrayQuery('')
+    setSuggestions([])
+    setActiveRole(null)
+
+    // If other filters remain, re-fetch; otherwise reset tray
+    if (activeCategories.length > 0) {
+      loadCandidates()
+    } else {
+      try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
+      setDiscoveryConfirmed(false)
+    }
+  }
+
+  // Debounced search trigger: 2+ chars → compute suggestions + fetch candidates
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    if (trayQuery.length >= 2) {
+      debounceRef.current = setTimeout(() => {
+        setSuggestions(computeSuggestions(trayQuery))
+        setShowSuggestions(true)
+
+        // Also fetch candidates immediately with the typed query
+        const result = fetchCandidates({
+          categories: activeCategories,
+          role: activeRole,
+          query: trayQuery,
+        })
+        setCandidates(result.candidates)
+        setTotal(result.total)
+        confirmDiscovery()
+      }, 300)
+    } else {
+      setSuggestions([])
+      setShowSuggestions(false)
+    }
+    return () => clearTimeout(debounceRef.current)
+  }, [trayQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close suggestions on click outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (traySearchRef.current && !traySearchRef.current.contains(e.target)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const displayCount = useMemo(() => {
     if (activeCategories.length > 0) {
@@ -459,7 +669,7 @@ export default function Marketplace() {
                     Find the right{' '}
                     <span className="mk-tray-title-accent">candidate</span>
                   </h3>
-                  <p className="mk-tray-subtitle">Filter by category or pick a specific role below</p>
+                  <p className="mk-tray-subtitle">Search, filter by category, or pick a role</p>
                 </div>
                 <div className="mk-tray-badge">
                   {totalCount > 0 ? (
@@ -469,6 +679,36 @@ export default function Marketplace() {
                     </>
                   ) : ('Loading\u2026')}
                 </div>
+              </div>
+
+              <div className="mk-tray-search" ref={traySearchRef}>
+                <div className="mk-tray-search-input-wrap">
+                  <span className="material-symbols-outlined mk-tray-search-icon">search</span>
+                  <input
+                    type="text"
+                    className="mk-tray-search-input"
+                    placeholder="Search roles, skills, or companies..."
+                    value={trayQuery}
+                    onChange={e => setTrayQuery(e.target.value)}
+                    onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
+                  />
+                  {trayQuery && (
+                    <button type="button" className="mk-tray-search-clear" onClick={clearSearch}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+                    </button>
+                  )}
+                </div>
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="mk-tray-suggestions">
+                    {suggestions.map((s, i) => (
+                      <button key={i} type="button" className="mk-tray-suggestion" onClick={() => applySuggestion(s.text, s.type)}>
+                        <span className="material-symbols-outlined mk-tray-suggestion-icon">{s.icon}</span>
+                        <span className="mk-tray-suggestion-text">{s.type === 'company' ? `Referred by ${s.text}` : s.text}</span>
+                        <span className="mk-tray-suggestion-type">{s.type}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="mk-tray-chips">
@@ -510,6 +750,65 @@ export default function Marketplace() {
                     </button>
                   )
                 })}
+              </div>
+
+              <div className="mk-tray-divider" />
+
+              <div className="mk-tray-quant-row">
+                <div className="mk-tray-salary">
+                  <div className="mk-tray-salary-header">
+                    <span className="mk-tray-salary-label">Salary expectation</span>
+                    <span className="mk-tray-salary-value">
+                      {salaryMax >= 300 ? '$300k+ AUD' : `Up to $${salaryMax}k AUD`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="mk-tray-slider"
+                    min={40}
+                    max={300}
+                    step={5}
+                    value={salaryMax}
+                    onChange={e => handleSalaryChange(parseInt(e.target.value))}
+                    style={{ '--pct': `${((salaryMax - 40) / (300 - 40)) * 100}%` }}
+                  />
+                  <div className="mk-tray-salary-range">
+                    <span>$40k</span>
+                    <span>$300k+</span>
+                  </div>
+                </div>
+
+                <div className="mk-tray-quant-sep" />
+
+                <div className="mk-tray-experience">
+                  <div className="mk-tray-exp-header">
+                    <span className="mk-tray-salary-label">Min. experience</span>
+                    <span className="mk-tray-salary-value">
+                      {minExperience === 0 ? 'Any experience' : `${minExperience}+ years`}
+                    </span>
+                  </div>
+                  <div className="mk-tray-exp-controls">
+                    <button
+                      type="button"
+                      className="mk-tray-exp-btn"
+                      disabled={minExperience <= 0}
+                      onClick={() => handleExperienceChange(-1)}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
+                    </button>
+                    <span className="mk-tray-exp-value">
+                      {minExperience === 0 ? 'Any' : `${minExperience}+`}
+                    </span>
+                    <button
+                      type="button"
+                      className="mk-tray-exp-btn"
+                      disabled={minExperience >= 20}
+                      onClick={() => handleExperienceChange(1)}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="mk-tray-bottom">
