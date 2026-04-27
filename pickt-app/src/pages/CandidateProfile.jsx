@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { getCandidateById, getCandidateWithPii } from '../lib/seedData'
 import { isUnlocked as checkUnlocked, persistUnlock } from '../lib/sanitizeCandidate'
-import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
-import { getCvUrl } from '../lib/supabaseQueries'
+import { getIconForRole, getGradientClass, mapCandidate } from '../lib/candidateUtils'
+import {
+  getCvUrl,
+  fetchCandidateById,
+  fetchUnlockedCandidate,
+  checkUnlockStatus,
+} from '../lib/supabaseQueries'
 import { CANDIDATES } from '../data/discoveryOptions'
 import UnlockModal from '../components/unlock/UnlockModal'
 import './CandidateProfile.css'
@@ -23,39 +28,6 @@ const INTERVIEW_ROUNDS = [
   '3rd round',
   'Final round',
 ]
-
-function mapToCard(raw) {
-  if (!raw) return null
-  if (raw.role && raw.salaryLow !== undefined && raw.email !== undefined) return raw
-  return {
-    id: raw.id,
-    role: raw.role_applied_for || raw.role,
-    seniority: raw.seniority_level || raw.seniority,
-    city: raw.location_city || raw.city,
-    company: raw.current_employer || raw.referring_company || raw.company || 'Unknown',
-    referringCompany: raw.referring_company || raw.referringCompany || raw.company || 'Unknown',
-    skills: raw.skills || [],
-    interviews: raw.interviews_completed ?? raw.interviews ?? 0,
-    interview_stage_reached: raw.interview_stage_reached || 'Technical screen',
-    fee: raw.fee_percentage ?? raw.fee ?? 8,
-    salaryLow: raw.salary_expectation_min ?? raw.salaryLow ?? 0,
-    salaryHigh: raw.salary_expectation_max ?? raw.salaryHigh ?? 0,
-    years: raw.years_experience ?? raw.years ?? 0,
-    daysAgo: raw.daysAgo ?? 5,
-    strengths: raw.strengths,
-    gaps: raw.gaps,
-    feedback_summary: raw.feedback_summary,
-    recommendation: raw.recommendation,
-    why_not_hired: raw.why_not_hired,
-    full_name: raw.full_name,
-    email: raw.email,
-    current_employer: raw.current_employer || raw.company,
-    current_job_title: raw.current_job_title || raw.role,
-    status: raw.status || 'available',
-    preferred_work_type: raw.preferred_work_type || 'Hybrid',
-    industry: raw.industry,
-  }
-}
 
 function CopyIcon({ value }) {
   const [copied, setCopied] = useState(false)
@@ -85,12 +57,40 @@ export default function CandidateProfile() {
   const initialUnlocked = checkUnlocked(id)
   const [showModal, setShowModal] = useState(false)
   const [unlocked, setUnlocked] = useState(initialUnlocked)
+  const [raw, setRaw] = useState(() =>
+    (initialUnlocked ? getCandidateWithPii(id) : getCandidateById(id)) || state?.candidate || CANDIDATES[0]
+  )
 
-  // Load sanitized (marketplace) or full (unlocked) data
-  const raw = unlocked
-    ? (getCandidateWithPii(id) || state?.candidate || CANDIDATES[0])
-    : (getCandidateById(id) || state?.candidate || CANDIDATES[0])
-  const c = mapToCard(raw)
+  // Confirm unlock status against Supabase, then load the appropriate row.
+  // Falls back to seed data if Supabase is unreachable or returns nothing.
+  useEffect(() => {
+    let cancelled = false
+    async function loadProfile() {
+      let isUnlockedRemote = unlocked
+      try {
+        isUnlockedRemote = await checkUnlockStatus(id)
+        if (cancelled) return
+        if (isUnlockedRemote && !unlocked) {
+          persistUnlock(id)
+          setUnlocked(true)
+        }
+      } catch { /* offline / unauth — keep local state */ }
+
+      try {
+        const row = isUnlockedRemote
+          ? await fetchUnlockedCandidate(id)
+          : await fetchCandidateById(id)
+        if (cancelled) return
+        if (row) setRaw(row)
+      } catch {
+        // keep the seed/state fallback already in raw
+      }
+    }
+    loadProfile()
+    return () => { cancelled = true }
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const c = mapCandidate(raw)
 
   const saving = Math.round(((0.22 - c.fee / 100) * (c.salaryLow + c.salaryHigh) / 2) / 1000)
   const savingHigh = saving + 6
@@ -98,10 +98,14 @@ export default function CandidateProfile() {
   const isRecent = (c.daysAgo || 99) <= 3
   const stageStyle = STAGE_COLORS[c.interview_stage_reached] || STAGE_COLORS['1st phone screen']
 
-  function handleUnlockSuccess() {
+  async function handleUnlockSuccess() {
     persistUnlock(id)
     setUnlocked(true)
     setShowModal(false)
+    try {
+      const row = await fetchUnlockedCandidate(id)
+      if (row) setRaw(row)
+    } catch { /* keep current data */ }
   }
 
   async function handleCvDownload() {
@@ -212,8 +216,8 @@ export default function CandidateProfile() {
             <div className="cp-pii-rows">
               <div className="cp-pii-row"><span className="cp-pii-label">Full name</span><span className="cp-pii-value">{unlocked && c.full_name ? c.full_name : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
               <div className="cp-pii-row"><span className="cp-pii-label">Email</span><span className="cp-pii-value">{unlocked && c.email ? c.email : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-              <div className="cp-pii-row"><span className="cp-pii-label">Mobile</span><span className="cp-pii-value">{unlocked ? '+61 4XX XXX XXX' : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-              <div className="cp-pii-row"><span className="cp-pii-label">LinkedIn</span><span className="cp-pii-value">{unlocked ? 'linkedin.com/in/candidate' : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
+              <div className="cp-pii-row"><span className="cp-pii-label">Mobile</span><span className="cp-pii-value">{unlocked ? (c.mobile_number || '\u2014') : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
+              <div className="cp-pii-row"><span className="cp-pii-label">LinkedIn</span><span className="cp-pii-value">{unlocked ? (c.linkedin_url || '\u2014') : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
               <div className="cp-pii-row"><span className="cp-pii-label">Current employer</span><span className="cp-pii-value">{unlocked && c.current_employer ? c.current_employer : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
             </div>
           </div>
@@ -274,21 +278,30 @@ export default function CandidateProfile() {
             <div className="cp-card-title">Contact details</div>
             {unlocked ? (
               <div className="cp-contact-rows">
-                <div className="cp-contact-row">
-                  <span className="cp-contact-label">Email</span>
-                  <span className="cp-contact-value">{c.email || 'jane@example.com'}</span>
-                  <CopyIcon value={c.email || 'jane@example.com'} />
-                </div>
-                <div className="cp-contact-row">
-                  <span className="cp-contact-label">Mobile</span>
-                  <span className="cp-contact-value">+61 4XX XXX XXX</span>
-                  <CopyIcon value="+61 4XX XXX XXX" />
-                </div>
-                <div className="cp-contact-row">
-                  <span className="cp-contact-label">LinkedIn</span>
-                  <span className="cp-contact-value">linkedin.com/in/candidate</span>
-                  <CopyIcon value="https://linkedin.com/in/candidate" />
-                </div>
+                {c.email && (
+                  <div className="cp-contact-row">
+                    <span className="cp-contact-label">Email</span>
+                    <span className="cp-contact-value">{c.email}</span>
+                    <CopyIcon value={c.email} />
+                  </div>
+                )}
+                {c.mobile_number && (
+                  <div className="cp-contact-row">
+                    <span className="cp-contact-label">Mobile</span>
+                    <span className="cp-contact-value">{c.mobile_number}</span>
+                    <CopyIcon value={c.mobile_number} />
+                  </div>
+                )}
+                {c.linkedin_url && (
+                  <div className="cp-contact-row">
+                    <span className="cp-contact-label">LinkedIn</span>
+                    <span className="cp-contact-value">{c.linkedin_url}</span>
+                    <CopyIcon value={c.linkedin_url} />
+                  </div>
+                )}
+                {!c.email && !c.mobile_number && !c.linkedin_url && (
+                  <div className="cp-contact-row"><span className="cp-pii-label">No contact details on file</span></div>
+                )}
               </div>
             ) : (
               <div className="cp-contact-locked">

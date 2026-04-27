@@ -2,38 +2,22 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCandidates, seedCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
+import { fetchCandidatesPublic, fetchDashboardStats } from '../lib/supabaseQueries'
 import CandidateCard from '../components/CandidateCard'
 import SkeletonCard from '../components/shared/SkeletonCard'
 import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
+import { mapCandidate } from '../lib/candidateUtils'
 import './Dashboard.css'
 
-function mapDbCandidate(c) {
-  return {
-    id: c.id,
-    role: c.role_applied_for || c.role,
-    seniority: c.seniority_level || c.seniority,
-    city: c.location_city || c.city,
-    company: c.current_employer || c.referring_company || c.company || 'Unknown',
-    referringCompany: c.referring_company || c.referringCompany || c.company || 'Unknown',
-    skills: c.skills || [],
-    interviews: c.interviews_completed ?? c.interviews ?? 0,
-    interview_stage_reached: c.interview_stage_reached || 'Technical screen',
-    fee: c.fee_percentage ?? c.fee ?? 8,
-    salaryLow: c.salary_expectation_min ?? c.salaryLow ?? 0,
-    salaryHigh: c.salary_expectation_max ?? c.salaryHigh ?? 0,
-    years: c.years_experience ?? c.years ?? 0,
-    daysAgo: c.referred_at ? Math.floor((Date.now() - new Date(c.referred_at).getTime()) / 86400000) : (c.daysAgo ?? 5),
-    strengths: c.strengths,
-    gaps: c.gaps,
-    feedback_summary: c.feedback_summary,
-    recommendation: c.recommendation,
-    industry: c.industry,
-    status: c.status || 'available',
-    preferred_work_type: c.preferred_work_type || 'Hybrid',
-    workHistory: c.workHistory || c.work_history || [],
-  }
+const isDevMode = import.meta.env.DEV
+
+function formatSaved(amount) {
+  if (amount == null) return '—'
+  if (amount >= 1_000_000) return `+$${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `+$${Math.round(amount / 1_000)}k`
+  return `+$${amount}`
 }
 
 export default function Dashboard() {
@@ -43,23 +27,37 @@ export default function Dashboard() {
   const [error, setError] = useState(null)
   const [seeding, setSeeding] = useState(false)
   const [seeded, setSeeded] = useState(false)
+  const [stats, setStats] = useState({ verifiedReferrals: null, activeRoles: null, savedAmount: null })
 
-  function loadCandidates() {
+  async function loadCandidates() {
     setLoading(true); setError(null)
     try {
-      const stored = getCandidates()
-      const mapped = (stored && stored.length > 0) ? stored.map(mapDbCandidate) : MOCK_CANDIDATES.map(mapDbCandidate)
-      setCandidates(mapped)
+      let pool = []
+      try {
+        const rows = await fetchCandidatesPublic({ limit: 12 })
+        if (rows && rows.length > 0) pool = rows.map(mapCandidate)
+      } catch { /* fall through to seed/mock */ }
+      if (pool.length === 0) {
+        const stored = getCandidates()
+        pool = (stored && stored.length > 0) ? stored.map(mapCandidate) : MOCK_CANDIDATES.map(mapCandidate)
+      }
+      setCandidates(pool)
     } catch (err) { setError(err.message) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { loadCandidates() }, [])
+  useEffect(() => {
+    loadCandidates()
+    fetchDashboardStats().then(setStats).catch(() => { /* keep nulls */ })
+  }, [])
 
   async function handleSeed() {
     setSeeding(true)
-    try { await seedCandidates(); setSeeded(true); loadCandidates() }
-    catch (err) { console.error('Seed failed:', err) }
+    try {
+      await seedCandidates()
+      setSeeded(true)
+      await loadCandidates()
+    } catch { /* ignore — dev tool */ }
     setSeeding(false)
   }
 
@@ -93,19 +91,19 @@ export default function Dashboard() {
         <div className="db-bento-grid" ref={statsRef}>
           <div className="db-stat-card db-stat-card--gold hover-lift" data-reveal style={{ gridColumn: 'span 2' }}>
             <div className="db-stat-heading">Network Efficiency</div>
-            <div className="db-stat-value">+$1.2M <span className="db-stat-value-sub">Saved</span></div>
+            <div className="db-stat-value">{formatSaved(stats.savedAmount)} <span className="db-stat-value-sub">Saved</span></div>
             <p className="db-stat-body">Aggregate savings across all placements vs traditional agency fees this quarter.</p>
             <div className="db-stat-blur-circle" />
           </div>
           <div className="db-stat-card db-stat-card--green hover-lift" data-reveal>
             <span className="material-symbols-outlined db-stat-icon">trending_up</span>
             <div className="db-stat-label">Active Roles</div>
-            <div className="db-stat-number db-stat-number--green">42</div>
+            <div className="db-stat-number db-stat-number--green">{stats.activeRoles ?? '—'}</div>
           </div>
           <div className="db-stat-card db-stat-card--stone hover-lift" data-reveal>
             <span className="material-symbols-outlined db-stat-icon db-stat-icon--stone">verified_user</span>
             <div className="db-stat-label db-stat-label--stone">Verified Referrals</div>
-            <div className="db-stat-number">856</div>
+            <div className="db-stat-number">{stats.verifiedReferrals ?? '—'}</div>
           </div>
         </div>
       </div>
@@ -178,23 +176,25 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Dev seed tool */}
-      <div className="db-dev-tools">
-        <div className="db-dev-label">Developer tools</div>
-        <button
-          onClick={handleSeed}
-          disabled={seeding || seeded}
-          className="db-seed-btn"
-          style={{
-            background: seeded ? 'var(--tertiary-container)' : 'var(--primary)',
-            color: seeded ? 'var(--on-tertiary-container)' : 'white',
-            opacity: seeding ? 0.5 : 1,
-            cursor: seeding || seeded ? 'default' : 'pointer',
-          }}
-        >
-          {seeded ? '\u2713 40 candidates seeded' : seeding ? 'Seeding...' : 'Seed 40 fake candidates'}
-        </button>
-      </div>
+      {/* Dev seed tool \u2014 only in dev mode */}
+      {isDevMode && (
+        <div className="db-dev-tools">
+          <div className="db-dev-label">Developer tools</div>
+          <button
+            onClick={handleSeed}
+            disabled={seeding || seeded}
+            className="db-seed-btn"
+            style={{
+              background: seeded ? 'var(--tertiary-container)' : 'var(--primary)',
+              color: seeded ? 'var(--on-tertiary-container)' : 'white',
+              opacity: seeding ? 0.5 : 1,
+              cursor: seeding || seeded ? 'default' : 'pointer',
+            }}
+          >
+            {seeded ? '\u2713 40 candidates seeded' : seeding ? 'Seeding...' : 'Seed 40 fake candidates'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

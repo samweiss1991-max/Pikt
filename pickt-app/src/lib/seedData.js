@@ -64,7 +64,6 @@ export async function seedCandidates() {
   }))
 
   localStorage.setItem('pickt_candidates', JSON.stringify(candidates))
-  console.log('[seed] Stored', candidates.length, 'candidates in localStorage')
   return { inserted: candidates.length, skipped: 0, total: candidates.length }
 }
 

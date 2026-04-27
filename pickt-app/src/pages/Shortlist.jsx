@@ -8,25 +8,8 @@ import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
 import { getShortlist, removeFromShortlist, getStageOverrides, setStageOverride } from '../lib/shortlist'
 import EmptyState from '../components/shared/EmptyState'
 import { useStaggerReveal } from '../hooks/useScrollReveal'
+import { mapCandidate } from '../lib/candidateUtils'
 import './Shortlist.css'
-
-function mapC(c) {
-  if (c.role && c.salaryLow !== undefined) return c
-  return {
-    id: c.id, role: c.role_applied_for || c.role,
-    seniority: c.seniority_level || c.seniority,
-    city: c.location_city || c.city,
-    company: c.current_employer || c.referring_company || c.company || 'Unknown',
-    referringCompany: c.referring_company || c.referringCompany || c.company || 'Unknown',
-    skills: c.skills || [], interviews: c.interviews_completed ?? c.interviews ?? 0,
-    fee: c.fee_percentage ?? c.fee ?? 8,
-    salaryLow: c.salary_expectation_min ?? c.salaryLow ?? 0,
-    salaryHigh: c.salary_expectation_max ?? c.salaryHigh ?? 0,
-    years: c.years_experience ?? c.years ?? 0,
-    recommendation: c.recommendation,
-    status: c.status || 'available',
-  }
-}
 
 function getDefaultStage(c) {
   if (c.interviews >= 4) return 'Offer'
@@ -118,7 +101,7 @@ export default function Shortlist() {
   const [candidates, setCandidates] = useState(() => {
     const shortlistIds = getShortlist()
     const all = getCandidates()
-    const pool = (all?.length > 0) ? all.map(mapC) : MOCK.map(mapC)
+    const pool = (all?.length > 0) ? all.map(mapCandidate) : MOCK.map(mapCandidate)
     return pool.filter(c => shortlistIds.includes(c.id))
   })
   const [loading] = useState(false)

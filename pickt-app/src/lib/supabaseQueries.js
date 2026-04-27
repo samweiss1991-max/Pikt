@@ -99,6 +99,37 @@ export async function fetchCategoryCounts() {
   return computeCategoryCounts(data)
 }
 
+/**
+ * Dashboard stats: total candidates, distinct roles, and aggregate placement savings.
+ * Each piece is fetched independently and falls back to null on error so a
+ * single broken query doesn't break the whole dashboard.
+ */
+export async function fetchDashboardStats() {
+  const [verifiedReferrals, activeRoles, savedAmount] = await Promise.all([
+    fetchCandidateCount().catch(() => null),
+    supabase
+      .from('candidates_public')
+      .select('role_applied_for')
+      .then(({ data, error }) => {
+        if (error || !data) return null
+        return new Set(data.map(r => r.role_applied_for).filter(Boolean)).size
+      })
+      .catch(() => null),
+    supabase
+      .from('placements')
+      .select('annual_salary, fee_amount')
+      .then(({ data, error }) => {
+        if (error || !data || data.length === 0) return null
+        // Savings vs a 22% agency baseline
+        const baseline = data.reduce((sum, p) => sum + (p.annual_salary || 0) * 0.22, 0)
+        const actual = data.reduce((sum, p) => sum + (p.fee_amount || 0), 0)
+        return Math.max(0, baseline - actual)
+      })
+      .catch(() => null),
+  ])
+  return { verifiedReferrals, activeRoles, savedAmount }
+}
+
 // ── Saved candidates ───────────────────────────────────────
 
 /** Get all saved candidates for the current user */
@@ -187,7 +218,17 @@ export async function unlockCandidate(candidateId) {
   const { data, error } = await supabase.functions.invoke('unlock-candidate', {
     body: { candidateId },
   })
-  if (error) throw error
+  if (error) {
+    // Surface the edge function's structured error body when present
+    let message = error.message
+    try {
+      const body = await error.context?.json?.()
+      if (body?.error) message = body.error
+    } catch { /* fall back to error.message */ }
+    const wrapped = new Error(message)
+    wrapped.status = error.context?.status
+    throw wrapped
+  }
   return data
 }
 

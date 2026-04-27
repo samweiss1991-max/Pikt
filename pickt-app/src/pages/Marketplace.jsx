@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
+import { fetchCandidatesPublic } from '../lib/supabaseQueries'
 import { COPY } from '../lib/copy'
 import { useViewMode } from '../context/ViewModeContext'
 import { useSearch } from '../context/SearchContext'
@@ -14,6 +15,7 @@ import ErrorBanner from '../components/shared/ErrorBanner'
 import SkeletonCard from '../components/shared/SkeletonCard'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import { computeCategoryCounts, ROLE_TO_CATEGORY } from '../lib/roleCategories'
+import { mapCandidate } from '../lib/candidateUtils'
 import './Marketplace.css'
 
 const GHOST_DELAYS = [0, 0.15, 0.3, 0.1, 0.25, 0.4]
@@ -53,33 +55,6 @@ const VIEW_MODES = [
 ]
 
 const MOBILE_MODES = ['stack', 'tinder', 'compact']
-
-function mapDbCandidate(c) {
-  return {
-    id: c.id,
-    role: c.role_applied_for || c.role,
-    seniority: c.seniority_level || c.seniority,
-    city: c.location_city || c.city,
-    company: c.current_employer || c.referring_company || c.company || 'Unknown',
-    referringCompany: c.referring_company || c.referringCompany || c.company || 'Unknown',
-    skills: c.skills || [],
-    interviews: c.interviews_completed ?? c.interviews ?? 0,
-    interview_stage_reached: c.interview_stage_reached || c.stage || 'Technical screen',
-    fee: c.fee_percentage ?? c.fee ?? 8,
-    salaryLow: c.salary_expectation_min ?? c.salaryLow ?? 0,
-    salaryHigh: c.salary_expectation_max ?? c.salaryHigh ?? 0,
-    years: c.years_experience ?? c.years ?? 0,
-    daysAgo: c.referred_at ? Math.floor((Date.now() - new Date(c.referred_at).getTime()) / 86400000) : (c.daysAgo ?? 5),
-    strengths: c.strengths,
-    gaps: c.gaps,
-    feedback_summary: c.feedback_summary,
-    recommendation: c.recommendation,
-    industry: c.industry,
-    status: c.status || 'available',
-    preferred_work_type: c.preferred_work_type || 'Hybrid',
-    workHistory: c.workHistory || c.work_history || [],
-  }
-}
 
 // ── Tinder stack ──
 function TinderView({ candidates, onSave, onSkip }) {
@@ -231,6 +206,7 @@ export default function Marketplace() {
   // Returns { candidates, total } and updates component state.
 
   const allCandidatesRef = useRef([])
+  const [dataLoaded, setDataLoaded] = useState(false)
 
   const WORK_TYPE_MAP = { 'Remote': 'remote', 'Hybrid': 'hybrid', 'On-site': 'on_site', 'On-Site': 'on_site' }
 
@@ -245,18 +221,6 @@ export default function Marketplace() {
     interviewDepth = null,
     availability = [],
   } = {}) {
-    // Load raw candidates (seed data or mock fallback)
-    if (allCandidatesRef.current.length === 0) {
-      try {
-        const stored = getCandidates()
-        allCandidatesRef.current = (stored && stored.length > 0)
-          ? stored.map(mapDbCandidate)
-          : MOCK_CANDIDATES.map(mapDbCandidate)
-      } catch (err) {
-        return { candidates: [], total: 0, error: err.message }
-      }
-    }
-
     let result = allCandidatesRef.current
 
     // Filter by category (role → category mapping)
@@ -397,10 +361,37 @@ export default function Marketplace() {
     if (isMobile && !MOBILE_MODES.includes(viewMode)) setViewMode('stack')
   }, [isMobile, viewMode, setViewMode])
 
-  // Load candidates on mount + whenever filters change
+  // One-time async load: Supabase first, fall back to seed/mock if empty or errors
   useEffect(() => {
+    let cancelled = false
+    async function loadInitial() {
+      setLoading(true)
+      let pool = []
+      try {
+        const rows = await fetchCandidatesPublic()
+        if (rows && rows.length > 0) pool = rows.map(mapCandidate)
+      } catch {
+        // fall through to seed/mock
+      }
+      if (pool.length === 0) {
+        const stored = getCandidates()
+        pool = (stored && stored.length > 0)
+          ? stored.map(mapCandidate)
+          : MOCK_CANDIDATES.map(mapCandidate)
+      }
+      if (cancelled) return
+      allCandidatesRef.current = pool
+      setDataLoaded(true)
+    }
+    loadInitial()
+    return () => { cancelled = true }
+  }, [])
+
+  // Load candidates whenever filters change (after the initial pool is loaded)
+  useEffect(() => {
+    if (!dataLoaded) return
     loadCandidates()
-  }, [activeCategories, activeRole, searchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dataLoaded, activeCategories, activeRole, searchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ghost blur/opacity reacts to filter state
   useEffect(() => {
