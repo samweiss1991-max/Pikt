@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getCandidates, seedCandidates } from '../lib/seedData'
+import { getCandidates, getCandidatesRaw, seedCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
 import { fetchCandidatesPublic, fetchDashboardStats } from '../lib/supabaseQueries'
 import CandidateCard from '../components/CandidateCard'
@@ -33,10 +33,16 @@ export default function Dashboard() {
     setLoading(true); setError(null)
     try {
       let pool = []
-      try {
-        const rows = await fetchCandidatesPublic({ limit: 12 })
-        if (rows && rows.length > 0) pool = rows.map(mapCandidate)
-      } catch { /* fall through to seed/mock */ }
+      if (isDevMode) {
+        const seeded = getCandidatesRaw()
+        if (seeded && seeded.length > 0) pool = getCandidates().map(mapCandidate)
+      }
+      if (pool.length === 0) {
+        try {
+          const rows = await fetchCandidatesPublic({ limit: 12 })
+          if (rows && rows.length > 0) pool = rows.map(mapCandidate)
+        } catch { /* fall through to seed/mock */ }
+      }
       if (pool.length === 0) {
         const stored = getCandidates()
         pool = (stored && stored.length > 0) ? stored.map(mapCandidate) : MOCK_CANDIDATES.map(mapCandidate)
@@ -57,8 +63,11 @@ export default function Dashboard() {
       await seedCandidates()
       setSeeded(true)
       await loadCandidates()
-    } catch { /* ignore — dev tool */ }
-    setSeeding(false)
+    } catch (err) {
+      console.error('Seed failed:', err)
+    } finally {
+      setSeeding(false)
+    }
   }
 
   const displayCandidates = candidates.slice(0, 6)

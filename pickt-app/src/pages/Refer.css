@@ -575,11 +575,6 @@
   background: var(--primary-container);
   color: var(--primary);
 }
-.rf-preview-pill--count {
-  border: 1px solid rgba(187,186,175,.15);
-  background: var(--surface-container-high);
-  color: var(--on-surface-variant);
-}
 .rf-preview-footer {
   display: flex; align-items: center;
   justify-content: space-between;

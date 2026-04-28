@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { INDUSTRIES } from "../data/discoveryOptions";
 import { supabase } from "../lib/supabase";
@@ -37,7 +37,6 @@ const INITIAL = {
   salary_expectation_max: "",
   skills: [],
   interview_stage_reached: "",
-  interviews_completed: "",
   why_not_hired: "",
   strengths: "",
   gaps: "",
@@ -126,6 +125,20 @@ export default function Refer() {
 
   // ── File upload ─────────────────────────────────────────
 
+  // 30s timeout for storage uploads — Supabase JS hangs silently on missing
+  // buckets, so we surface that as a visible error instead of stranding the user
+  function withUploadTimeout(promise) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Upload timed out — check that the candidate-documents bucket exists in Supabase")),
+          30_000
+        )
+      ),
+    ]);
+  }
+
   async function uploadFile(file, field) {
     const maxSize = 10 * 1024 * 1024;
     const allowed = [
@@ -150,11 +163,12 @@ export default function Refer() {
 
     const path = `uploads/${Date.now()}_${file.name}`;
 
-    const { data, error } = await supabase.storage
-      .from("candidate-documents")
-      .upload(path, file, { upsert: false });
+    const { data, error } = await withUploadTimeout(
+      supabase.storage.from("candidate-documents").upload(path, file, { upsert: false })
+    ).catch((err) => ({ data: null, error: err }));
 
     if (error) {
+      console.error('[Refer] CV upload failed:', error)
       setErrors([`Upload failed: ${error.message}`]);
       if (field !== "additional_docs") set(field, null);
       return;
@@ -293,7 +307,15 @@ export default function Refer() {
       const { error } = await supabase.functions.invoke("create-candidate", {
         body,
       });
-      if (error) throw new Error(error.message || "Failed to publish");
+      if (error) {
+        let message = error.message || "Failed to publish";
+        try {
+          const errBody = await error.context?.json?.();
+          if (errBody?.error) message = errBody.error;
+        } catch { /* keep generic message */ }
+        console.error('[Refer] create-candidate failed:', message, error);
+        throw new Error(message);
+      }
 
       localStorage.removeItem(STORAGE_KEY);
       window.location.href = "/my-candidates";
@@ -302,23 +324,6 @@ export default function Refer() {
       setSubmitting(false);
     }
   }
-
-  // ── Savings calculation ─────────────────────────────────
-
-  const savings = useMemo(() => {
-    const min = Number(form.salary_expectation_min) || 0;
-    const max = Number(form.salary_expectation_max) || 0;
-    const avg = min && max ? (min + max) / 2 : min || max;
-    if (!avg) return null;
-    const picktFee = avg * (form.fee_percentage / 100);
-    const agencyLow = avg * 0.2;
-    const agencyHigh = avg * 0.25;
-    return {
-      picktFee: Math.round(picktFee),
-      saveLow: Math.round(agencyLow - picktFee),
-      saveHigh: Math.round(agencyHigh - picktFee),
-    };
-  }, [form.salary_expectation_min, form.salary_expectation_max, form.fee_percentage]);
 
   // ── Render helpers ──────────────────────────────────────
 
@@ -377,9 +382,9 @@ export default function Refer() {
     const storagePath = `uploads/${Date.now()}_${file.name}`;
 
     try {
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("candidate-documents")
-        .upload(storagePath, file, { upsert: false });
+      const { data: uploadData, error: uploadError } = await withUploadTimeout(
+        supabase.storage.from("candidate-documents").upload(storagePath, file, { upsert: false })
+      );
 
       if (uploadError) throw new Error(uploadError.message);
 
@@ -769,16 +774,11 @@ export default function Refer() {
           <label className="rf-label">Interview stage reached *</label>
           <div className="rf-card-grid rf-card-grid--4">
             {STAGES.map((s) => (
-              <button key={s} type="button" onClick={() => { set("interview_stage_reached", s); const idx = STAGES.indexOf(s) + 1; if (form.interviews_completed === "" || form.interviews_completed === 0) { set("interviews_completed", idx); } }} className={`rf-card-option ${form.interview_stage_reached === s ? 'rf-card-option--active' : ''}`}>
+              <button key={s} type="button" onClick={() => set("interview_stage_reached", s)} className={`rf-card-option ${form.interview_stage_reached === s ? 'rf-card-option--active' : ''}`}>
                 {s}
               </button>
             ))}
           </div>
-        </div>
-
-        <div style={{ maxWidth: 200 }}>
-          <label className="rf-label">Interviews completed</label>
-          <input className="rf-input" type="number" min={0} value={form.interviews_completed} onChange={(e) => set("interviews_completed", e.target.value ? Number(e.target.value) : "")} />
         </div>
       </div>
     );
@@ -887,9 +887,11 @@ export default function Refer() {
     return (
       <div className="rf-fields">
         <div>
-          <h2 className="rf-section-title">CV, documents & fee</h2>
-          <p className="rf-section-subtitle">Upload their CV and set your referral fee.</p>
+          <h2 className="rf-section-title">CV & documents</h2>
+          <p className="rf-section-subtitle">Upload their CV and supporting documents.</p>
         </div>
+
+        <ErrorBox />
 
         <div>
           <label className="rf-label">CV (PDF or DOCX) *</label>
@@ -964,21 +966,6 @@ export default function Refer() {
         </div>
 
         <div>
-          <label className="rf-label">Referral fee (%) *</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <input className="rf-input" style={{ maxWidth: 120 }} type="number" min={0} max={100} value={form.fee_percentage} onChange={(e) => set("fee_percentage", Number(e.target.value))} />
-            <span style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>% of first-year salary</span>
-          </div>
-        </div>
-
-        {savings && (
-          <div className="rf-savings">
-            <p className="rf-savings-title">pickt fee: ${savings.picktFee.toLocaleString()} vs. typical agency (20-25%)</p>
-            <p className="rf-savings-body">Save ${savings.saveLow.toLocaleString()}-${savings.saveHigh.toLocaleString()} for the hiring company</p>
-          </div>
-        )}
-
-        <div>
           <label className="rf-label">Privacy preview</label>
           <div className="rf-privacy">
             <table>
@@ -1043,9 +1030,6 @@ export default function Refer() {
           <div className="rf-preview-pills" style={{ marginTop: '0.5rem' }}>
             <span className="rf-preview-pill rf-preview-pill--stage">
               {form.interview_stage_reached || "Stage"}
-            </span>
-            <span className="rf-preview-pill rf-preview-pill--count">
-              {form.interviews_completed || 0} interview{(form.interviews_completed || 0) !== 1 ? "s" : ""}
             </span>
           </div>
           {form.feedback_summary && (
