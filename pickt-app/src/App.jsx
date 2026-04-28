@@ -7,6 +7,9 @@ import { SearchProvider } from './context/SearchContext'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Marketplace = lazy(() => import('./pages/Marketplace'))
+const MarketplaceDiscover = lazy(() => import('./pages/MarketplaceDiscover'))
+const MarketplaceUpload = lazy(() => import('./pages/MarketplaceUpload'))
+const MarketplaceMatches = lazy(() => import('./pages/MarketplaceMatches'))
 const CandidateProfile = lazy(() => import('./pages/CandidateProfile'))
 const Shortlist = lazy(() => import('./pages/Shortlist'))
 const MyCandidates = lazy(() => import('./pages/MyCandidates'))
@@ -26,6 +29,9 @@ export default function App() {
       <Route element={<ProtectedRoute><ViewModeProvider><SearchProvider><Shell /></SearchProvider></ViewModeProvider></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="marketplace" element={<Marketplace />} />
+        <Route path="marketplace/discover" element={<MarketplaceDiscover />} />
+        <Route path="marketplace/upload" element={<MarketplaceUpload />} />
+        <Route path="marketplace/matches" element={<MarketplaceMatches />} />
         <Route path="candidates/:id" element={<CandidateProfile />} />
         <Route path="shortlist" element={<Shortlist />} />
         <Route path="my-candidates" element={<MyCandidates />} />
