@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import './Auth.css'
 
 export default function Login() {
   const { signIn } = useAuth()
+
+  // Visiting /login clears the demo bypass — otherwise users who clicked
+  // "Skip to demo" stay in a JWT-less state where edge functions reject them.
+  useEffect(() => { localStorage.removeItem('pickt_dev_auth') }, [])
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
