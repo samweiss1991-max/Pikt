@@ -26,8 +26,6 @@ const CATEGORY_CHIPS = [
   { key: 'Data', icon: 'bar_chart' },
   { key: 'Operations', icon: 'settings' },
   { key: 'Finance', icon: 'account_balance' },
-  { key: 'Final round', icon: 'emoji_events' },
-  { key: 'Remote', icon: 'public' },
 ]
 
 const DEFAULT_ROLES = [
@@ -43,6 +41,14 @@ const EXPANDED_ROLES = [
   'Data Scientist', 'Growth Marketer', 'Head of CS',
   'Head of Data', 'SDR / BDR', 'Talent Acquisition',
 ]
+
+const ALL_ROLES = [...DEFAULT_ROLES, ...EXPANDED_ROLES]
+
+const AVAILABILITY_OPTIONS = ['Available now', '2 weeks', '1 month', 'Flexible', 'Final round']
+const WORK_OPTIONS = ['Remote', 'Hybrid', 'On-site']
+const NAMED_CITIES = ['Sydney', 'Melbourne', 'Brisbane']
+const OTHER_CITIES = 'Other cities'
+const LOCATION_OPTIONS = [...NAMED_CITIES, OTHER_CITIES]
 
 const VIEW_MODES = [
   { key: 'stack', label: COPY.viewModes.stack, icon: 'view_agenda' },
@@ -172,14 +178,13 @@ export default function MarketplaceDiscover() {
 
   // ── Discovery / tray state ──
   const [activeCategories, setActiveCategories] = useState([])
-  const [activeRole, setActiveRole] = useState(null)
   const [totalCount, setTotalCount] = useState(0)
   const [categoryCounts, setCategoryCounts] = useState({})
   const [discoveryConfirmed, setDiscoveryConfirmed] = useState(() => {
     try { return sessionStorage.getItem('pickt_discovery_confirmed') === 'true' } catch { return false }
   })
   const [trayDismissing, setTrayDismissing] = useState(false)
-  const [showAllRoles, setShowAllRoles] = useState(false)
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
 
   // ── Pill filters ──
   const [availability, setAvailability] = useState([])
@@ -189,13 +194,15 @@ export default function MarketplaceDiscover() {
   // ── Salary & experience filters ──
   const [salaryMax, setSalaryMax] = useState(300)
   const [minExperience, setMinExperience] = useState(0)
-  const salaryDebounceRef = useRef(null)
 
   // ── Tray search state ──
   const [trayQuery, setTrayQuery] = useState('')
+  const [appliedQuery, setAppliedQuery] = useState('') // debounced trayQuery used for filtering
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [highlightIdx, setHighlightIdx] = useState(-1)
   const traySearchRef = useRef(null)
+  const trayInputRef = useRef(null)
   const debounceRef = useRef(null)
 
   // ── Central data loader ──
@@ -209,7 +216,6 @@ export default function MarketplaceDiscover() {
 
   function fetchCandidates({
     categories = [],
-    role = null,
     query = '',
     salaryMax = null,
     minExperience = null,
@@ -222,18 +228,7 @@ export default function MarketplaceDiscover() {
 
     // Filter by category (role → category mapping)
     if (categories.length > 0) {
-      result = result.filter(c => {
-        const cat = ROLE_TO_CATEGORY[c.role]
-        if (cat && categories.includes(cat)) return true
-        if (categories.includes('Final round') && (c.interview_stage_reached || '').toLowerCase().includes('final')) return true
-        if (categories.includes('Remote') && (c.preferred_work_type || '').toLowerCase() === 'remote') return true
-        return false
-      })
-    }
-
-    // Filter by specific role
-    if (role) {
-      result = result.filter(c => c.role === role)
+      result = result.filter(c => categories.includes(ROLE_TO_CATEGORY[c.role]))
     }
 
     // Filter by work preference (Remote, Hybrid, On-site)
@@ -242,14 +237,12 @@ export default function MarketplaceDiscover() {
       result = result.filter(c => mapped.includes((c.preferred_work_type || '').toLowerCase()))
     }
 
-    // Filter by location (city match, or remote if "Remote AU" is selected)
+    // Filter by location (named city match, or any city outside the named ones)
     if (locations.length > 0) {
-      const nonRemote = locations.filter(l => l !== 'Remote AU' && l !== 'Remote')
-      const includesRemote = locations.some(l => l === 'Remote AU' || l === 'Remote')
+      const named = NAMED_CITIES.map(l => l.toLowerCase())
       result = result.filter(c => {
-        if (includesRemote && (c.preferred_work_type || '').toLowerCase() === 'remote') return true
-        if (nonRemote.length > 0 && nonRemote.some(l => (c.city || '').toLowerCase() === l.toLowerCase())) return true
-        return nonRemote.length === 0 && includesRemote
+        const city = (c.city || '').toLowerCase()
+        return locations.some(l => l === OTHER_CITIES ? !named.includes(city) : city === l.toLowerCase())
       })
     }
 
@@ -283,6 +276,7 @@ export default function MarketplaceDiscover() {
           if (a === '2 weeks') return notice <= 14
           if (a === '1 month') return notice <= 30
           if (a === 'Flexible') return true
+          if (a === 'Final round') return (c.interview_stage_reached || '').toLowerCase().includes('final')
           return false
         })
       })
@@ -308,8 +302,7 @@ export default function MarketplaceDiscover() {
     try {
       const result = fetchCandidates({
         categories: activeCategories,
-        role: activeRole,
-        query: searchQuery,
+        query: appliedQuery || searchQuery,
         salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
         minExperience: minExperience > 0 ? minExperience : null,
         workPreferences: workPreference,
@@ -342,7 +335,6 @@ export default function MarketplaceDiscover() {
       if (sessionStorage.getItem('pickt_discovery_confirmed') !== 'true' && discoveryConfirmed) {
         setDiscoveryConfirmed(false)
         setActiveCategories([])
-        setActiveRole(null)
       }
     } catch { /* ignore */ }
   }, [location.key]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -390,11 +382,12 @@ export default function MarketplaceDiscover() {
     return () => { cancelled = true }
   }, [])
 
-  // Load candidates whenever filters change (after the initial pool is loaded)
+  // Load candidates whenever any filter changes (after the initial pool is loaded).
+  // Every filter goes through this one path so they always combine consistently.
   useEffect(() => {
     if (!dataLoaded) return
     loadCandidates()
-  }, [dataLoaded, activeCategories, activeRole, searchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dataLoaded, activeCategories, searchQuery, appliedQuery, salaryMax, minExperience, availability, workPreference, locations]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function confirmDiscovery() {
     if (!discoveryConfirmed) {
@@ -411,8 +404,8 @@ export default function MarketplaceDiscover() {
     try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
     setDiscoveryConfirmed(false)
     setActiveCategories([])
-    setActiveRole(null)
     setTrayQuery('')
+    setAppliedQuery('')
     setSalaryMax(300)
     setMinExperience(0)
     setAvailability([])
@@ -422,156 +415,134 @@ export default function MarketplaceDiscover() {
   }
 
   function handleExperienceChange(direction) {
-    const next = Math.max(0, Math.min(20, minExperience + direction))
-    setMinExperience(next)
-    const result = fetchCandidates({
-      categories: activeCategories,
-      role: activeRole,
-      query: trayQuery || searchQuery,
-      salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
-      minExperience: next > 0 ? next : null,
-    })
-    setCandidates(result.candidates)
-    setTotal(result.total)
+    setMinExperience(prev => Math.max(0, Math.min(20, prev + direction)))
   }
 
-  function togglePillFilter(arr, value, setter, filterKey) {
-    const next = arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value]
-    setter(next)
-    const result = fetchCandidates({
-      categories: activeCategories,
-      role: activeRole,
-      query: trayQuery || searchQuery,
-      salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
-      minExperience: minExperience > 0 ? minExperience : null,
-      workPreferences: filterKey === 'workPreferences' ? next : workPreference,
-      locations: filterKey === 'locations' ? next : locations,
-      availability: filterKey === 'availability' ? next : availability,
-    })
-    setCandidates(result.candidates)
-    setTotal(result.total)
+  function togglePillFilter(value, setter) {
+    setter(prev => prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value])
   }
 
   function handleSalaryChange(val) {
     setSalaryMax(val)
-    clearTimeout(salaryDebounceRef.current)
-    salaryDebounceRef.current = setTimeout(() => {
-      const result = fetchCandidates({
-        categories: activeCategories,
-        role: activeRole,
-        query: trayQuery || searchQuery,
-        salaryMax: val < 300 ? val * 1000 : null,
-        minExperience: minExperience > 0 ? minExperience : null,
-      })
-      setCandidates(result.candidates)
-      setTotal(result.total)
-    }, 500)
   }
 
-  // ── Tray search: suggestions ──
+  // ── Tray search: type-ahead suggestions ──
 
+  // Roles first (known roles + any role in the data), then skills and referring companies.
   function computeSuggestions(q) {
-    if (!q || q.length < 2 || allCandidatesRef.current.length === 0) return []
-    const lower = q.toLowerCase()
-    const seen = new Set()
-    const results = []
+    const pool = allCandidatesRef.current
+    const lower = q.trim().toLowerCase()
+    const roleCount = role => pool.filter(c => (c.role || '').toLowerCase().includes(role.toLowerCase())).length
 
-    // Roles
-    for (const c of allCandidatesRef.current) {
-      if (c.role && c.role.toLowerCase().includes(lower) && !seen.has('role:' + c.role)) {
-        seen.add('role:' + c.role)
-        results.push({ text: c.role, type: 'role', icon: 'work' })
-      }
-    }
-    // Skills
-    for (const c of allCandidatesRef.current) {
-      for (const s of (c.skills || [])) {
-        if (s.toLowerCase().includes(lower) && !seen.has('skill:' + s)) {
-          seen.add('skill:' + s)
-          results.push({ text: s, type: 'skill', icon: 'build' })
+    const roleNames = [...new Set([...ALL_ROLES, ...pool.map(c => c.role).filter(Boolean)])]
+    const roles = roleNames
+      .filter(r => r.toLowerCase().includes(lower))
+      .sort((a, b) => {
+        const aStarts = a.toLowerCase().startsWith(lower), bStarts = b.toLowerCase().startsWith(lower)
+        if (aStarts !== bStarts) return aStarts ? -1 : 1
+        return a.localeCompare(b)
+      })
+      .map(r => ({ text: r, type: 'role', icon: 'work', count: roleCount(r) }))
+
+    // Browsing all roles (empty query): roles only
+    if (!lower) return roles
+
+    const seen = new Set()
+    const others = []
+    for (const c of pool) {
+      for (const sk of (c.skills || [])) {
+        if (sk.toLowerCase().includes(lower) && !seen.has('skill:' + sk)) {
+          seen.add('skill:' + sk)
+          others.push({ text: sk, type: 'skill', icon: 'build' })
         }
       }
     }
-    // Companies (referred by)
-    for (const c of allCandidatesRef.current) {
+    for (const c of pool) {
       const co = c.referringCompany || c.company
       if (co && co.toLowerCase().includes(lower) && !seen.has('company:' + co)) {
         seen.add('company:' + co)
-        results.push({ text: co, type: 'company', icon: 'business' })
+        others.push({ text: co, type: 'company', icon: 'business' })
       }
     }
-
-    return results.slice(0, 6)
+    return [...roles.slice(0, 6), ...others.slice(0, 3)]
   }
 
-  function applySuggestion(text, type) {
-    setTrayQuery(text)
+  function openSuggestions(q) {
+    const next = computeSuggestions(q)
+    setSuggestions(next)
+    setShowSuggestions(next.length > 0)
+    setHighlightIdx(-1)
+  }
+
+  function closeSuggestions() {
     setShowSuggestions(false)
+    setHighlightIdx(-1)
+  }
 
-    // Auto-select matching role chip if applicable
-    if (type === 'role') {
-      const allRoles = [...DEFAULT_ROLES, ...EXPANDED_ROLES]
-      if (allRoles.includes(text)) {
-        setActiveRole(text)
-        setActiveCategories([])
+  function handleTrayQueryChange(value) {
+    setTrayQuery(value)
+    if (value.trim()) openSuggestions(value)
+    else { setSuggestions([]); closeSuggestions() }
+  }
+
+  function applySuggestion(text) {
+    setTrayQuery(text)
+    setAppliedQuery(text) // apply immediately, skip the typing debounce
+    closeSuggestions()
+  }
+
+  function showAllRoles() {
+    openSuggestions('')
+    trayInputRef.current?.focus()
+  }
+
+  function handleTrayKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (!showSuggestions) { openSuggestions(trayQuery); return }
+      const n = suggestions.length
+      if (!n) return
+      setHighlightIdx(i => e.key === 'ArrowDown' ? (i + 1) % n : (i <= 0 ? n - 1 : i - 1))
+    } else if (e.key === 'Enter') {
+      if (showSuggestions && highlightIdx >= 0 && suggestions[highlightIdx]) {
+        e.preventDefault()
+        applySuggestion(suggestions[highlightIdx].text)
+      } else {
+        closeSuggestions()
       }
+    } else if (e.key === 'Escape') {
+      if (showSuggestions) { e.preventDefault(); closeSuggestions() }
     }
-
-    // Load candidates with this query + current filters
-    setLoading(true)
-    const result = fetchCandidates({
-      categories: activeCategories,
-      role: type === 'role' ? text : activeRole,
-      query: text,
-    })
-    setCandidates(result.candidates)
-    setTotal(result.total)
-    setLoading(false)
   }
 
   function clearSearch() {
     setTrayQuery('')
+    setAppliedQuery('')
     setSuggestions([])
-    setActiveRole(null)
-
-    // If other filters remain, re-fetch; otherwise reset tray
-    if (activeCategories.length > 0) {
-      loadCandidates()
-    } else {
-      try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
-      setDiscoveryConfirmed(false)
-    }
+    closeSuggestions()
+    trayInputRef.current?.focus()
   }
 
-  // Debounced search trigger: 2+ chars → compute suggestions + fetch candidates
+  // Debounce typed text into the query used for filtering (2+ chars)
   useEffect(() => {
     clearTimeout(debounceRef.current)
-    if (trayQuery.length >= 2) {
-      debounceRef.current = setTimeout(() => {
-        setSuggestions(computeSuggestions(trayQuery))
-        setShowSuggestions(true)
-
-        // Also fetch candidates immediately with the typed query
-        const result = fetchCandidates({
-          categories: activeCategories,
-          role: activeRole,
-          query: trayQuery,
-        })
-        setCandidates(result.candidates)
-        setTotal(result.total)
-      }, 300)
-    } else {
-      setSuggestions([])
-      setShowSuggestions(false)
-    }
+    debounceRef.current = setTimeout(() => {
+      const q = trayQuery.trim()
+      setAppliedQuery(q.length >= 2 ? q : '')
+    }, 300)
     return () => clearTimeout(debounceRef.current)
-  }, [trayQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [trayQuery])
+
+  // Keep the keyboard-highlighted suggestion scrolled into view
+  useEffect(() => {
+    if (highlightIdx >= 0) document.getElementById(`mk-suggestion-${highlightIdx}`)?.scrollIntoView({ block: 'nearest' })
+  }, [highlightIdx])
 
   // Close suggestions on click outside
   useEffect(() => {
     function handleClickOutside(e) {
       if (traySearchRef.current && !traySearchRef.current.contains(e.target)) {
-        setShowSuggestions(false)
+        closeSuggestions()
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -591,7 +562,8 @@ export default function MarketplaceDiscover() {
     setTimeout(() => { setViewMode(mode); setTimeout(() => setTransitioning(false), 20) }, 150)
   }
 
-  const hasActiveFilters = activeCategories.length > 0 || activeRole !== null || trayQuery.length >= 2 || salaryMax < 300 || minExperience > 0 || availability.length > 0 || workPreference.length > 0 || locations.length > 0
+  const moreFiltersCount = (salaryMax < 300 ? 1 : 0) + (minExperience > 0 ? 1 : 0) + availability.length + workPreference.length + locations.length
+  const hasActiveFilters = activeCategories.length > 0 || trayQuery.trim().length >= 2 || moreFiltersCount > 0
   const showCandidates = discoveryConfirmed || hasActiveFilters
 
   const visibleModes = isMobile ? VIEW_MODES.filter(m => MOBILE_MODES.includes(m.key)) : VIEW_MODES
@@ -665,177 +637,173 @@ export default function MarketplaceDiscover() {
 
                   <div className="mk-tray-search" ref={traySearchRef}>
                     <div className="mk-tray-search-input-wrap">
-                      <span className="material-symbols-outlined mk-tray-search-icon">search</span>
+                      <span className="material-symbols-outlined mk-tray-search-icon" aria-hidden="true">search</span>
                       <input
+                        ref={trayInputRef}
                         type="text"
                         className="mk-tray-search-input"
                         placeholder="Search roles, skills, or companies..."
+                        aria-label="Search roles, skills, or companies"
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded={showSuggestions}
+                        aria-controls="mk-suggestion-list"
+                        aria-activedescendant={showSuggestions && highlightIdx >= 0 ? `mk-suggestion-${highlightIdx}` : undefined}
+                        autoComplete="off"
                         value={trayQuery}
-                        onChange={e => setTrayQuery(e.target.value)}
-                        onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
+                        onChange={e => handleTrayQueryChange(e.target.value)}
+                        onKeyDown={handleTrayKeyDown}
+                        onFocus={() => { if (trayQuery.trim()) openSuggestions(trayQuery) }}
                       />
                       {trayQuery && (
-                        <button type="button" className="mk-tray-search-clear" onClick={clearSearch}>
-                          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+                        <button type="button" className="mk-tray-search-clear" onClick={clearSearch} aria-label="Clear search">
+                          <span className="material-symbols-outlined" style={{ fontSize: 16 }} aria-hidden="true">close</span>
                         </button>
                       )}
                     </div>
                     {showSuggestions && suggestions.length > 0 && (
-                      <div className="mk-tray-suggestions">
+                      <ul className="mk-tray-suggestions" id="mk-suggestion-list" role="listbox" aria-label="Suggestions">
                         {suggestions.map((s, i) => (
-                          <button key={i} type="button" className="mk-tray-suggestion" onClick={() => applySuggestion(s.text, s.type)}>
-                            <span className="material-symbols-outlined mk-tray-suggestion-icon">{s.icon}</span>
+                          <li
+                            key={s.type + s.text}
+                            id={`mk-suggestion-${i}`}
+                            role="option"
+                            aria-selected={i === highlightIdx}
+                            className={`mk-tray-suggestion ${i === highlightIdx ? 'mk-tray-suggestion--active' : ''}`}
+                            onMouseDown={e => { e.preventDefault(); applySuggestion(s.text) }}
+                            onMouseEnter={() => setHighlightIdx(i)}
+                          >
+                            <span className="material-symbols-outlined mk-tray-suggestion-icon" aria-hidden="true">{s.icon}</span>
                             <span className="mk-tray-suggestion-text">{s.type === 'company' ? `Referred by ${s.text}` : s.text}</span>
-                            <span className="mk-tray-suggestion-type">{s.type}</span>
-                          </button>
+                            <span className="mk-tray-suggestion-type">{s.type === 'role' ? `${s.count} ${s.count === 1 ? 'candidate' : 'candidates'}` : s.type}</span>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     )}
                   </div>
 
                   <div className="mk-tray-chips">
                     {CATEGORY_CHIPS.map(({ key, icon }) => {
                       const active = activeCategories.includes(key)
+                      const count = categoryCounts[key] || 0
+                      const empty = count === 0 && !active
                       return (
                         <button
                           key={key}
                           type="button"
-                          className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''}`}
+                          className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''} ${empty ? 'mk-tray-chip--empty' : ''}`}
+                          disabled={empty}
+                          title={empty ? `No ${key} candidates yet` : undefined}
                           onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
                         >
-                          <span className="material-symbols-outlined mk-tray-chip-icon">{icon}</span>
+                          <span className="material-symbols-outlined mk-tray-chip-icon" aria-hidden="true">{icon}</span>
                           {key}
-                          <span className="mk-tray-chip-count">{categoryCounts[key] || 0}</span>
+                          <span className="mk-tray-chip-count">{count}</span>
                         </button>
                       )
                     })}
                   </div>
 
-                  <div className="mk-tray-divider" />
+                  <button
+                    type="button"
+                    className={`mk-tray-more-btn ${moreFiltersCount > 0 ? 'mk-tray-more-btn--has-active' : ''}`}
+                    aria-expanded={showMoreFilters}
+                    aria-controls="mk-more-filters"
+                    onClick={() => setShowMoreFilters(v => !v)}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">tune</span>
+                    More filters{moreFiltersCount > 0 ? ` (${moreFiltersCount})` : ''}
+                    <span className="material-symbols-outlined mk-tray-more-chevron" aria-hidden="true">{showMoreFilters ? 'expand_less' : 'expand_more'}</span>
+                  </button>
 
-                  <p className="mk-tray-role-label">Or pick a specific role</p>
-                  <div className="mk-tray-roles">
-                    {(showAllRoles ? [...DEFAULT_ROLES, ...EXPANDED_ROLES] : DEFAULT_ROLES).map(r => {
-                      const active = activeRole === r
-                      return (
-                        <button
-                          key={r}
-                          type="button"
-                          className={`mk-tray-role ${active ? 'mk-tray-role--active' : ''}`}
-                          onClick={() => {
-                            if (activeRole === r) { setActiveRole(null) }
-                            else { setActiveRole(r); setActiveCategories([]) }
-                          }}
-                        >
-                          {r}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  {showMoreFilters && (
+                    <div className="mk-tray-more" id="mk-more-filters">
+                      <div className="mk-tray-quant-row">
+                        <div className="mk-tray-salary">
+                          <div className="mk-tray-salary-header">
+                            <span className="mk-tray-salary-label">Salary expectation</span>
+                            <span className="mk-tray-salary-value">
+                              {salaryMax >= 300 ? '$300k+ AUD' : `Up to $${salaryMax}k AUD`}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            className="mk-tray-slider"
+                            min={40}
+                            max={300}
+                            step={5}
+                            value={salaryMax}
+                            onChange={e => handleSalaryChange(parseInt(e.target.value))}
+                            style={{ '--pct': `${((salaryMax - 40) / (300 - 40)) * 100}%` }}
+                          />
+                          <div className="mk-tray-salary-range">
+                            <span>$40k</span>
+                            <span>$300k+</span>
+                          </div>
+                        </div>
 
-                  <div className="mk-tray-divider" />
+                        <div className="mk-tray-quant-sep" />
 
-                  <div className="mk-tray-quant-row">
-                    <div className="mk-tray-salary">
-                      <div className="mk-tray-salary-header">
-                        <span className="mk-tray-salary-label">Salary expectation</span>
-                        <span className="mk-tray-salary-value">
-                          {salaryMax >= 300 ? '$300k+ AUD' : `Up to $${salaryMax}k AUD`}
-                        </span>
+                        <div className="mk-tray-experience">
+                          <div className="mk-tray-exp-header">
+                            <span className="mk-tray-salary-label">Min. experience</span>
+                            <span className="mk-tray-salary-value">
+                              {minExperience === 0 ? 'Any experience' : `${minExperience}+ years`}
+                            </span>
+                          </div>
+                          <div className="mk-tray-exp-controls">
+                            <button
+                              type="button"
+                              className="mk-tray-exp-btn"
+                              disabled={minExperience <= 0}
+                              onClick={() => handleExperienceChange(-1)}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
+                            </button>
+                            <span className="mk-tray-exp-value">
+                              {minExperience === 0 ? 'Any' : `${minExperience}+`}
+                            </span>
+                            <button
+                              type="button"
+                              className="mk-tray-exp-btn"
+                              disabled={minExperience >= 20}
+                              onClick={() => handleExperienceChange(1)}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <input
-                        type="range"
-                        className="mk-tray-slider"
-                        min={40}
-                        max={300}
-                        step={5}
-                        value={salaryMax}
-                        onChange={e => handleSalaryChange(parseInt(e.target.value))}
-                        style={{ '--pct': `${((salaryMax - 40) / (300 - 40)) * 100}%` }}
-                      />
-                      <div className="mk-tray-salary-range">
-                        <span>$40k</span>
-                        <span>$300k+</span>
-                      </div>
-                    </div>
 
-                    <div className="mk-tray-quant-sep" />
+                      <div className="mk-tray-divider" />
 
-                    <div className="mk-tray-experience">
-                      <div className="mk-tray-exp-header">
-                        <span className="mk-tray-salary-label">Min. experience</span>
-                        <span className="mk-tray-salary-value">
-                          {minExperience === 0 ? 'Any experience' : `${minExperience}+ years`}
-                        </span>
-                      </div>
-                      <div className="mk-tray-exp-controls">
-                        <button
-                          type="button"
-                          className="mk-tray-exp-btn"
-                          disabled={minExperience <= 0}
-                          onClick={() => handleExperienceChange(-1)}
-                        >
-                          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
-                        </button>
-                        <span className="mk-tray-exp-value">
-                          {minExperience === 0 ? 'Any' : `${minExperience}+`}
-                        </span>
-                        <button
-                          type="button"
-                          className="mk-tray-exp-btn"
-                          disabled={minExperience >= 20}
-                          onClick={() => handleExperienceChange(1)}
-                        >
-                          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mk-tray-divider" />
-
-                  <div className="mk-tray-pill-row">
-                    <div className="mk-tray-pill-group">
-                      <span className="mk-tray-salary-label">Availability</span>
-                      <div className="mk-tray-pills">
-                        {['Available now', '2 weeks', '1 month', 'Flexible'].map(v => (
-                          <button key={v} type="button" className={`mk-tray-pill ${availability.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(availability, v, setAvailability, 'availability')}>
-                            {v}
-                          </button>
+                      <div className="mk-tray-pill-row">
+                        {[
+                          { label: 'Availability', options: AVAILABILITY_OPTIONS, value: availability, setter: setAvailability },
+                          { label: 'Work preference', options: WORK_OPTIONS, value: workPreference, setter: setWorkPreference },
+                          { label: 'Location', options: LOCATION_OPTIONS, value: locations, setter: setLocations },
+                        ].map(({ label, options, value, setter }, gi) => (
+                          <div key={label} style={{ display: 'contents' }}>
+                            {gi > 0 && <div className="mk-tray-quant-sep" />}
+                            <div className="mk-tray-pill-group">
+                              <span className="mk-tray-salary-label">{label}</span>
+                              <div className="mk-tray-pills">
+                                {options.map(v => (
+                                  <button key={v} type="button" className={`mk-tray-pill ${value.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(v, setter)}>
+                                    {v}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
-
-                    <div className="mk-tray-quant-sep" />
-
-                    <div className="mk-tray-pill-group">
-                      <span className="mk-tray-salary-label">Work preference</span>
-                      <div className="mk-tray-pills">
-                        {['Remote', 'Hybrid', 'On-site'].map(v => (
-                          <button key={v} type="button" className={`mk-tray-pill ${workPreference.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(workPreference, v, setWorkPreference, 'workPreferences')}>
-                            {v}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mk-tray-quant-sep" />
-
-                    <div className="mk-tray-pill-group">
-                      <span className="mk-tray-salary-label">Location</span>
-                      <div className="mk-tray-pills">
-                        {['Sydney', 'Melbourne', 'Brisbane', 'Remote AU'].map(v => (
-                          <button key={v} type="button" className={`mk-tray-pill ${locations.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(locations, v, setLocations, 'locations')}>
-                            {v}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="mk-tray-bottom">
-                    <button type="button" className="mk-tray-toggle press-scale" onClick={() => setShowAllRoles(v => !v)}>
-                      {showAllRoles ? 'Show less \u2191' : 'See all roles \u2192'}
+                    <button type="button" className="mk-tray-toggle press-scale" onClick={showAllRoles}>
+                      See all roles &rarr;
                     </button>
                     <button type="button" className="mk-tray-confirm press-scale" onClick={confirmDiscovery}>
                       Show me candidates &rarr;
