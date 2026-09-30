@@ -11,19 +11,19 @@
 .placeholder-icon {
   width: 4rem;
   height: 4rem;
-  border-radius: 1rem;
-  background: var(--primary-container);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 1.25rem;
+  border-radius: var(--radius-card);
+  background: var(--color-primary-tint);
 }
 
 .placeholder-title {
   font-family: 'Manrope', sans-serif;
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--on-surface);
+  color: var(--color-primary);
   margin-bottom: 0.5rem;
 }
 
@@ -37,9 +37,9 @@
 
 .placeholder-hint {
   font-size: 12px;
-  color: var(--outline-variant);
   max-width: 300px;
   line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
 /* ── Placeholder card grid ──────────────────────────────── */
@@ -60,8 +60,7 @@
 }
 
 .placeholder-card {
-  background: var(--surface-container-lowest);
-  border: 1px solid rgba(187,186,175,.15);
+  border: 1px solid var(--color-border-subtle);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
@@ -69,21 +68,22 @@
   text-align: center;
   gap: 0.5rem;
   transition: box-shadow 0.3s;
+  background: #FFFFFF;
 }
 
 .placeholder-card:hover {
-  box-shadow: 0 24px 48px rgba(56,56,49,.06);
+  box-shadow: 0 24px 48px rgba(55,65,81,.06);
 }
 
 .placeholder-card-icon {
   width: 3rem;
   height: 3rem;
-  border-radius: 1rem;
-  background: var(--surface-container);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--gray-50);
 }
 
 .placeholder-card-title {
@@ -149,10 +149,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  background: var(--surface-container-lowest);
-  border: 1px solid rgba(187,186,175,.15);
-  border-radius: 1rem;
+  border: 1px solid var(--color-border-subtle);
   margin-bottom: 0.75rem;
+  background: #FFFFFF;
+  border-radius: var(--radius-card);
 }
 
 .integration-left {
@@ -165,11 +165,11 @@
   width: 8px;
   height: 8px;
   border-radius: 9999px;
-  background: var(--outline-variant);
   flex-shrink: 0;
+  background: var(--color-border-input);
 }
 .integration-dot--on {
-  background: var(--primary);
+  background: var(--color-success);
 }
 
 .integration-name {
@@ -187,34 +187,36 @@
 .integration-btn {
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  border: none;
-  background: var(--primary);
-  color: white;
   font-size: 12px;
-  font-weight: 700;
   font-family: 'Manrope', sans-serif;
   cursor: pointer;
   transition: background 0.2s;
+  background: var(--color-primary);
+  color: #FFFFFF;
+  font-weight: 700;
+  min-height: var(--button-min-height);
+  border: none;
 }
 
 .integration-btn:hover {
-  background: var(--primary-dim);
+  background: var(--color-primary-hover);
 }
 
 .integration-btn--disabled {
-  background: var(--surface-container-high);
-  color: var(--on-surface-variant);
   cursor: default;
+  background: var(--gray-100);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
 }
 .integration-btn--disabled:hover {
-  background: var(--surface-container-high);
   color: var(--on-surface-variant);
+  background: var(--gray-100);
 }
 
 .integration-btn--danger {
-  background: var(--error);
-  color: white;
+  background: var(--color-critical);
+  color: #FFFFFF;
 }
 .integration-btn--danger:hover {
-  background: var(--error-dim);
+  background: var(--color-critical-hover);
 }

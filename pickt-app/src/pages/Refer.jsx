@@ -915,7 +915,7 @@ export default function Refer() {
         <div>
           <label className="rf-label">Cover letter (optional)</label>
           {form.cover_letter ? (
-            <div className="rf-uploaded" style={{ borderColor: 'rgba(187,186,175,.15)', background: 'var(--surface-container)' }}>
+            <div className="rf-uploaded" style={{ borderColor: 'var(--color-border-subtle)', background: 'var(--surface-container)' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--on-surface)' }}>{form.cover_letter.filename}</span>
               <button type="button" onClick={() => set("cover_letter", null)} className="rf-uploaded-remove">Remove</button>
             </div>

@@ -10,8 +10,6 @@
   gap: 6px;
   padding: 0.5rem 0.75rem;
   border-radius: 9999px;
-  border: 1px solid rgba(187,186,175,.15);
-  background: var(--surface-container-high);
   color: var(--on-surface-variant);
   font-size: 12px;
   font-weight: 600;
@@ -19,23 +17,25 @@
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s;
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-input);
 }
 
 .fd-trigger:hover {
-  background: var(--surface-container-highest);
   color: var(--on-surface);
+  background: var(--color-primary-tint);
 }
 
 .fd-trigger--active {
-  background: var(--tertiary-container);
-  color: var(--on-tertiary-container);
-  border-color: transparent;
   font-weight: 700;
+  background: var(--color-primary-tint);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .fd-trigger--open {
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .fd-trigger-icon {
@@ -49,8 +49,6 @@
 }
 
 .fd-trigger-count {
-  background: var(--primary);
-  color: white;
   font-size: 9px;
   font-weight: 700;
   padding: 1px 5px;
@@ -58,6 +56,8 @@
   min-width: 16px;
   text-align: center;
   animation: badgePop 280ms ease-out;
+  background: var(--color-primary);
+  color: #FFFFFF;
 }
 
 .fd-chevron {
@@ -87,16 +87,16 @@
   left: 0;
   min-width: 200px;
   max-height: 280px;
-  background: var(--surface-container-lowest);
-  border: 1px solid rgba(187,186,175,.15);
-  border-radius: 0.5rem;
-  box-shadow: 0 8px 32px rgba(56,56,49,.12);
+  box-shadow: 0 8px 32px rgba(55,65,81,.12);
   z-index: 100;
   transform-origin: top center;
   animation: fdOpen 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: #FFFFFF;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border-subtle);
 }
 
 .fd-panel--closing {
@@ -106,7 +106,6 @@
 .fd-clear {
   border: none;
   background: none;
-  color: var(--primary);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -114,6 +113,8 @@
   text-align: right;
   align-self: flex-end;
   font-family: 'Manrope', sans-serif;
+  color: var(--color-primary);
+  text-decoration: underline;
 }
 .fd-clear:hover {
   text-decoration: underline;
@@ -139,7 +140,7 @@
 }
 
 .fd-option:hover {
-  background: var(--surface-container-high);
+  background: var(--color-primary-tint);
 }
 
 .fd-option--selected {
@@ -158,19 +159,19 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  border: 1.5px solid var(--outline-variant);
-  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
+  border: 1.5px solid var(--color-border-input);
+  background: #FFFFFF;
 }
 
 .fd-checkbox--checked {
-  background: var(--primary);
-  border-color: var(--primary);
   animation: checkBounce 200ms ease-out;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .fd-checkbox--checked svg {

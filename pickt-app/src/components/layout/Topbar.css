@@ -8,10 +8,10 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(252,250,238,0.8);
+  background: rgba(255,255,255,0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(187,186,175,.1);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 /* ── Search ── */
@@ -36,8 +36,8 @@
 .topbar-search-input {
   width: 100%;
   padding: 0.5rem 1rem 0.5rem 2.5rem;
-  background: rgba(240,238,225,0.5);
-  border: none;
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-input);
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -47,7 +47,7 @@
   transition: box-shadow 0.2s;
 }
 .topbar-search-input:focus {
-  box-shadow: 0 0 0 2px rgba(45,114,53,0.2);
+  box-shadow: 0 0 0 2px rgba(0,35,102,0.2);
 }
 .topbar-search-input::placeholder {
   color: var(--on-surface-variant);
@@ -73,14 +73,14 @@
   color: var(--on-surface-variant);
   transition: color 0.15s;
 }
-.topbar-icon-btn:hover { color: var(--primary); }
+.topbar-icon-btn:hover { color: var(--color-primary); background: var(--color-primary-tint); }
 .topbar-icon-btn .material-symbols-outlined { font-size: 22px; }
 
 .topbar-notif-wrap { position: relative; }
 .topbar-notif-dot {
   position: absolute; top: 6px; right: 6px;
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--primary);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--color-critical);
 }
 .topbar-search-clear {
   position: absolute; right: 0.75rem; top: 50%;
@@ -95,14 +95,14 @@
 .topbar-divider {
   width: 1px;
   height: 20px;
-  background: rgba(187,186,175,.2);
+  background: var(--color-border-subtle);
   margin: 0 0.5rem;
 }
 
 .topbar-profile-label {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #2d7235;
+  color: var(--color-primary);
   margin-right: 0.5rem;
 }
 
@@ -110,7 +110,7 @@
   width: 32px;
   height: 32px;
   border-radius: 9999px;
-  background: var(--secondary-container);
+  background: var(--color-primary-tint);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -120,5 +120,5 @@
 .topbar-avatar:hover { transform: scale(1.1); }
 .topbar-avatar .material-symbols-outlined {
   font-size: 18px;
-  color: var(--on-secondary-container);
+  color: var(--color-primary);
 }

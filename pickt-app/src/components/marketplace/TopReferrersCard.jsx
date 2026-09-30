@@ -1,9 +1,9 @@
 import { COPY } from '../../lib/copy'
 
 const REFERRERS = [
-  { initials: 'JD', name: 'Jane Doe', picks: 24, avatarBg: 'rgba(45,114,53,0.2)', avatarColor: 'var(--primary)' },
-  { initials: 'MK', name: 'Mike K.', picks: 18, avatarBg: 'rgba(134,92,0,0.15)', avatarColor: 'var(--secondary)' },
-  { initials: 'SL', name: 'Sam L.', picks: 15, avatarBg: 'rgba(75,108,76,0.15)', avatarColor: 'var(--tertiary)' },
+  { initials: 'JD', name: 'Jane Doe', picks: 24, avatarBg: 'var(--color-primary-tint)', avatarColor: 'var(--color-primary)' },
+  { initials: 'MK', name: 'Mike K.', picks: 18, avatarBg: 'var(--color-primary-tint)', avatarColor: 'var(--color-primary)' },
+  { initials: 'SL', name: 'Sam L.', picks: 15, avatarBg: 'var(--color-primary-tint)', avatarColor: 'var(--color-primary)' },
 ]
 
 export default function TopReferrersCard() {

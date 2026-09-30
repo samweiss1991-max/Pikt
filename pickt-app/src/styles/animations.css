@@ -75,8 +75,8 @@
 
 .hover-lift:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(56, 56, 49, 0.08),
-              0 4px 8px rgba(56, 56, 49, 0.04);
+  box-shadow: 0 12px 32px rgba(55,65,81,0.08),
+              0 4px 8px rgba(55,65,81,0.04);
 }
 
 /* ── Button press feel ───────────────────────────────────── */

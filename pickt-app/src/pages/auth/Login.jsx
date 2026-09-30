@@ -71,17 +71,17 @@ export default function Login() {
           Don't have an account? <Link to="/signup" className="auth-link">Sign up</Link>
         </p>
 
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(187,186,175,.15)', textAlign: 'center' }}>
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border-subtle)', textAlign: 'center' }}>
           <button
             onClick={() => {
               localStorage.setItem('pickt_dev_auth', 'true')
               navigate('/')
             }}
             style={{
-              border: '1px solid rgba(187,186,175,.15)', background: 'var(--surface-container-high)',
-              color: 'var(--on-surface-variant)', padding: '10px 20px', borderRadius: '0.5rem',
-              fontSize: 13, cursor: 'pointer', width: '100%', fontFamily: "'Manrope', sans-serif",
-              fontWeight: 600,
+              border: '2px solid var(--color-primary)', background: '#FFFFFF',
+              color: 'var(--color-primary)', padding: '10px 20px', borderRadius: '0.5rem',
+              minHeight: 44, fontSize: 13, cursor: 'pointer', width: '100%', fontFamily: "'Manrope', sans-serif",
+              fontWeight: 700,
             }}
           >
             Skip to demo →

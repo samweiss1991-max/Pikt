@@ -8,7 +8,7 @@ export default function EmptyState({ icon = 'inbox', message, ctaLabel, onCta })
       {ctaLabel && (
         <button
           onClick={onCta}
-          className="bg-primary text-on-primary px-6 py-2 rounded-lg font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+          className="bg-primary text-on-primary min-h-[44px] hover:bg-primary-dim px-6 py-2 rounded-lg font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
         >
           {ctaLabel}
         </button>

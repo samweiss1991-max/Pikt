@@ -1,7 +1,7 @@
 // Skeleton placeholder card mimicking a real CandidateCard.
 // Props: animationDelay (s), blur (px), opacity (0-1)
 
-const SHIMMER_BG = '#eae9db' // cream-dark equivalent → surface-container-highest
+const SHIMMER_BG = 'var(--surface-container-highest)'
 
 function Bone({ width, height, radius, delay, style }) {
   return (

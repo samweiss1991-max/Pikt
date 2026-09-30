@@ -22,14 +22,14 @@ export default function Placements() {
         </div>
         <div className="placeholder-card pikt-card">
           <div className="placeholder-card-icon">
-            <span className="material-symbols-outlined" style={{ fontSize: 24, color: 'var(--secondary)' }}>receipt_long</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 24, color: 'var(--color-primary)' }}>receipt_long</span>
           </div>
           <div className="placeholder-card-title">Fee Breakdown</div>
           <div className="placeholder-card-desc">See detailed placement fee calculations and payment schedules.</div>
         </div>
         <div className="placeholder-card pikt-card">
           <div className="placeholder-card-icon">
-            <span className="material-symbols-outlined" style={{ fontSize: 24, color: 'var(--tertiary)' }}>history</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 24, color: 'var(--color-primary)' }}>history</span>
           </div>
           <div className="placeholder-card-title">Placement History</div>
           <div className="placeholder-card-desc">Review past placements, retention rates, and overall outcomes.</div>

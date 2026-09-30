@@ -12,19 +12,20 @@
   gap: 0.375rem;
   background: none;
   border: none;
-  color: var(--on-surface-variant);
   font-size: 0.875rem;
-  font-weight: 600;
   cursor: pointer;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   margin-bottom: 1.5rem;
   font-family: inherit;
+  color: var(--color-primary);
+  font-weight: 700;
+  min-height: var(--button-min-height);
 }
 
 .up-back-link:hover {
-  color: var(--primary);
-  background: var(--surface-container);
+  color: var(--color-primary);
+  background: var(--color-primary-tint);
 }
 
 .up-back-link .material-symbols-outlined {
@@ -53,50 +54,50 @@
 }
 
 .up-card {
-  background: var(--surface-container-lowest);
-  border: 1px solid var(--outline-variant);
-  border-radius: 1rem;
   padding: 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
 }
 
 .up-dropzone {
-  border: 2px dashed var(--outline-variant);
-  border-radius: 0.875rem;
   padding: 2.5rem 1.5rem;
   text-align: center;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease;
-  background: var(--surface-container);
+  border-radius: var(--radius-card);
+  border: 2px dashed var(--color-border-input);
+  background: var(--gray-50);
 }
 
 .up-dropzone:hover {
-  border-color: var(--primary);
-  background: var(--surface-container-high);
+  border-color: var(--color-primary);
+  background: var(--color-primary-tint);
 }
 
 .up-dropzone--over {
-  border-color: var(--primary);
-  background: var(--primary-container);
+  border-color: var(--color-primary);
+  background: var(--color-primary-tint);
 }
 
 .up-dropzone--filled {
   border-style: solid;
-  background: var(--surface-container-lowest);
   cursor: default;
   padding: 1.25rem;
+  background: #FFFFFF;
 }
 
 .up-dropzone-icon {
   width: 3rem;
   height: 3rem;
-  border-radius: 0.75rem;
-  background: var(--primary-container);
   display: grid;
   place-items: center;
   margin: 0 auto 0.875rem;
+  border-radius: 0.5rem;
+  background: var(--color-primary-tint);
 }
 
 .up-dropzone-icon .material-symbols-outlined {
@@ -149,8 +150,6 @@
 }
 
 .up-file-remove {
-  border: none;
-  background: var(--surface-container-high);
   border-radius: 0.5rem;
   width: 2rem;
   height: 2rem;
@@ -158,11 +157,14 @@
   place-items: center;
   cursor: pointer;
   color: var(--on-surface-variant);
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-input);
 }
 
 .up-file-remove:hover {
-  background: var(--error-container);
-  color: var(--on-error-container);
+  background: var(--color-critical-tint);
+  color: var(--color-critical);
+  border-color: var(--color-critical);
 }
 
 .up-file-remove .material-symbols-outlined {
@@ -186,7 +188,7 @@
   top: 50%;
   width: calc(50% - 8rem);
   height: 1px;
-  background: var(--outline-variant);
+  background: var(--color-border-subtle);
 }
 
 .up-divider::before { left: 0; }
@@ -195,16 +197,16 @@
 .up-textarea {
   width: 100%;
   resize: vertical;
-  border: 1px solid var(--outline-variant);
-  border-radius: 0.75rem;
   padding: 0.875rem 1rem;
   font-family: inherit;
   font-size: 0.9375rem;
   line-height: 1.55;
-  background: var(--surface-container);
   color: var(--on-surface);
   box-sizing: border-box;
   transition: border-color 150ms ease;
+  border: 1px solid var(--color-border-input);
+  border-radius: 0.5rem;
+  background: #FFFFFF;
 }
 
 .up-textarea:focus {
@@ -218,12 +220,13 @@
 }
 
 .up-error {
-  background: var(--error-container);
-  color: var(--on-error-container);
   padding: 0.75rem 1rem;
   border-radius: 0.625rem;
   font-size: 0.875rem;
   font-weight: 600;
+  background: var(--color-critical-tint);
+  color: var(--color-critical);
+  border: 1px solid var(--color-critical);
 }
 
 .up-submit {
@@ -232,19 +235,20 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.875rem 1.5rem;
-  border-radius: 0.75rem;
-  border: none;
-  background: var(--primary);
-  color: white;
   font-size: 1rem;
-  font-weight: 700;
   cursor: pointer;
   font-family: inherit;
   transition: background 150ms ease, opacity 150ms ease;
+  background: var(--color-primary);
+  color: #FFFFFF;
+  font-weight: 700;
+  min-height: var(--button-min-height);
+  border: none;
+  border-radius: 0.5rem;
 }
 
 .up-submit:hover:not(:disabled) {
-  background: var(--on-primary-fixed);
+  background: var(--color-primary-hover);
 }
 
 .up-submit:disabled {

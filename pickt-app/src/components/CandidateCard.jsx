@@ -14,11 +14,11 @@ function getReferrerBadge(index, company) {
 }
 
 const STAGE_COLORS = {
-  'Final round': { bg: 'rgba(45,114,53,0.12)', color: 'var(--primary)', border: 'rgba(45,114,53,0.3)' },
-  '3rd round': { bg: 'rgba(75,108,76,0.12)', color: 'var(--tertiary)', border: 'rgba(75,108,76,0.3)' },
-  '2nd round': { bg: 'rgba(109,40,217,0.12)', color: '#a78bfa', border: 'rgba(109,40,217,0.3)' },
-  'Technical screen': { bg: 'rgba(109,40,217,0.12)', color: '#a78bfa', border: 'rgba(109,40,217,0.3)' },
-  '1st phone screen': { bg: 'rgba(180,83,9,0.12)', color: 'var(--secondary)', border: 'rgba(180,83,9,0.3)' },
+  'Final round': { bg: 'var(--color-success-tint)', color: 'var(--color-success)', border: 'var(--color-success)' },
+  '3rd round': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-primary)' },
+  '2nd round': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-border-subtle)' },
+  'Technical screen': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-border-subtle)' },
+  '1st phone screen': { bg: 'var(--gray-100)', color: 'var(--color-text)', border: 'var(--color-border-subtle)' },
 }
 
 function StageBadge({ stage }) {
@@ -170,8 +170,8 @@ function NewCard({ candidate: c, viewMode, index }) {
           {expanded && (
             <div className="cc-expanded-details">
               <MatchBar label="Role match" value={roleMatch} color="var(--primary)" />
-              <MatchBar label="Interviews" value={interviewMatch} color="var(--tertiary)" />
-              <MatchBar label="Recency" value={recencyMatch} color="var(--secondary)" />
+              <MatchBar label="Interviews" value={interviewMatch} color="var(--color-primary)" />
+              <MatchBar label="Recency" value={recencyMatch} color="var(--color-primary)" />
               <p className="cc-description">{description}</p>
               <div className="cc-cta-row">
                 <button className="cc-btn-primary" onClick={e => { e.stopPropagation(); goToProfile() }}>{COPY.marketplace.requestInterview}</button>
@@ -203,8 +203,8 @@ function NewCard({ candidate: c, viewMode, index }) {
               <p className="cc-description cc-description--full">{description}</p>
               <div className="cc-bars-block">
                 <MatchBar label="Role match" value={roleMatch} color="var(--primary)" />
-                <MatchBar label="Interviews" value={interviewMatch} color="var(--tertiary)" />
-                <MatchBar label="Recency" value={recencyMatch} color="var(--secondary)" />
+                <MatchBar label="Interviews" value={interviewMatch} color="var(--color-primary)" />
+                <MatchBar label="Recency" value={recencyMatch} color="var(--color-primary)" />
               </div>
               {c.gaps && (
                 <div className="cc-gaps-block">

@@ -1,10 +1,10 @@
+// Avatars carry white initials, so every gradient stays dark enough
+// for white text (navy + slate from the palette in tokens.css).
 const GRADIENTS = [
-  ['#2d7235', '#1f652a'],
-  ['#865c00', '#765100'],
-  ['#78716c', '#44403c'],
-  ['#1f652a', '#14532d'],
-  ['#4b6c4c', '#3f6041'],
-  ['#a16207', '#854d0e'],
+  ['#002366', '#001845'],
+  ['#374151', '#1F2937'],
+  ['#1E3A6E', '#002366'],
+  ['#4B5563', '#374151'],
 ]
 
 export function getAvatarGradient(index) {

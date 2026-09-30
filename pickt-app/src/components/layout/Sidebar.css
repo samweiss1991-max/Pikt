@@ -4,8 +4,8 @@
   width: 18rem;
   display: flex;
   flex-direction: column;
-  background: var(--surface-container-low);
-  border-right: 1px solid rgba(187,186,175,.1);
+  background: #FFFFFF;
+  border-right: 1px solid var(--color-border-subtle);
   border-top-right-radius: 2.5rem;
   border-bottom-right-radius: 2.5rem;
   z-index: 20;
@@ -18,8 +18,8 @@
   font-size: 1.5rem; font-weight: 900;
   letter-spacing: -0.04em; margin: 0; line-height: 1;
 }
-.logo-pick { color: #2d7235; font-style: italic; }
-.logo-t { color: #ffc96e; font-style: italic; }
+.logo-pick { color: var(--color-primary); font-style: italic; }
+.logo-t { color: var(--color-critical); font-style: italic; }
 .sidebar-subtitle {
   font-size: 0.875rem; font-weight: 500;
   letter-spacing: -0.02em;
@@ -44,12 +44,13 @@
   transition: all 0.15s ease;
   border: none;
 }
-.nav-item:hover { background: rgba(45,114,53,0.1); }
+.nav-item:hover { background: var(--color-primary-tint); color: var(--color-primary); }
 
 .nav-item--active {
-  background: var(--secondary-container);
-  color: var(--on-secondary-container);
+  background: var(--color-primary-tint);
+  color: var(--color-primary);
   font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--color-primary);
   transform: scale(0.95);
 }
 
@@ -64,8 +65,9 @@
 
 .sidebar-post-btn {
   width: 100%;
-  background: var(--primary);
-  color: white;
+  background: var(--color-primary);
+  color: #FFFFFF;
+  min-height: var(--button-min-height);
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
   border: none;
@@ -73,9 +75,9 @@
   font-weight: 700; font-size: 0.875rem;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-  transition: transform 0.15s, opacity 0.15s;
+  transition: transform 0.15s, background 0.15s;
 }
-.sidebar-post-btn:hover { opacity: 0.9; }
+.sidebar-post-btn:hover { background: var(--color-primary-hover); }
 .sidebar-post-btn:active { transform: scale(0.95); }
 .sidebar-post-btn .material-symbols-outlined { font-size: 20px; }
 
@@ -84,14 +86,14 @@
   margin-top: 0.75rem;
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
-  background: var(--surface-container-high);
+  background: var(--surface-container);
   display: flex; align-items: center; gap: 0.75rem;
-  border-top: 1px solid rgba(187,186,175,.1);
+  border-top: 1px solid var(--color-border-subtle);
 }
 .sidebar-user-avatar {
   width: 40px; height: 40px;
   border-radius: 9999px;
-  background: rgba(45,114,53,0.1);
+  background: rgba(0,35,102,0.1);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }

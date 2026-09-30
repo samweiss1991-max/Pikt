@@ -14,11 +14,11 @@ import UnlockModal from '../components/unlock/UnlockModal'
 import './CandidateProfile.css'
 
 const STAGE_COLORS = {
-  'Final round': { bg: 'rgba(45,114,53,0.12)', color: 'var(--primary)', border: 'rgba(45,114,53,0.3)' },
-  '3rd round': { bg: 'rgba(75,108,76,0.12)', color: 'var(--tertiary)', border: 'rgba(75,108,76,0.3)' },
-  '2nd round': { bg: 'rgba(109,40,217,0.12)', color: '#a78bfa', border: 'rgba(109,40,217,0.3)' },
-  'Technical screen': { bg: 'rgba(109,40,217,0.12)', color: '#a78bfa', border: 'rgba(109,40,217,0.3)' },
-  '1st phone screen': { bg: 'rgba(180,83,9,0.12)', color: 'var(--secondary)', border: 'rgba(180,83,9,0.3)' },
+  'Final round': { bg: 'var(--color-success-tint)', color: 'var(--color-success)', border: 'var(--color-success)' },
+  '3rd round': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-primary)' },
+  '2nd round': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-border-subtle)' },
+  'Technical screen': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-border-subtle)' },
+  '1st phone screen': { bg: 'var(--gray-100)', color: 'var(--color-text)', border: 'var(--color-border-subtle)' },
 }
 
 const INTERVIEW_ROUNDS = [

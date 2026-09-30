@@ -2,7 +2,7 @@ import { COPY } from '../../lib/copy'
 
 export default function ErrorBanner({ message, onRetry }) {
   return (
-    <div className="flex items-center gap-3 p-4 rounded-lg bg-surface-container-high border border-error/20">
+    <div className="flex items-center gap-3 p-4 rounded-lg bg-error-container border border-error">
       <span className="material-symbols-outlined text-error">error_outline</span>
       <span className="text-sm font-medium text-on-surface">
         {message || COPY.errors.generic}
