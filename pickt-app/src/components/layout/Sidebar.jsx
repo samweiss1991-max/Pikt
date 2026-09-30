@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { COPY } from '../../lib/copy'
 import NavBadge from '../shared/NavBadge'
@@ -14,9 +15,18 @@ const NAV_ITEMS = [
   { label: COPY.nav.integrations,  icon: 'extension',       path: '/integrations' },
 ]
 
-export default function Sidebar({ badges = {} }) {
+// `open` / `onNavigate` only matter on mobile, where the sidebar is a slide-in drawer
+export default function Sidebar({ badges = {}, open = false, onNavigate }) {
   const location = useLocation()
   const navigate = useNavigate()
+  const navRef = useRef(null)
+
+  // Move focus into the drawer when it opens (next frame, once it's visible)
+  useEffect(() => {
+    if (!open) return
+    const id = requestAnimationFrame(() => navRef.current?.querySelector('a')?.focus())
+    return () => cancelAnimationFrame(id)
+  }, [open])
 
   function isActive(item) {
     if (item.path === '/') return location.pathname === '/'
@@ -24,7 +34,7 @@ export default function Sidebar({ badges = {} }) {
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${open ? 'sidebar--open' : ''}`} id="app-sidebar">
       {/* Wordmark */}
       <div className="sidebar-logo">
         <h1 className="sidebar-wordmark">
@@ -35,7 +45,7 @@ export default function Sidebar({ badges = {} }) {
       </div>
 
       {/* Navigation */}
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" ref={navRef} aria-label="Main">
         {NAV_ITEMS.map(item => {
           const active = isActive(item)
           return (
@@ -48,7 +58,9 @@ export default function Sidebar({ badges = {} }) {
                   try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
                 }
                 navigate(item.path)
+                onNavigate?.()
               }}
+              aria-current={active ? 'page' : undefined}
               href={item.path}
             >
               <span

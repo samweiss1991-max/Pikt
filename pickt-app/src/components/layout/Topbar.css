@@ -14,6 +14,24 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
+/* ── Mobile menu button (hidden above 768px) ── */
+.topbar-menu-btn {
+  display: none;
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  margin-right: 0.5rem;
+  align-items: center; justify-content: center;
+  background: none; border: none;
+  border-radius: 9999px;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.topbar-menu-btn:hover { background: var(--color-primary-tint); }
+.topbar-menu-btn .material-symbols-outlined { font-size: 26px; }
+@media (max-width: 768px) {
+  .topbar-menu-btn { display: flex; }
+}
+
 /* ── Search ── */
 .topbar-search-container {
   position: relative;

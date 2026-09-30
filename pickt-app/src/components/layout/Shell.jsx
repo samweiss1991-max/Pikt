@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
@@ -7,18 +8,31 @@ import { useLayeredParallax } from '../../hooks/useParallax'
 export default function Shell() {
   const location = useLocation()
   const mainRef = useLayeredParallax()
+  // Mobile (≤768px) navigation drawer
+  const [navOpen, setNavOpen] = useState(false)
+  const menuButtonRef = useRef(null)
+
+  function closeNav({ restoreFocus = true } = {}) {
+    setNavOpen(false)
+    if (restoreFocus) menuButtonRef.current?.focus()
+  }
+
+  // Esc closes the drawer
+  useEffect(() => {
+    if (!navOpen) return
+    const onKey = e => { if (e.key === 'Escape') closeNav() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navOpen])
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
       <LiquidBackground />
-      <Sidebar />
-      <div style={{
-        marginLeft: '18rem',
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-      }}>
-        <Topbar />
+      <Sidebar open={navOpen} onNavigate={() => closeNav({ restoreFocus: false })} />
+      {navOpen && <div className="sidebar-backdrop" onClick={() => closeNav()} aria-hidden="true" />}
+      {/* Left margin follows the sidebar width (full / icons-only / hidden) — see Sidebar.css */}
+      <div className="shell-content">
+        <Topbar menuButtonRef={menuButtonRef} navOpen={navOpen} onMenuClick={() => setNavOpen(o => !o)} />
         <main ref={mainRef} style={{
           flex: 1,
           padding: '2rem',

@@ -788,7 +788,7 @@ export default function MarketplaceDiscover() {
                       {CATEGORY_CHIPS.map(({ key, icon }) => {
                         const active = activeCategories.includes(key)
                         const count = categoryCounts[key] || 0
-                        const empty = count === 0 && !active
+                        const empty = dataLoaded && count === 0 && !active
                         return (
                           <button
                             key={key}

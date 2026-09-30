@@ -83,10 +83,14 @@
   border-radius: 9999px;
   margin-bottom: 1.5rem;
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto; /* scroll sideways rather than widen the page on narrow screens */
   background: #FFFFFF;
   border: 1px solid var(--color-border-subtle);
 }
 .mk-view-btn {
+  min-height: 44px;
+  flex-shrink: 0;
   display: flex; align-items: center; gap: 4px;
   padding: 6px 14px; border: none; border-radius: 9999px;
   font-size: 12px; font-weight: 600; cursor: pointer;
@@ -113,7 +117,6 @@
 }
 @media (max-width: 1024px) {
   .mk-bento { grid-template-columns: 1fr; }
-  .mk-right { order: -1; }
 }
 
 .mk-left { min-width: 0; }
@@ -559,10 +562,14 @@
   flex-wrap: wrap;
   gap: 1rem;
 }
+.mk-tray-pill-group { flex: 1 1 180px; min-width: 0; }
 @media (max-width: 640px) {
   .mk-tray-pill-row { flex-direction: column; }
+  /* Stacked vertically: flex-basis would become a min height, so size to content */
+  .mk-tray-pill-group,
+  .mk-tray-salary,
+  .mk-tray-experience { flex: 0 0 auto; }
 }
-.mk-tray-pill-group { flex: 1 1 180px; min-width: 0; }
 .mk-tray-pills { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.375rem; }
 .mk-tray-pill {
   min-height: 44px;

@@ -3,12 +3,25 @@ import { useSearch } from '../../context/SearchContext'
 import NotificationPanel from '../shared/NotificationPanel'
 import './Topbar.css'
 
-export default function Topbar() {
+export default function Topbar({ menuButtonRef, navOpen = false, onMenuClick }) {
   const { query, setQuery } = useSearch()
   const [showNotifications, setShowNotifications] = useState(false)
 
   return (
     <header className="topbar">
+      {/* Menu button: only shown on mobile, where the sidebar becomes a drawer */}
+      <button
+        ref={menuButtonRef}
+        type="button"
+        className="topbar-menu-btn"
+        aria-label={navOpen ? 'Close menu' : 'Open menu'}
+        aria-expanded={navOpen}
+        aria-controls="app-sidebar"
+        onClick={onMenuClick}
+      >
+        <span className="material-symbols-outlined" aria-hidden="true">{navOpen ? 'close' : 'menu'}</span>
+      </button>
+
       {/* Search */}
       <div className="topbar-search-container">
         <span className="material-symbols-outlined topbar-search-icon">search</span>

@@ -1,3 +1,12 @@
+/* Page content sits to the right of the sidebar; margin tracks the sidebar width */
+.shell-content {
+  margin-left: 18rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 0;
+}
+
 .sidebar {
   position: fixed;
   left: 0; top: 0; bottom: 0;
@@ -41,7 +50,8 @@
   letter-spacing: -0.02em;
   color: var(--on-surface);
   text-decoration: none; cursor: pointer;
-  transition: all 0.15s ease;
+  /* Not "all": animating inherited visibility would delay focus when the mobile drawer opens */
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
   border: none;
 }
 .nav-item:hover { background: var(--color-primary-tint); color: var(--color-primary); }
@@ -111,6 +121,7 @@
 
 /* ── Responsive ── */
 @media (max-width: 1279px) and (min-width: 769px) {
+  .shell-content { margin-left: 4rem; }
   .sidebar { width: 4rem; border-radius: 0; }
   .sidebar-logo { padding: 1rem 0.5rem; text-align: center; }
   .sidebar-wordmark { font-size: 1rem; }
@@ -123,6 +134,29 @@
   .sidebar-user-info { display: none; }
   .sidebar-user-pill { justify-content: center; padding: 0.5rem; }
 }
+/* Mobile: sidebar becomes a slide-in drawer opened from the topbar menu button */
 @media (max-width: 768px) {
-  .sidebar { display: none; }
+  .shell-content { margin-left: 0; }
+  .sidebar {
+    width: min(18rem, 85vw);
+    z-index: 60;
+    transform: translateX(-100%);
+    visibility: hidden; /* keeps the closed drawer out of the tab order */
+    transition: transform 0.25s ease, visibility 0.25s;
+  }
+  .sidebar--open {
+    transform: none;
+    visibility: visible;
+    /* Become visible instantly when opening so focus can move into the drawer */
+    transition: transform 0.25s ease, visibility 0s;
+    box-shadow: 0 0 48px rgba(17,24,39,0.2);
+  }
+  .sidebar-backdrop {
+    position: fixed; inset: 0;
+    z-index: 55;
+    background: rgba(17,24,39,0.4);
+  }
+}
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .sidebar { transition: none; }
 }
