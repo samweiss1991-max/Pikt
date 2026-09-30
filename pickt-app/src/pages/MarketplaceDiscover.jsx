@@ -155,7 +155,8 @@ function TinderView({ candidates, onSave, onSkip }) {
             ? { transform: `translateX(${dragX}px) rotate(${dragX * 0.1}deg)`, zIndex: 3 }
             : { transform: `scale(${1 - offset * 0.03}) translateY(${offset * 6}px)`, zIndex: 3 - offset, pointerEvents: 'none' }
           return (
-            <div key={candidates[idx].id} ref={isFront ? cardRef : undefined} className="mk-tinder-card" style={style}
+            // Cards behind the front one are visual only: not clickable or reachable by keyboard
+            <div key={candidates[idx].id} ref={isFront ? cardRef : undefined} className="mk-tinder-card" style={style} inert={!isFront}
               onPointerDown={isFront ? handlePointerDown : undefined} onPointerMove={isFront ? handlePointerMove : undefined} onPointerUp={isFront ? handlePointerUp : undefined}>
               {isFront && dragging && <>
                 <div className="mk-tinder-hint mk-tinder-hint--save" style={{ opacity: Math.max(0, dragX / 150) }}>SAVE {'\u2713'}</div>
@@ -167,8 +168,8 @@ function TinderView({ candidates, onSave, onSkip }) {
         })}
       </div>
       <div className="mk-tinder-actions">
-        <button className="mk-tinder-btn mk-tinder-btn--skip" onClick={doSkip}>{'\u2717'}</button>
-        <button className="mk-tinder-btn mk-tinder-btn--save" onClick={doSave}>{'\u2713'}</button>
+        <button className="mk-tinder-btn mk-tinder-btn--skip" onClick={doSkip} aria-label="Skip candidate">{'\u2717'}</button>
+        <button className="mk-tinder-btn mk-tinder-btn--save" onClick={doSave} aria-label="Save candidate">{'\u2713'}</button>
       </div>
     </div>
   )
@@ -190,9 +191,9 @@ function CarouselView({ candidates }) {
   if (total === 0) return null
   return (
     <div className="mk-carousel" onPointerDown={e => { startXRef.current = e.clientX }} onPointerUp={e => { const d = e.clientX - startXRef.current; if (d > 60) prev(); else if (d < -60) next() }}>
-      <button className="mk-carousel-arrow mk-carousel-arrow--left" onClick={prev}>{'\u2039'}</button>
+      <button className="mk-carousel-arrow mk-carousel-arrow--left" onClick={prev} aria-label="Previous candidate">{'\u2039'}</button>
       <CandidateCard candidate={candidates[current]} viewMode="carousel" index={current} />
-      <button className="mk-carousel-arrow mk-carousel-arrow--right" onClick={next}>{'\u203A'}</button>
+      <button className="mk-carousel-arrow mk-carousel-arrow--right" onClick={next} aria-label="Next candidate">{'\u203A'}</button>
       <div className="mk-carousel-dots">{candidates.map((_, i) => <span key={i} className={`mk-carousel-dot ${i === current ? 'mk-carousel-dot--active' : ''}`} onClick={() => setCurrent(i)} />)}</div>
     </div>
   )
@@ -214,9 +215,9 @@ function FocusView({ candidates }) {
   return (
     <div className="mk-focus">
       <div className="mk-focus-counter">Candidate {current + 1} of {total}</div>
-      <button className="mk-focus-arrow mk-focus-arrow--left" onClick={prev}>{'\u2039'}</button>
+      <button className="mk-focus-arrow mk-focus-arrow--left" onClick={prev} aria-label="Previous candidate">{'\u2039'}</button>
       <CandidateCard candidate={candidates[current]} viewMode="focus" index={current} />
-      <button className="mk-focus-arrow mk-focus-arrow--right" onClick={next}>{'\u203A'}</button>
+      <button className="mk-focus-arrow mk-focus-arrow--right" onClick={next} aria-label="Next candidate">{'\u203A'}</button>
     </div>
   )
 }

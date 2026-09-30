@@ -569,8 +569,73 @@
     grid-template-columns: minmax(0, 1fr) 44px;
   }
   .cc-stack-actions .cc-stack-btn--solid { grid-column: 1 / -1; }
+  /* No bookmark after it (Focus, Fickt details): let View profile fill the row */
+  .cc-stack-actions .cc-stack-btn--outline:last-child { grid-column: 1 / -1; }
   .cc-stack-btn { width: 100%; }
   .cc-climb-steps { min-height: 200px; gap: 6px; }
   .cc-climb-bar { padding: 6px 7px; }
   .cc-climb-years { font-size: 11px; }
+}
+
+/* ── Folder card variants (other views) ── */
+
+/* Full-width section under both columns (Focus details, Fickt expanded details) */
+.cc-stack-below {
+  grid-column: 1 / -1;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.cc-stack-below .cc-expanded-details { margin: 0; padding: 0; border: 0; }
+.cc-stack-below .cc-description { margin-bottom: 1rem; }
+.cc-stack-pills { margin: 0.75rem 0 0; }
+.cc-stack-btn--wide { width: 100%; }
+
+/* Always-stacked cards (Matrix grid, Fickt deck) — same rules as the narrow container query */
+.cc-folder--stacked .cc-card-new--stack { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; }
+.cc-folder--stacked .cc-tab { padding: 6px 10px 5px; font-size: 10px; letter-spacing: 0.05em; }
+.cc-folder--stacked .cc-stack-side {
+  margin: 1.25rem 0 0;
+  padding: 1rem 0 0;
+  border-left: 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.cc-folder--stacked .cc-stack-title { font-size: 1.375rem; }
+.cc-folder--stacked .cc-stack-salary-value { font-size: 1.25rem; }
+.cc-folder--stacked .cc-climb-steps { min-height: 0; gap: 6px; }
+.cc-folder--stacked .cc-climb-bar { padding: 6px 7px; min-height: 40px; }
+.cc-folder--stacked .cc-climb-years { font-size: 11px; }
+.cc-folder--stacked .cc-stack-actions { padding-top: 1.25rem; }
+
+/* Focus: roomier single-candidate card */
+.cc-folder--focus .cc-card-new--stack {
+  grid-template-columns: 320px minmax(0, 1fr);
+  padding: 2.25rem;
+}
+.cc-folder--focus .cc-card-new--no-climb { grid-template-columns: minmax(0, 1fr); }
+.cc-folder--focus .cc-stack-title { font-size: 2rem; }
+/* Narrow Focus cards stack too (declared after the Focus rules so it wins) */
+@container (max-width: 700px) {
+  .cc-folder--focus .cc-card-new--stack { grid-template-columns: minmax(0, 1fr); padding: 1.5rem; }
+  .cc-folder--focus .cc-stack-title { font-size: 1.625rem; }
+}
+
+/* Fickt: whole card toggles details, so show it's interactive */
+.cc-folder--tinder .cc-card-new--tinder:hover { box-shadow: 0px 12px 32px rgba(55,65,81,0.12); }
+
+/* ── Compact rows: match the card colours ── */
+.cc-compact-role { color: var(--color-primary); font-weight: 700; }
+.cc-compact-interviews {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--color-success-tint);
+  color: var(--color-success);
+  font-weight: 700;
+  min-width: 0;
+}
+.cc-compact-interviews { white-space: nowrap; }
+/* Narrow screens: role gets its own line so it's never squeezed out */
+@media (max-width: 640px) {
+  .cc-compact { flex-wrap: wrap; row-gap: 6px; }
+  .cc-compact-role { flex-basis: 100%; white-space: normal; }
 }

@@ -154,12 +154,15 @@
 /* ── Tinder ── */
 .mk-tinder-wrap { max-width: 420px; margin: 0 auto; }
 .mk-tinder-counter { font-size: 12px; color: var(--on-surface-variant); text-align: center; margin-bottom: 1rem; }
-.mk-tinder-stack { position: relative; min-height: 380px; }
-.mk-tinder-card { position: absolute; top: 0; left: 0; right: 0; transition: transform 0.05s linear; }
+/* Cards share one grid cell, so the deck grows to fit the tallest card */
+.mk-tinder-stack { position: relative; display: grid; }
+.mk-tinder-card { position: relative; grid-area: 1 / 1; transition: transform 0.05s linear; }
+/* Only the front card shows its folder tabs, so tabs behind don't peek out */
+.mk-tinder-card[inert] .cc-tabs { visibility: hidden; }
 .mk-tinder-hint { position: absolute; top: 40%; font-size: 28px; font-weight: 900; z-index: 10; pointer-events: none; letter-spacing: 2px; }
 .mk-tinder-hint--save { right: 24px; color: var(--primary); }
 .mk-tinder-hint--skip { left: 24px; color: var(--color-critical); }
-.mk-tinder-actions { display: flex; justify-content: center; gap: 1.5rem; margin-top: 400px; }
+.mk-tinder-actions { display: flex; justify-content: center; gap: 1.5rem; margin-top: 1.5rem; }
 .mk-tinder-btn {
   width: 56px; height: 56px; border-radius: 50%;
    font-size: 24px; font-weight: 700;
@@ -175,10 +178,11 @@
 .mk-tinder-btn--save:hover { border-color: var(--color-primary); background: var(--color-primary-tint); }
 
 /* ── Focus ── */
-.mk-focus { position: relative; }
-.mk-focus-counter { position: absolute; top: 0; right: 0; font-size: 12px; color: var(--on-surface-variant); }
+.mk-focus { position: relative; padding: 0 52px; }
+.mk-focus-counter { text-align: right; margin-bottom: 0.25rem; font-size: 12px; color: var(--on-surface-variant); }
+/* Arrows sit either side of the card (like the carousel), not over it */
 .mk-focus-arrow {
-  position: fixed; top: 50%;
+  position: absolute; top: 50%; margin-top: -24px;
   width: 48px; height: 48px; border-radius: 50%;
   border: none; background: var(--primary); color: var(--on-primary);
   font-size: 24px; display: flex; align-items: center; justify-content: center;
@@ -186,8 +190,8 @@
   transition: transform 0.15s;
 }
 .mk-focus-arrow:hover { transform: scale(1.05); }
-.mk-focus-arrow--left { left: 24px; }
-.mk-focus-arrow--right { right: 24px; }
+.mk-focus-arrow--left { left: 0; }
+.mk-focus-arrow--right { right: 0; }
 
 /* ═══ RIGHT INSIGHTS PANEL ═══ */
 .ri-panel { display: flex; flex-direction: column; gap: 1.5rem; }

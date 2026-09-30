@@ -8,12 +8,6 @@ import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
 import { careerSteps } from '../lib/careerSteps'
 import './CandidateCard.css'
 
-// Referrer badge variant based on index
-function getReferrerBadge(index, company) {
-  const variant = index % 2 === 0 ? 'amber' : 'green'
-  return { label: `${COPY.marketplace.referredBy} ${company}`, variant }
-}
-
 const STAGE_COLORS = {
   'Final round': { bg: 'var(--color-success-tint)', color: 'var(--color-success)', border: 'var(--color-success)' },
   '3rd round': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-primary)' },
@@ -31,25 +25,6 @@ function StageBadge({ stage }) {
   )
 }
 
-function WorkHistory({ history }) {
-  if (!history || history.length === 0) return null
-  return (
-    <div className="cc-work-history">
-      {history.slice(0, 3).map((w, i) => (
-        <div key={i} className="cc-wh-entry">
-          {i > 0 && <div className="cc-wh-divider" />}
-          <div className="cc-wh-top">
-            <div className="cc-wh-dot" />
-            <span className="cc-wh-company">{w.company}</span>
-            <span className="cc-wh-title">{w.title}</span>
-          </div>
-          <div className="cc-wh-dates">{w.dates}</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ── Career climb (Stack view) ──
 // Work history drawn as rising steps: oldest (left, shortest, lightest) → newest (right, tallest, navy).
 
@@ -62,7 +37,7 @@ const STEP_COLORS = {
 }
 const DARK_STEPS = ['#4A64A0', '#002366']
 
-function CareerClimb({ history }) {
+function CareerClimb({ history, maxBar = 150 }) {
   const steps = careerSteps(history)
   if (steps.length === 0) return null
   const colors = STEP_COLORS[steps.length]
@@ -83,7 +58,7 @@ function CareerClimb({ history }) {
               </div>
               <div
                 className={`cc-climb-bar ${DARK_STEPS.includes(bg) ? 'cc-climb-bar--dark' : ''}`}
-                style={{ height: `calc(150px * ${height / 100})`, background: bg }}
+                style={{ height: `${Math.round(maxBar * height / 100)}px`, background: bg }}
               >
                 {/* Short years for sighted users, full dates for screen readers */}
                 <span className="cc-climb-years" aria-hidden="true">{job.when.short}</span>
@@ -95,6 +70,75 @@ function CareerClimb({ history }) {
         })}
       </ol>
     </div>
+  )
+}
+
+// ── Folder card: shared "folder tab + career climb" layout used by the card views ──
+// `actions` render under the skills, `below` spans the full card width at the bottom.
+function FolderCard({ c, meta, skillsLimit, extraTop, actions, below, climbMax = 150, stacked = false, variant = '', cardClassName = '', cardProps = {} }) {
+  // Same source as the previous referral badge; 'Unknown' is mapCandidate's "no company" placeholder
+  const referrerName = c.referringCompany || c.company
+  const referrer = referrerName && referrerName !== 'Unknown' ? referrerName : null
+  const interviews = c.interviews || 0
+  const hasTabs = Boolean(referrer) || interviews > 0
+  const metaParts = (meta || [c.seniority, c.years ? `${c.years} yrs experience` : null, c.city]).filter(Boolean)
+  const hasClimb = careerSteps(c.workHistory).length > 0
+  const skills = skillsLimit ? (c.skills || []).slice(0, skillsLimit) : (c.skills || [])
+  const salaryStr = c.salaryLow && c.salaryHigh
+    ? `$${Math.round(c.salaryLow / 1000)}k – $${Math.round(c.salaryHigh / 1000)}k`
+    : null
+
+  return (
+    <article
+      className={['cc-folder', hasTabs && 'cc-folder--tabbed', stacked && 'cc-folder--stacked', variant && `cc-folder--${variant}`].filter(Boolean).join(' ')}
+      aria-label={c.role}
+    >
+      {hasTabs && (
+        <div className="cc-tabs">
+          {referrer && (
+            <span className="cc-tab cc-tab--referral">
+              <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>
+              {COPY.marketplace.referredBy} {referrer}
+            </span>
+          )}
+          {interviews > 0 && (
+            <span className="cc-tab cc-tab--interviews">
+              {interviews} {interviews === 1 ? 'interview' : 'interviews'} done
+            </span>
+          )}
+        </div>
+      )}
+      <div className={`cc-card-new cc-card-new--stack ${hasClimb ? '' : 'cc-card-new--no-climb'} ${cardClassName}`} {...cardProps}>
+        <div className="cc-stack-main">
+          <h3 className="cc-stack-title">{c.role}</h3>
+          {metaParts.length > 0 && <p className="cc-stack-meta">{metaParts.join(' \u00B7 ')}</p>}
+          {extraTop}
+
+          {salaryStr && (
+            <div className="cc-stack-salary">
+              <span className="cc-label">Salary · AUD</span>
+              <span className="cc-stack-salary-value">{salaryStr}</span>
+            </div>
+          )}
+
+          {skills.length > 0 && (
+            <ul className="cc-stack-skills" aria-label="Skills">
+              {skills.map(s => <li key={s} className="cc-stack-skill">{s}</li>)}
+            </ul>
+          )}
+
+          {actions && <div className="cc-stack-actions">{actions}</div>}
+        </div>
+
+        {hasClimb && (
+          <div className="cc-stack-side">
+            <CareerClimb history={c.workHistory} maxBar={climbMax} />
+          </div>
+        )}
+
+        {below && <div className="cc-stack-below">{below}</div>}
+      </div>
+    </article>
   )
 }
 
@@ -118,7 +162,7 @@ export default function CandidateCard({ candidate: c, viewMode = 'stack', index 
   }
   if (!c) return null
 
-  return <NewCard candidate={c} viewMode={viewMode} index={index} />
+  return <NewCard candidate={c} viewMode={viewMode} />
 }
 
 // Legacy card (Dashboard compatibility)
@@ -147,7 +191,7 @@ function LegacyCard({ index = 0, role = '', skills = [], efficiencyMetric, ctaLa
   )
 }
 
-function NewCard({ candidate: c, viewMode, index }) {
+function NewCard({ candidate: c, viewMode }) {
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
   const [unlocked, setUnlocked] = useState(c.status === 'unlocked' || checkUnlocked(c.id))
@@ -165,13 +209,7 @@ function NewCard({ candidate: c, viewMode, index }) {
   const interviewMatch = Math.min(99, (c.interviews || 0) * 20)
   const recencyMatch = Math.max(10, 100 - (c.daysAgo || 5) * 8)
   const workType = c.preferred_work_type || c.workType || 'Hybrid'
-  const salaryStr = c.salaryLow && c.salaryHigh
-    ? `$${Math.round(c.salaryLow / 1000)}k - $${Math.round(c.salaryHigh / 1000)}k`
-    : null
   const description = c.strengths || c.feedback_summary || `${c.seniority} with ${c.years}+ years experience in ${c.city}. ${c.interviews} interviews completed.`
-  const iconSymbol = getIconForRole(c.role)
-  const gradientClass = getGradientClass(index)
-  const badge = getReferrerBadge(index, c.referringCompany || c.company)
 
   function handleUnlockSuccess() {
     setUnlocked(true)
@@ -196,225 +234,141 @@ function NewCard({ candidate: c, viewMode, index }) {
     )
   }
 
-  // ── TINDER VIEW ──
+  const saveButton = (
+    <button
+      className="cc-stack-bookmark"
+      onClick={toggleSave}
+      aria-label="Save candidate"
+      aria-pressed={saved}
+      title={saved ? 'Remove from Pickt List' : 'Save to Pickt List'}
+    >
+      <span className="material-symbols-outlined" aria-hidden="true" style={saved ? { fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" } : undefined}>{saved ? 'bookmark' : 'bookmark_border'}</span>
+    </button>
+  )
+  const viewProfileButton = (onClick = goToProfile) => (
+    <button className="cc-stack-btn cc-stack-btn--outline press-scale" onClick={onClick}>
+      View profile <span className="material-symbols-outlined cc-arrow" aria-hidden="true">arrow_forward</span>
+    </button>
+  )
+  const unlockModal = showModal && <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />
+
+  // ── TINDER (FICKT) VIEW — compact folder card; tap/Enter to expand details ──
   if (viewMode === 'tinder') {
+    const toggle = () => setExpanded(v => !v)
     return (
       <>
-        <div className={`cc-card-new cc-card-new--tinder ${expanded ? 'cc-card-new--expanded' : ''}`} onClick={() => setExpanded(!expanded)}>
-          <div className="cc-inner">
-            <div className={`cc-icon-box cc-icon-box--sm bg-gradient-to-br ${gradientClass}`}>
-              <span className="material-symbols-outlined cc-icon-symbol">{iconSymbol}</span>
+        <FolderCard
+          c={c}
+          stacked
+          variant="tinder"
+          skillsLimit={3}
+          climbMax={90}
+          meta={[c.seniority, c.city]}
+          cardClassName={`cc-card-new--tinder ${expanded ? 'cc-card-new--expanded' : ''}`}
+          cardProps={{
+            onClick: toggle,
+            onKeyDown: e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggle() } },
+            role: 'button',
+            tabIndex: 0,
+            'aria-expanded': expanded,
+          }}
+          extraTop={
+            <div className="cc-pills-row cc-stack-pills">
+              <StageBadge stage={c.interview_stage_reached || 'Technical screen'} />
+              <span className="cc-pill-score">{matchScore}%</span>
             </div>
-            <div className="cc-content">
-              <h3 className="cc-title cc-title--lg">{c.role}</h3>
-              <div className="cc-meta-line">{c.seniority} {'\u00B7'} {c.city}</div>
-              <div className="cc-pills-row">
-                <StageBadge stage={c.interview_stage_reached || 'Technical screen'} />
-                <span className="cc-pill-score">{matchScore}%</span>
-              </div>
-              <div className="cc-skills">{(c.skills || []).slice(0, 3).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
-              <WorkHistory history={c.workHistory} />
-            </div>
-          </div>
-          {expanded && (
+          }
+          below={expanded && (
             <div className="cc-expanded-details">
               <MatchBar label="Role match" value={roleMatch} color="var(--primary)" />
               <MatchBar label="Interviews" value={interviewMatch} color="var(--color-primary)" />
               <MatchBar label="Recency" value={recencyMatch} color="var(--color-primary)" />
               <p className="cc-description">{description}</p>
-              <div className="cc-cta-row">
-                <button className="cc-btn-primary" onClick={e => { e.stopPropagation(); goToProfile() }}>{COPY.marketplace.requestInterview}</button>
-                <button className="cc-btn-secondary" onClick={e => { e.stopPropagation(); goToProfile() }}>View profile <span className="material-symbols-outlined cc-arrow">arrow_forward</span></button>
+              <div className="cc-stack-actions">
+                <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={e => { e.stopPropagation(); goToProfile() }}>{COPY.marketplace.requestInterview}</button>
+                {viewProfileButton(e => { e.stopPropagation(); goToProfile() })}
               </div>
             </div>
           )}
-        </div>
-        {showModal && <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />}
+        />
+        {unlockModal}
       </>
     )
   }
 
-  // ── FOCUS VIEW ──
+  // ── FOCUS VIEW — full folder card plus the detailed breakdown underneath ──
   if (viewMode === 'focus') {
     return (
       <>
-        <div className="cc-card-new cc-card-new--focus">
-          <div className="cc-inner cc-inner--focus">
-            <div className={`cc-icon-box cc-icon-box--lg bg-gradient-to-br ${gradientClass}`}>
-              <span className="material-symbols-outlined cc-icon-symbol cc-icon-symbol--lg">{iconSymbol}</span>
+        <FolderCard
+          c={c}
+          variant="focus"
+          meta={[c.seniority, c.years ? `${c.years} yrs experience` : null, c.city, workType]}
+          actions={<>
+            {unlocked ? (
+              <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}>{'\u2713'} View full profile</button>
+            ) : (
+              <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>Unlock candidate</button>
+            )}
+            {viewProfileButton()}
+          </>}
+          below={<>
+            <p className="cc-description cc-description--full">{description}</p>
+            <div className="cc-bars-block">
+              <MatchBar label="Role match" value={roleMatch} color="var(--primary)" />
+              <MatchBar label="Interviews" value={interviewMatch} color="var(--color-primary)" />
+              <MatchBar label="Recency" value={recencyMatch} color="var(--color-primary)" />
             </div>
-            <div className="cc-content">
-              <h3 className="cc-title cc-title--xl">{c.role}</h3>
-              {salaryStr && <span className="cc-salary">{salaryStr}</span>}
-              <div className="cc-meta-line">{c.seniority} {'\u00B7'} {c.years} yrs {'\u00B7'} {c.city} {'\u00B7'} {workType}</div>
-              <div className="cc-skills">{(c.skills || []).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
-              <WorkHistory history={c.workHistory} />
-              <p className="cc-description cc-description--full">{description}</p>
-              <div className="cc-bars-block">
-                <MatchBar label="Role match" value={roleMatch} color="var(--primary)" />
-                <MatchBar label="Interviews" value={interviewMatch} color="var(--color-primary)" />
-                <MatchBar label="Recency" value={recencyMatch} color="var(--color-primary)" />
+            {c.gaps && (
+              <div className="cc-gaps-block">
+                <div className="cc-gaps-title">Development areas</div>
+                <p className="cc-gaps-text">{c.gaps}</p>
               </div>
-              {c.gaps && (
-                <div className="cc-gaps-block">
-                  <div className="cc-gaps-title">Development areas</div>
-                  <p className="cc-gaps-text">{c.gaps}</p>
-                </div>
-              )}
-              <div className="cc-cta-row">
-                {unlocked ? (
-                  <button className="cc-btn-primary" onClick={goToProfile}>{'\u2713'} View full profile</button>
-                ) : (
-                  <button className="cc-btn-primary" onClick={() => setShowModal(true)}>Unlock candidate</button>
-                )}
-                <button className="cc-btn-secondary" onClick={goToProfile}>View profile <span className="material-symbols-outlined cc-arrow">arrow_forward</span></button>
-              </div>
-            </div>
-          </div>
-        </div>
-        {showModal && <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />}
+            )}
+          </>}
+        />
+        {unlockModal}
       </>
     )
   }
 
-  // ── MATRIX VIEW ──
+  // ── MATRIX VIEW — compact folder card for the 2-column grid ──
   if (viewMode === 'matrix') {
     return (
       <>
-        <div className="cc-card-new cc-card-new--matrix">
-          <div className={`cc-referrer-badge cc-referrer-badge--${badge.variant}`}>{badge.label}</div>
-          <div className="cc-inner cc-inner--vertical">
-            <div className={`cc-icon-box cc-icon-box--sm bg-gradient-to-br ${gradientClass}`}>
-              <span className="material-symbols-outlined cc-icon-symbol">{iconSymbol}</span>
-            </div>
-            <h3 className="cc-title">{c.role}</h3>
-            {salaryStr && <span className="cc-salary cc-salary--sm">{salaryStr}</span>}
-            <div className="cc-skills">{(c.skills || []).slice(0, 3).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
-            <WorkHistory history={c.workHistory} />
-            <div className="cc-cta-row cc-cta-row--stack">
-              {unlocked ? (
-                <button className="cc-btn-primary cc-btn-primary--sm" onClick={goToProfile}>{'\u2713'} Unlocked</button>
-              ) : (
-                <button className="cc-btn-primary cc-btn-primary--sm" onClick={() => setShowModal(true)}>{COPY.marketplace.requestInterview}</button>
-              )}
-            </div>
-          </div>
-        </div>
-        {showModal && <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />}
-      </>
-    )
-  }
-
-  // ── STACK VIEW — folder tabs + career climb ──
-  if (viewMode === 'stack') {
-    // Same source as the previous referral badge; 'Unknown' is mapCandidate's "no company" placeholder
-    const referrerName = c.referringCompany || c.company
-    const referrer = referrerName && referrerName !== 'Unknown' ? referrerName : null
-    const interviews = c.interviews || 0
-    const hasTabs = Boolean(referrer) || interviews > 0
-    const meta = [c.seniority, c.years ? `${c.years} yrs experience` : null, c.city].filter(Boolean)
-    const hasClimb = careerSteps(c.workHistory).length > 0
-    return (
-      <>
-        <article className={`cc-folder ${hasTabs ? 'cc-folder--tabbed' : ''}`} aria-label={c.role}>
-          {hasTabs && (
-            <div className="cc-tabs">
-              {referrer && (
-                <span className="cc-tab cc-tab--referral">
-                  <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>
-                  {COPY.marketplace.referredBy} {referrer}
-                </span>
-              )}
-              {interviews > 0 && (
-                <span className="cc-tab cc-tab--interviews">
-                  {interviews} {interviews === 1 ? 'interview' : 'interviews'} done
-                </span>
-              )}
-            </div>
+        <FolderCard
+          c={c}
+          stacked
+          variant="matrix"
+          skillsLimit={3}
+          climbMax={100}
+          actions={unlocked ? (
+            <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={goToProfile}>{'\u2713'} Unlocked</button>
+          ) : (
+            <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={() => setShowModal(true)}>{COPY.marketplace.requestInterview}</button>
           )}
-          <div className={`cc-card-new cc-card-new--stack ${hasClimb ? '' : 'cc-card-new--no-climb'}`}>
-            <div className="cc-stack-main">
-              <h3 className="cc-stack-title">{c.role}</h3>
-              {meta.length > 0 && <p className="cc-stack-meta">{meta.join(' \u00B7 ')}</p>}
-
-              {salaryStr && (
-                <div className="cc-stack-salary">
-                  <span className="cc-label">Salary · AUD</span>
-                  <span className="cc-stack-salary-value">{salaryStr.replace(' - ', ' – ')}</span>
-                </div>
-              )}
-
-              {(c.skills || []).length > 0 && (
-                <ul className="cc-stack-skills" aria-label="Skills">
-                  {c.skills.map(s => <li key={s} className="cc-stack-skill">{s}</li>)}
-                </ul>
-              )}
-
-              <div className="cc-stack-actions">
-                {unlocked ? (
-                  <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}>{'\u2713'} View full profile</button>
-                ) : (
-                  <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>Unlock</button>
-                )}
-                <button className="cc-stack-btn cc-stack-btn--outline press-scale" onClick={goToProfile}>
-                  View profile <span className="material-symbols-outlined cc-arrow" aria-hidden="true">arrow_forward</span>
-                </button>
-                <button
-                  className="cc-stack-bookmark"
-                  onClick={toggleSave}
-                  aria-label="Save candidate"
-                  aria-pressed={saved}
-                  title={saved ? 'Remove from Pickt List' : 'Save to Pickt List'}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true" style={saved ? { fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" } : undefined}>{saved ? 'bookmark' : 'bookmark_border'}</span>
-                </button>
-              </div>
-            </div>
-
-            {hasClimb && (
-              <div className="cc-stack-side">
-                <CareerClimb history={c.workHistory} />
-              </div>
-            )}
-          </div>
-        </article>
-        {showModal && <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />}
+        />
+        {unlockModal}
       </>
     )
   }
 
-  // ── CAROUSEL VIEW (default) ──
+  // ── STACK & CAROUSEL VIEWS — folder tabs + career climb ──
   return (
     <>
-      <div className="cc-card-new">
-        <div className={`cc-referrer-badge cc-referrer-badge--${badge.variant}`}>{badge.label}</div>
-        <div className="cc-inner">
-          <div className={`cc-icon-box bg-gradient-to-br ${gradientClass}`}>
-            <span className="material-symbols-outlined cc-icon-symbol">{iconSymbol}</span>
-          </div>
-          <div className="cc-content">
-            <div className="cc-title-row">
-              <h3 className="cc-title">{c.role}</h3>
-              {salaryStr && <span className="cc-salary">{salaryStr}</span>}
-            </div>
-            <div className="cc-skills">{(c.skills || []).map(s => <span key={s} className="cc-skill-pill">{s}</span>)}</div>
-            <WorkHistory history={c.workHistory} />
-            <p className="cc-description">{description}</p>
-            <div className="cc-cta-row">
-              {unlocked ? (
-                <button className="cc-btn-primary press-scale" onClick={goToProfile}>{'\u2713'} View full profile</button>
-              ) : (
-                <button className="cc-btn-primary press-scale" onClick={() => setShowModal(true)}>Unlock</button>
-              )}
-              <button className="cc-btn-secondary" onClick={goToProfile}>View profile <span className="material-symbols-outlined cc-arrow">arrow_forward</span></button>
-              <button className="cc-bookmark" onClick={toggleSave} title={saved ? 'Remove from Pickt List' : 'Save to Pickt List'}>
-                <span className="material-symbols-outlined" style={saved ? { fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" } : undefined}>{saved ? 'bookmark' : 'bookmark_border'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      {showModal && <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />}
+      <FolderCard
+        c={c}
+        actions={<>
+          {unlocked ? (
+            <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}>{'\u2713'} View full profile</button>
+          ) : (
+            <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>Unlock</button>
+          )}
+          {viewProfileButton()}
+          {saveButton}
+        </>}
+      />
+      {unlockModal}
     </>
   )
 }
