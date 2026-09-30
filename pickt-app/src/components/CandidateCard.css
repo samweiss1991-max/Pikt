@@ -464,9 +464,10 @@
   line-height: 1.3;
   color: var(--color-text);
 }
-/* Bar height is set inline: 40%–100% of 150px */
+/* Bar height: 40%–100% (--h, set inline) of the tallest bar (--climb-max) */
 .cc-climb-bar {
   position: relative;
+  height: calc(var(--climb-max, var(--climb-max-default, 150px)) * var(--h, 1));
   min-height: 48px;
   padding: 8px 10px;
   border-radius: 10px 10px 4px 4px;
@@ -497,14 +498,16 @@
 }
 
 /* ── Narrow cards: career climb underneath the details ── */
-@container (max-width: 700px) {
+@container (max-width: 580px) {
   .cc-stack-side {
     margin: 1.5rem 0 0;
     padding: 1.25rem 0 0;
     border-left: 0;
     border-top: 1px solid var(--color-border-subtle);
   }
-  .cc-climb-steps { min-height: 200px; gap: 6px; }
+  .cc-stack-side { --climb-max: 80px; }   /* shorter bars once the climb sits under the details */
+  .cc-climb-steps { min-height: 0; gap: 6px; }
+  .cc-climb-company, .cc-climb-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cc-climb-bar { padding: 6px 7px; }
   .cc-climb-years { font-size: 11px; }
 }
@@ -546,10 +549,16 @@
 .cc-flipcard--focus .cc-face--front { grid-template-columns: 320px minmax(0, 1fr); padding: 2.25rem; }
 .cc-flipcard--focus .cc-face--no-climb { grid-template-columns: minmax(0, 1fr); }
 .cc-flipcard--focus .cc-stack-title { font-size: 2rem; }
-/* Narrow Focus cards stack too (declared after the Focus rules so it wins) */
-@container (max-width: 700px) {
-  .cc-flipcard--focus .cc-face--front { grid-template-columns: minmax(0, 1fr); padding: 1.5rem; }
+/* Narrow Focus cards stack too (declared after the Focus rules so it wins),
+   with tighter spacing so the card + its details still fit on screen */
+@container (max-width: 580px) {
+  .cc-flipcard--focus .cc-face--front { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; }
   .cc-flipcard--focus .cc-stack-title { font-size: 1.625rem; }
+  .cc-flipcard--focus .cc-face--front .cc-stack-side { --climb-max: 64px; margin-top: 1rem; padding-top: 0.875rem; }
+  .cc-flipcard--focus .cc-flip-actions { padding-top: 1rem; }
+  .cc-flipcard--focus .cc-stack-below { margin-top: 1rem; padding-top: 0.875rem; }
+  .cc-flipcard--focus .cc-stack-below .cc-description { margin-bottom: 0.5rem; font-size: 0.8125rem; line-height: 1.5; }
+  .cc-flipcard--focus .cc-bars-block { gap: 4px; margin-bottom: 0.5rem; }
 }
 
 /* Narrow cards (Matrix, Flickt) — smaller tabs on one line, icon-only Save */
@@ -584,36 +593,29 @@
 /* Flickt: tapping the front toggles details */
 .cc-flipcard--tinder .cc-face--front { cursor: pointer; user-select: none; }
 
-/* Flickt: tighter card so the whole deck and the ✗ / ✓ buttons fit on screen */
-.cc-flipcard--tinder .cc-face--front { padding: 1rem 1.125rem; }
-.cc-flipcard--tinder .cc-stack-title { font-size: 1.1875rem; }
-.cc-flipcard--tinder .cc-stack-meta { margin-top: 0.125rem; font-size: 0.8125rem; }
-.cc-flipcard--tinder .cc-stack-pills { margin-top: 0.5rem; }
-.cc-flipcard--tinder .cc-stack-salary { margin-top: 0.625rem; }
-.cc-flipcard--tinder .cc-stack-salary-value { font-size: 1.125rem; }
-.cc-flipcard--tinder .cc-stack-skills { margin-top: 0.5rem; }
-.cc-flipcard--tinder .cc-flip-actions { padding-top: 0.75rem; }
-.cc-flipcard--tinder .cc-face--front .cc-stack-side { margin-top: 0.75rem; padding-top: 0.625rem; }
-.cc-flipcard--tinder .cc-climb-steps { margin-top: 0.375rem; }
-.cc-flipcard--tinder .cc-climb-text { margin-bottom: 3px; }
-.cc-flipcard--tinder .cc-climb-company { font-size: 12px; }
-.cc-flipcard--tinder .cc-climb-title { font-size: 10px; }
-.cc-flipcard--tinder .cc-climb-bar { min-height: 22px; padding: 4px 7px; }
-.cc-flipcard--tinder .cc-climb-title { display: none; }   /* company names only — full history is on the profile */
-.cc-flipcard--tinder .cc-snap { padding: 1rem 1.125rem 0.75rem; }
-.cc-flipcard--tinder .cc-snap-title { margin: 0.25rem 0 0.5rem; font-size: 1rem; }
-/* Back rows on two lines: employer + stage, then the one-line teaser */
-.cc-flipcard--tinder .cc-snap-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.125rem 0.75rem;
-  padding: 0.5rem 0;
-}
-.cc-flipcard--tinder .cc-snap-stage { flex-direction: row; align-items: center; gap: 6px; }
-.cc-flipcard--tinder .cc-snap-seg { width: 12px; }
-.cc-flipcard--tinder .cc-snap-teaser { grid-column: 1 / -1; white-space: nowrap; }
-.cc-flipcard--tinder .cc-snap-strip { padding: 0.625rem 1.125rem 0.75rem; gap: 0.5rem; }
-.cc-flipcard--tinder .cc-snap-strip-text { font-size: 0.75rem; }
-.cc-flipcard--tinder .cc-snap-unlock { min-height: 44px; }
+/* Stacked cards (Matrix, Flickt): tighter so each card fits on screen */
+.cc-flipcard--stacked .cc-face--front { padding: 1rem 1.125rem; }
+.cc-flipcard--stacked .cc-stack-title { font-size: 1.1875rem; }
+.cc-flipcard--stacked .cc-stack-meta { margin-top: 0.125rem; font-size: 0.8125rem; }
+.cc-flipcard--stacked .cc-stack-pills { margin-top: 0.5rem; }
+.cc-flipcard--stacked .cc-stack-salary { margin-top: 0.625rem; }
+.cc-flipcard--stacked .cc-stack-salary-value { font-size: 1.125rem; }
+.cc-flipcard--stacked .cc-stack-skills { margin-top: 0.5rem; }
+.cc-flipcard--stacked .cc-flip-actions { padding-top: 0.75rem; }
+.cc-flipcard--stacked .cc-face--front .cc-stack-side { --climb-max: 56px; margin-top: 0.75rem; padding-top: 0.625rem; }
+.cc-flipcard--stacked .cc-climb-steps { margin-top: 0.375rem; }
+.cc-flipcard--stacked .cc-climb-text { margin-bottom: 3px; }
+.cc-flipcard--stacked .cc-climb-company { font-size: 12px; }
+.cc-flipcard--stacked .cc-climb-title { display: none; }   /* company names only — full history is on the profile */
+.cc-flipcard--stacked .cc-climb-bar { min-height: 22px; padding: 4px 7px; }
+.cc-flipcard--stacked .cc-snap { padding: 1rem 1.125rem 0.75rem; }
+.cc-flipcard--stacked .cc-snap-title { font-size: 1rem; }
+.cc-flipcard--stacked .cc-snap-strip { padding: 0.625rem 1.125rem 0.75rem; }
+.cc-flipcard--stacked .cc-snap-row { padding: 0.375rem 0; }
+.cc-flipcard--stacked .cc-snap-employer { font-size: 0.8125rem; line-height: 1.3; }
+.cc-flipcard--stacked .cc-snap-stage-text { font-size: 0.75rem; }
+.cc-flipcard--stacked .cc-snap-teaser { font-size: 0.75rem; }
+.cc-flipcard--stacked .cc-snap-strip-text { line-height: 1.4; }
 
 /* ═══ STACK VIEW — flip card ═══ */
 
@@ -829,7 +831,7 @@
 .cc-snap-unlock:hover { background: var(--color-primary-hover); }
 
 /* ── Narrow cards (under ~700px) ── */
-@container (max-width: 700px) {
+@container (max-width: 580px) {
   .cc-face--front { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; }
   .cc-face--front .cc-stack-side {
     margin: 1.5rem 0 0;
@@ -837,10 +839,14 @@
     border-left: 0;
     border-top: 1px solid var(--color-border-subtle);
   }
-  .cc-snap { padding: 1.25rem; }
-  .cc-snap-row { grid-template-columns: minmax(0, 1fr); gap: 0.375rem; }
-  .cc-snap-teaser { white-space: normal; }
-  .cc-snap-strip { flex-wrap: wrap; padding: 1rem 1.25rem; }
-  .cc-snap-strip-text { flex-basis: calc(100% - 2rem); }
+  .cc-snap { padding: 1.125rem 1.25rem 0.75rem; }
+  .cc-snap-title { margin: 0.25rem 0 0.5rem; font-size: 1.0625rem; }
+  /* Two lines per employer: description + stage, then the one-line teaser */
+  .cc-snap-row { grid-template-columns: minmax(0, 1fr) auto; gap: 0.125rem 0.75rem; padding: 0.5rem 0; }
+  .cc-snap-stage { flex-direction: row; align-items: center; gap: 6px; }
+  .cc-snap-seg { width: 12px; }
+  .cc-snap-teaser { grid-column: 1 / -1; }
+  .cc-snap-strip { flex-wrap: wrap; gap: 0.5rem; padding: 0.625rem 1.25rem 0.75rem; }
+  .cc-snap-strip-text { flex-basis: calc(100% - 2rem); font-size: 0.75rem; }
   .cc-snap-unlock { width: 100%; }
 }

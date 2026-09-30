@@ -43,7 +43,8 @@ function CareerClimb({ history, maxBar = 150 }) {
   if (steps.length === 0) return null
   const colors = STEP_COLORS[steps.length]
   return (
-    <div className="cc-climb">
+    // Tallest bar = maxBar px; CSS may lower it on narrow cards via --climb-max
+    <div className="cc-climb" style={{ '--climb-max-default': `${maxBar}px` }}>
       <h4 className="cc-label">Career climb</h4>
       <ol className="cc-climb-steps" aria-label="Work history, oldest to newest">
         {steps.map((job, i) => {
@@ -59,7 +60,7 @@ function CareerClimb({ history, maxBar = 150 }) {
               </div>
               <div
                 className={`cc-climb-bar ${DARK_STEPS.includes(bg) ? 'cc-climb-bar--dark' : ''}`}
-                style={{ height: `${Math.round(maxBar * height / 100)}px`, background: bg }}
+                style={{ '--h': height / 100, background: bg }}
               >
                 {/* Short years for sighted users, full dates for screen readers */}
                 <span className="cc-climb-years" aria-hidden="true">{job.when.short}</span>
