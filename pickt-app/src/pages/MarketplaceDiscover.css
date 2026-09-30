@@ -429,6 +429,7 @@
 /* Quantitative filters row */
 .mk-tray-quant-row {
   display: flex; align-items: stretch;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 0.25rem;
 }
@@ -442,10 +443,12 @@
 }
 
 /* Salary slider */
-.mk-tray-salary { flex: 1; min-width: 0; }
+.mk-tray-salary { flex: 1 1 240px; min-width: 0; }
 .mk-tray-salary-header {
   display: flex; align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
   margin-bottom: 0.5rem;
 }
 .mk-tray-salary-label {
@@ -502,6 +505,8 @@
 .mk-tray-exp-header {
   display: flex; align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
   margin-bottom: 0.5rem;
 }
 .mk-tray-exp-controls {
@@ -539,12 +544,13 @@
 /* Pill filter row */
 .mk-tray-pill-row {
   display: flex; align-items: flex-start;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 @media (max-width: 640px) {
   .mk-tray-pill-row { flex-direction: column; }
 }
-.mk-tray-pill-group { flex: 1; min-width: 0; }
+.mk-tray-pill-group { flex: 1 1 180px; min-width: 0; }
 .mk-tray-pills { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.375rem; }
 .mk-tray-pill {
   padding: 0.375rem 0.8125rem;
@@ -631,10 +637,19 @@
   border-color: var(--color-primary);
 }
 
-/* Bottom row */
+/* Footer row: divider above, "See all roles" left, confirm right */
 .mk-tray-bottom {
   display: flex; align-items: center;
   justify-content: space-between; gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-subtle);
+}
+@media (max-width: 640px) {
+  .mk-tray-bottom { flex-direction: column-reverse; align-items: stretch; }
+  .mk-tray-bottom .mk-tray-confirm { width: 100%; }
+  .mk-tray-bottom .mk-tray-toggle { align-self: center; }
 }
 .mk-tray-toggle {
   background: none; border: none;
@@ -644,6 +659,7 @@
   font-family: 'Manrope', sans-serif;
   text-decoration: underline;
   min-height: var(--button-min-height);
+  white-space: nowrap;
 }
 .mk-tray-confirm {
   padding: 0.75rem 1.5rem;
@@ -657,6 +673,7 @@
   font-weight: 700;
   min-height: var(--button-min-height);
   border: none;
+  white-space: nowrap;
   transition: transform 0.15s, background 0.15s;
 }
 .mk-tray-confirm:hover { transform: scale(1.02); background: var(--color-primary-hover); }
