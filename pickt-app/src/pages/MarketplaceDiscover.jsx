@@ -65,6 +65,12 @@ function formatSalaryK(k) {
   return k >= SALARY_CEIL ? `$${SALARY_CEIL}k+` : `$${k}k`
 }
 
+// Spoken form for screen readers, e.g. "80,000 dollars AUD"
+function salarySpoken(k) {
+  const dollars = `${(k * 1000).toLocaleString('en-AU')} dollars AUD`
+  return k >= SALARY_CEIL ? `${dollars} or more` : dollars
+}
+
 // ── Saved search (localStorage) ──
 // Remembers the last search + filters so they're restored on return.
 // Every access is wrapped in try/catch: storage can be blocked (private mode, browser settings).
@@ -503,7 +509,8 @@ export default function MarketplaceDiscover() {
   // Raise whichever handle is nearest the pointer, so overlapping handles stay grabbable
   function handleSalaryPointer(e) {
     const rect = e.currentTarget.getBoundingClientRect()
-    const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const half = 22 // half the 44px thumb: the thumb centre travels from rect.left + 22 to rect.right - 22
+    const pct = Math.min(1, Math.max(0, (e.clientX - rect.left - half) / (rect.width - half * 2)))
     const pointerVal = SALARY_FLOOR + pct * (SALARY_CEIL - SALARY_FLOOR)
     setTopSalaryThumb(pointerVal < (salaryMin + salaryMax) / 2 ? 'min' : 'max')
   }
@@ -735,7 +742,7 @@ export default function MarketplaceDiscover() {
                         role="combobox"
                         aria-autocomplete="list"
                         aria-expanded={showSuggestions}
-                        aria-controls="mk-suggestion-list"
+                        aria-controls={showSuggestions ? 'mk-suggestion-list' : undefined}
                         aria-activedescendant={showSuggestions && highlightIdx >= 0 ? `mk-suggestion-${highlightIdx}` : undefined}
                         autoComplete="off"
                         value={trayQuery}
@@ -749,6 +756,11 @@ export default function MarketplaceDiscover() {
                         </button>
                       )}
                     </div>
+                    <p className="mk-sr-only" role="status">
+                      {showSuggestions && suggestions.length > 0
+                        ? `${suggestions.length} suggestions available. Use up and down arrows to choose, Enter to select.`
+                        : ''}
+                    </p>
                     {showSuggestions && suggestions.length > 0 && (
                       <ul className="mk-tray-suggestions" id="mk-suggestion-list" role="listbox" aria-label="Suggestions">
                         {suggestions.map((s, i) => (
@@ -770,27 +782,32 @@ export default function MarketplaceDiscover() {
                     )}
                   </div>
 
-                  <div className="mk-tray-chips">
-                    {CATEGORY_CHIPS.map(({ key, icon }) => {
-                      const active = activeCategories.includes(key)
-                      const count = categoryCounts[key] || 0
-                      const empty = count === 0 && !active
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''} ${empty ? 'mk-tray-chip--empty' : ''}`}
-                          disabled={empty}
-                          title={empty ? `No ${key} candidates yet` : undefined}
-                          onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
-                        >
-                          <span className="material-symbols-outlined mk-tray-chip-icon" aria-hidden="true">{icon}</span>
-                          {key}
-                          <span className="mk-tray-chip-count">{count}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <fieldset className="mk-tray-fieldset">
+                    <legend className="mk-sr-only">Categories</legend>
+                    <div className="mk-tray-chips">
+                      {CATEGORY_CHIPS.map(({ key, icon }) => {
+                        const active = activeCategories.includes(key)
+                        const count = categoryCounts[key] || 0
+                        const empty = count === 0 && !active
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''} ${empty ? 'mk-tray-chip--empty' : ''}`}
+                            disabled={empty}
+                            aria-pressed={active}
+                            title={empty ? `No ${key} candidates yet` : undefined}
+                            onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
+                          >
+                            <span className="material-symbols-outlined mk-tray-chip-icon" aria-hidden="true">{icon}</span>
+                            {key}
+                            <span className="mk-tray-chip-count" aria-hidden="true">{count}</span>
+                            <span className="mk-sr-only">, {count} {count === 1 ? 'candidate' : 'candidates'}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
 
                   <button
                     type="button"
@@ -807,7 +824,7 @@ export default function MarketplaceDiscover() {
                   {showMoreFilters && (
                     <div className="mk-tray-more" id="mk-more-filters">
                       <div className="mk-tray-quant-row">
-                        <div className="mk-tray-salary">
+                        <div className="mk-tray-salary" role="group" aria-labelledby="mk-salary-label">
                           <div className="mk-tray-salary-header">
                             <span className="mk-tray-salary-label" id="mk-salary-label">Salary expectation</span>
                             <span className="mk-tray-salary-value">
@@ -834,7 +851,7 @@ export default function MarketplaceDiscover() {
                               style={{ zIndex: topSalaryThumb === 'min' ? 2 : 1 }}
                               onFocus={() => setTopSalaryThumb('min')}
                               aria-label="Minimum salary"
-                              aria-valuetext={`${formatSalaryK(salaryMin)} AUD`}
+                              aria-valuetext={salarySpoken(salaryMin)}
                               onChange={e => handleSalaryMinChange(parseInt(e.target.value))}
                             />
                             <input
@@ -847,7 +864,7 @@ export default function MarketplaceDiscover() {
                               style={{ zIndex: topSalaryThumb === 'max' ? 2 : 1 }}
                               onFocus={() => setTopSalaryThumb('max')}
                               aria-label="Maximum salary"
-                              aria-valuetext={`${formatSalaryK(salaryMax)} AUD`}
+                              aria-valuetext={salarySpoken(salaryMax)}
                               onChange={e => handleSalaryMaxChange(parseInt(e.target.value))}
                             />
                           </div>
@@ -859,9 +876,9 @@ export default function MarketplaceDiscover() {
 
                         <div className="mk-tray-quant-sep" />
 
-                        <div className="mk-tray-experience">
+                        <div className="mk-tray-experience" role="group" aria-labelledby="mk-exp-label">
                           <div className="mk-tray-exp-header">
-                            <span className="mk-tray-salary-label">Min. experience</span>
+                            <span className="mk-tray-salary-label" id="mk-exp-label">Min. experience</span>
                             <span className="mk-tray-salary-value">
                               {minExperience === 0 ? 'Any experience' : `${minExperience}+ years`}
                             </span>
@@ -872,6 +889,7 @@ export default function MarketplaceDiscover() {
                                 key={o.value}
                                 type="button"
                                 className={`mk-tray-pill ${minExperience === o.value ? 'mk-tray-pill--active' : ''}`}
+                                aria-pressed={minExperience === o.value}
                                 onClick={() => setMinExperience(o.value)}
                               >
                                 {o.label}
@@ -891,16 +909,22 @@ export default function MarketplaceDiscover() {
                         ].map(({ label, options, value, setter }, gi) => (
                           <div key={label} style={{ display: 'contents' }}>
                             {gi > 0 && <div className="mk-tray-quant-sep" />}
-                            <div className="mk-tray-pill-group">
-                              <span className="mk-tray-salary-label">{label}</span>
+                            <fieldset className="mk-tray-pill-group mk-tray-fieldset">
+                              <legend className="mk-tray-salary-label">{label}</legend>
                               <div className="mk-tray-pills">
                                 {options.map(v => (
-                                  <button key={v} type="button" className={`mk-tray-pill ${value.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(v, setter)}>
+                                  <button
+                                    key={v}
+                                    type="button"
+                                    className={`mk-tray-pill ${value.includes(v) ? 'mk-tray-pill--active' : ''}`}
+                                    aria-pressed={value.includes(v)}
+                                    onClick={() => togglePillFilter(v, setter)}
+                                  >
                                     {v}
                                   </button>
                                 ))}
                               </div>
-                            </div>
+                            </fieldset>
                           </div>
                         ))}
                       </div>
@@ -909,8 +933,8 @@ export default function MarketplaceDiscover() {
 
                   {activeFilterChips.length > 0 && (
                     <div className="mk-tray-active">
-                      <span className="mk-tray-active-label">Active filters</span>
-                      <ul className="mk-tray-active-list">
+                      <span className="mk-tray-active-label" id="mk-active-label">Active filters</span>
+                      <ul className="mk-tray-active-list" aria-labelledby="mk-active-label">
                         {activeFilterChips.map(chip => (
                           <li key={chip.id}>
                             <button type="button" className="mk-tray-active-chip" onClick={chip.remove} aria-label={`Remove filter: ${chip.label}`}>
@@ -926,6 +950,11 @@ export default function MarketplaceDiscover() {
                     </div>
                   )}
 
+                  {/* Announces the live match count to screen readers */}
+                  <p className="mk-sr-only" aria-live="polite" aria-atomic="true">
+                    {dataLoaded ? (noMatches ? 'No matching candidates. Try removing a filter.' : `${total} matching ${total === 1 ? 'candidate' : 'candidates'}`) : ''}
+                  </p>
+
                   <div className="mk-tray-bottom">
                     <button type="button" className="mk-tray-toggle press-scale" onClick={showAllRoles}>
                       See all roles &rarr;
@@ -935,7 +964,6 @@ export default function MarketplaceDiscover() {
                       className="mk-tray-confirm press-scale"
                       onClick={confirmDiscovery}
                       disabled={!dataLoaded || noMatches}
-                      aria-live="polite"
                     >
                       {confirmLabel}{!noMatches && dataLoaded && <> &rarr;</>}
                     </button>
