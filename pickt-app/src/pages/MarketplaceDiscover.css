@@ -117,6 +117,11 @@
 }
 
 .mk-left { min-width: 0; }
+.mk-loading {
+  padding: 1.5rem 0;
+  font-size: 0.875rem; font-weight: 600;
+  color: var(--on-surface-variant);
+}
 .mk-left--transitioning { opacity: 0; transition: opacity 0.15s ease; }
 .mk-right { display: flex; flex-direction: column; gap: 1.5rem; }
 

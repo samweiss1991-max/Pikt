@@ -35,10 +35,11 @@ export function useScrollReveal(options = {}) {
 /**
  * Observe multiple children of a container.
  * Each child with [data-reveal] gets 'revealed' class staggered.
+ * Pass `deps` when the container or its children mount/change after first render.
  */
 export function useStaggerReveal(options = {}) {
   const ref = useRef(null)
-  const { threshold = 0.1, rootMargin = '0px 0px -30px 0px', staggerMs = 60 } = options
+  const { threshold = 0.1, rootMargin = '0px 0px -30px 0px', staggerMs = 60, deps = [] } = options
 
   useEffect(() => {
     const container = ref.current
@@ -64,7 +65,7 @@ export function useStaggerReveal(options = {}) {
 
     children.forEach(child => observer.observe(child))
     return () => observer.disconnect()
-  }, [threshold, rootMargin, staggerMs])
+  }, [threshold, rootMargin, staggerMs, ...deps]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return ref
 }

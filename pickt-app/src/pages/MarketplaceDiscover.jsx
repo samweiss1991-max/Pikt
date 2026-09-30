@@ -11,7 +11,6 @@ import CandidateCard from '../components/CandidateCard'
 import RightInsightsPanel from '../components/marketplace/RightInsightsPanel'
 import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
-import SkeletonCard from '../components/shared/SkeletonCard'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import { computeCategoryCounts, ROLE_TO_CATEGORY } from '../lib/roleCategories'
 import { mapCandidate } from '../lib/candidateUtils'
@@ -599,7 +598,7 @@ export default function MarketplaceDiscover() {
   const candidateCountText = COPY.marketplace.candidateCount(total)
 
   const headerRef = useScrollReveal()
-  const cardsRef = useStaggerReveal({ staggerMs: 100 })
+  const cardsRef = useStaggerReveal({ staggerMs: 100, deps: [candidates, viewMode, loading, showCandidates] })
 
   return (
     <div className="mk-page" style={{ position: 'relative', minHeight: 'calc(100vh - 4rem)' }}>
@@ -848,7 +847,7 @@ export default function MarketplaceDiscover() {
           <div className={transitioning ? 'mk-left--transitioning' : ''}>
           {showCandidates && (
             <>
-              {loading && <SkeletonCard count={3} />}
+              {loading && <p className="mk-loading" role="status">Loading candidates…</p>}
 
               {!loading && error && <ErrorBanner message={error} onRetry={() => { allCandidatesRef.current = []; loadCandidates() }} />}
 
