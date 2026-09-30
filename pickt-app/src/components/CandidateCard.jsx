@@ -124,6 +124,8 @@ function FlipCard({
     : null
 
   const base = `cc-${String(c.id).replace(/[^a-zA-Z0-9_-]/g, '')}`
+  // Narrow cards (Matrix grid, Flickt deck): smaller tabs + icon-only Save so everything fits on one row
+  const compactTabs = variant === 'matrix' || variant === 'tinder'
   const tabs = [
     { key: 'front', label: referrer ? `${COPY.marketplace.referredBy} ${referrer}` : 'Profile', icon: 'check_circle' },
     ...(hasBack ? [{ key: 'back', label: `${interviewCount} ${interviewCount === 1 ? 'interview' : 'interviews'}`, icon: 'chat_bubble' }] : []),
@@ -142,7 +144,7 @@ function FlipCard({
 
   return (
     <article
-      className={['cc-flipcard', `cc-flipcard--${variant}`, stacked && 'cc-flipcard--stacked'].filter(Boolean).join(' ')}
+      className={['cc-flipcard', `cc-flipcard--${variant}`, stacked && 'cc-flipcard--stacked', compactTabs && 'cc-flipcard--compact-tabs'].filter(Boolean).join(' ')}
       aria-label={c.role}
     >
       <div className="cc-tabrow">
@@ -166,8 +168,8 @@ function FlipCard({
               >
                 <span className="material-symbols-outlined" aria-hidden="true">{t.icon}</span>
                 <span className="cc-ftab-label">
-                  {/* Matrix (narrow cards): "Referred by" is read out but not shown — the tick carries it */}
-                  {t.key === 'front' && referrer && variant === 'matrix'
+                  {/* Narrow cards: "Referred by" is read out but not shown — the tick carries it */}
+                  {t.key === 'front' && referrer && compactTabs
                     ? <><span className="cc-sr-only">{COPY.marketplace.referredBy} </span>{referrer}</>
                     : t.label}
                 </span>
@@ -175,8 +177,8 @@ function FlipCard({
             )
           })}
         </div>
-        {variant === 'matrix' ? (
-          // Narrow Matrix cards: icon-only Save so both tabs fit beside it
+        {compactTabs ? (
+          // Narrow cards: icon-only Save so both tabs fit beside it
           <button
             type="button"
             className={`cc-save-btn cc-save-btn--icon ${saved ? 'cc-save-btn--saved' : ''}`}
@@ -236,7 +238,7 @@ function FlipCard({
                   {actions || (
                     <>
                       {unlocked ? (
-                        <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={onViewProfile}>{'\u2713'} View full profile</button>
+                        <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={onViewProfile}><span aria-hidden="true">{'\u2713'}</span>View full profile</button>
                       ) : (
                         <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={onUnlock}>Unlock</button>
                       )}
@@ -435,7 +437,7 @@ function NewCard({ candidate: c, viewMode }) {
           variant="tinder"
           stacked
           skillsLimit={3}
-          climbMax={90}
+          climbMax={56}
           meta={[c.seniority, c.city]}
           onFrontClick={toggle}
           extraTop={
@@ -478,7 +480,7 @@ function NewCard({ candidate: c, viewMode }) {
           meta={[c.seniority, c.years ? `${c.years} yrs experience` : null, c.city, workType]}
           actions={<>
             {unlocked ? (
-              <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}>{'✓'} View full profile</button>
+              <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}><span aria-hidden="true">{'\u2713'}</span>View full profile</button>
             ) : (
               <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>Unlock candidate</button>
             )}
@@ -515,7 +517,7 @@ function NewCard({ candidate: c, viewMode }) {
           skillsLimit={3}
           climbMax={100}
           actions={unlocked ? (
-            <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={goToProfile}>{'✓'} Unlocked</button>
+            <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={goToProfile}><span aria-hidden="true">{'\u2713'}</span>Unlocked</button>
           ) : (
             <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={() => setShowModal(true)}>{COPY.marketplace.requestInterview}</button>
           )}

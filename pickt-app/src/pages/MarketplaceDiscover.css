@@ -152,16 +152,18 @@
 
 /* ── Tinder ── */
 .mk-tinder-wrap { max-width: 420px; margin: 0 auto; }
-.mk-tinder-counter { font-size: 12px; color: var(--on-surface-variant); text-align: center; margin-bottom: 1rem; }
-/* Cards share one grid cell, so the deck grows to fit the tallest card */
+.mk-tinder-counter { font-size: 12px; color: var(--on-surface-variant); text-align: center; margin-bottom: 0.5rem; }
+/* The front card sits in the grid cell and sets the deck's height */
 .mk-tinder-stack { position: relative; display: grid; }
 .mk-tinder-card { position: relative; grid-area: 1 / 1; transition: transform 0.05s linear; }
+/* Only the front card sets the deck's height; the cards behind are clipped to it */
+.mk-tinder-card[inert] { position: absolute; inset: 0; overflow: hidden; }
 /* Only the front card shows its tabs and Save button, so the ones behind don't peek out */
 .mk-tinder-card[inert] .cc-tabrow { visibility: hidden; }
 .mk-tinder-hint { position: absolute; top: 40%; font-size: 28px; font-weight: 900; z-index: 10; pointer-events: none; letter-spacing: 2px; }
 .mk-tinder-hint--save { right: 24px; color: var(--primary); }
 .mk-tinder-hint--skip { left: 24px; color: var(--color-critical); }
-.mk-tinder-actions { display: flex; justify-content: center; gap: 1.5rem; margin-top: 1.5rem; }
+.mk-tinder-actions { display: flex; justify-content: center; gap: 1.5rem; margin-top: 1rem; }
 .mk-tinder-btn {
   width: 56px; height: 56px; border-radius: 50%;
    font-size: 24px; font-weight: 700;
