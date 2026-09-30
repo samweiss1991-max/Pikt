@@ -80,7 +80,7 @@ function FolderCard({ c, meta, skillsLimit, extraTop, actions, below, climbMax =
   const referrerName = c.referringCompany || c.company
   const referrer = referrerName && referrerName !== 'Unknown' ? referrerName : null
   const interviews = c.interviews || 0
-  const hasTabs = Boolean(referrer) || interviews > 0
+  const hasTabs = Boolean(referrer)
   const metaParts = (meta || [c.seniority, c.years ? `${c.years} yrs experience` : null, c.city]).filter(Boolean)
   const hasClimb = careerSteps(c.workHistory).length > 0
   const skills = skillsLimit ? (c.skills || []).slice(0, skillsLimit) : (c.skills || [])
@@ -99,11 +99,6 @@ function FolderCard({ c, meta, skillsLimit, extraTop, actions, below, climbMax =
             <span className="cc-tab cc-tab--referral">
               <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>
               {COPY.marketplace.referredBy} {referrer}
-            </span>
-          )}
-          {interviews > 0 && (
-            <span className="cc-tab cc-tab--interviews">
-              {interviews} {interviews === 1 ? 'interview' : 'interviews'} done
             </span>
           )}
         </div>
@@ -125,6 +120,17 @@ function FolderCard({ c, meta, skillsLimit, extraTop, actions, below, climbMax =
             <ul className="cc-stack-skills" aria-label="Skills">
               {skills.map(s => <li key={s} className="cc-stack-skill">{s}</li>)}
             </ul>
+          )}
+
+          {interviews > 0 && (
+            <div className="cc-interviews">
+              <span className="cc-interviews-num">{interviews}</span>
+              <span className="cc-interviews-text">
+                <span className="cc-interviews-title">{interviews === 1 ? 'interview completed' : 'interviews completed'}</span>
+                <span className="cc-interviews-sub">Already vetted by other employers</span>
+              </span>
+              <span className="material-symbols-outlined cc-interviews-check" aria-hidden="true">check_circle</span>
+            </div>
           )}
 
           {actions && <div className="cc-stack-actions">{actions}</div>}
