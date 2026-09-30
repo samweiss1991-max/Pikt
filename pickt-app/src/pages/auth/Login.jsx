@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import './Auth.css'
 
@@ -10,6 +10,11 @@ export default function Login() {
   // "Skip to demo" stay in a JWT-less state where edge functions reject them.
   useEffect(() => { localStorage.removeItem('pickt_dev_auth') }, [])
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  // Where to go after signing in, e.g. back to the marketplace to finish saving a search.
+  // Only in-app paths are allowed (no "//evil.com" style redirects).
+  const nextParam = searchParams.get('next') || '/'
+  const next = nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -21,7 +26,7 @@ export default function Login() {
     setLoading(true)
     try {
       await signIn(email, password)
-      navigate('/')
+      navigate(next)
     } catch (err) {
       setError(err.message)
     } finally {

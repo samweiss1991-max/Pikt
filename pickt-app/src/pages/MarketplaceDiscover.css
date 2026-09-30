@@ -28,47 +28,6 @@
   font-weight: 500;
   line-height: 1.6;
 }
-.mk-header-right {
-  display: flex;
-  gap: 0.75rem;
-  flex-shrink: 0;
-}
-.mk-filter-btn {
-  display: flex; align-items: center; gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-   font-size: 0.875rem;
-  cursor: pointer;
-  font-family: 'Manrope', sans-serif;
-  transition: background 0.15s;
-  background: #FFFFFF;
-  color: var(--color-primary);
-  font-weight: 700;
-  border: 2px solid var(--color-primary);
-  min-height: var(--button-min-height);
-}
-.mk-filter-btn:hover { background: var(--color-primary-tint); color: var(--color-primary); opacity: 1; }
-.mk-filter-btn .material-symbols-outlined { font-size: 20px; }
-
-.mk-new-search-btn {
-  display: flex; align-items: center; gap: 0.5rem;
-  padding: 0.75rem 2rem;
-  border-radius: 0.5rem;
-   font-size: 0.875rem;
-  cursor: pointer;
-  font-family: 'Manrope', sans-serif;
-  box-shadow: 0 4px 12px rgba(0,35,102,0.2);
-  transition: transform 0.15s, opacity 0.15s;
-  background: var(--color-primary);
-  color: #FFFFFF;
-  font-weight: 700;
-  min-height: var(--button-min-height);
-  border: none;
-}
-.mk-new-search-btn:hover { transform: scale(1.02); background: var(--color-primary-hover); }
-.mk-new-search-btn:active { transform: scale(0.95); }
-.mk-new-search-btn .material-symbols-outlined { font-size: 18px; }
-
 /* ── Candidate count ── */
 .mk-candidate-count {
   font-size: 0.875rem;
@@ -324,6 +283,7 @@
 
 /* ── Discovery tray ── */
 .mk-tray-wrap {
+  scroll-margin-top: 5rem; /* "New search" scrolls here; keep it clear of the sticky top bar */
   position: relative; z-index: 5;
   margin-bottom: 1.5rem;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -788,5 +748,4 @@ legend.mk-tray-salary-label { padding: 0; }
 @media (max-width: 768px) {
   .mk-header { flex-direction: column; align-items: flex-start; }
   .mk-heading { font-size: 2rem; }
-  .mk-header-right { width: 100%; }
 }

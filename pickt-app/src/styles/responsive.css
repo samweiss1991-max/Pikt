@@ -58,9 +58,6 @@
   .mk-subtitle, .db-subheading { font-size: 0.875rem; }
 
 
-  /* Marketplace header buttons */
-  .mk-header-right { width: 100%; }
-  .mk-filter-btn, .mk-new-search-btn { flex: 1; justify-content: center; }
 
   /* View switcher: scroll horizontal */
   .mk-view-switcher { overflow-x: auto; width: 100%; }

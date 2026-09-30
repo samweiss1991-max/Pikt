@@ -26,8 +26,6 @@ export const COPY = {
     headingEnd: ' Talent.',
     subtitle: 'Access our vetted pool of pre-interviewed engineering ' +
       'specialists curated for high-growth ecosystems.',
-    filterBtn: 'Filter',
-    newSearchBtn: 'New Search',
     candidateCount: (n: number) =>
       `Discovering ${n.toLocaleString()} vetted candidates ` +
       `ready for their next chapter.`,

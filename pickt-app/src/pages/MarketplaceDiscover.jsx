@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { getCandidates, getCandidatesRaw } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
@@ -14,6 +15,8 @@ import ErrorBanner from '../components/shared/ErrorBanner'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import { computeCategoryCounts, ROLE_TO_CATEGORY } from '../lib/roleCategories'
 import { mapCandidate } from '../lib/candidateUtils'
+import SaveSearchControls from '../components/search/SaveSearchControls'
+import { SALARY_FLOOR, SALARY_CEIL, REMEMBERED_SEARCH_KEY, clearRememberedSearch, isDefaultCriteria } from '../lib/searchCriteria'
 import './MarketplaceDiscover.css'
 
 const isDevMode = import.meta.env.DEV
@@ -50,9 +53,7 @@ const NAMED_CITIES = ['Sydney', 'Melbourne', 'Brisbane']
 const OTHER_CITIES = 'Other cities'
 const LOCATION_OPTIONS = [...NAMED_CITIES, OTHER_CITIES]
 
-// Salary slider bounds, in $k AUD. SALARY_CEIL means "no upper limit" ($300k+).
-const SALARY_FLOOR = 40
-const SALARY_CEIL = 300
+// Salary slider bounds (SALARY_FLOOR / SALARY_CEIL, in $k AUD) come from lib/searchCriteria
 const SALARY_STEP = 5
 const EXPERIENCE_OPTIONS = [
   { value: 0, label: 'Any' },
@@ -71,42 +72,50 @@ function salarySpoken(k) {
   return k >= SALARY_CEIL ? `${dollars} or more` : dollars
 }
 
-// ── Saved search (localStorage) ──
-// Remembers the last search + filters so they're restored on return.
+// ── Remembered last search (localStorage, this browser only) ──
+// Restored on return; "New search" deletes it. Named saved searches live on
+// the server instead (see SaveSearchControls).
 // Every access is wrapped in try/catch: storage can be blocked (private mode, browser settings).
-const SAVED_FILTERS_KEY = 'pickt_marketplace_filters'
+
+const DEFAULT_FILTERS = {
+  query: '', categories: [], salaryMin: SALARY_FLOOR, salaryMax: SALARY_CEIL,
+  minExperience: 0, availability: [], workPreference: [], locations: [],
+}
+
+// Only keep values the current UI still offers (options may change between releases)
+function sanitizeFilters(saved) {
+  if (!saved || typeof saved !== 'object') return DEFAULT_FILTERS
+  const pick = (arr, allowed) => Array.isArray(arr) ? arr.filter(v => allowed.includes(v)) : []
+  const inRange = (n, fallback) => Number.isFinite(n) && n >= SALARY_FLOOR && n <= SALARY_CEIL ? n : fallback
+  const salaryMin = inRange(saved.salaryMin, SALARY_FLOOR)
+  const salaryMax = inRange(saved.salaryMax, SALARY_CEIL)
+  const validSalary = salaryMin < salaryMax
+  return {
+    query: typeof saved.query === 'string' ? saved.query.slice(0, 100) : '',
+    categories: pick(saved.categories, CATEGORY_CHIPS.map(c => c.key)),
+    salaryMin: validSalary ? salaryMin : SALARY_FLOOR,
+    salaryMax: validSalary ? salaryMax : SALARY_CEIL,
+    minExperience: EXPERIENCE_OPTIONS.some(o => o.value === saved.minExperience) ? saved.minExperience : 0,
+    availability: pick(saved.availability, AVAILABILITY_OPTIONS),
+    workPreference: pick(saved.workPreference, WORK_OPTIONS),
+    locations: pick(saved.locations, LOCATION_OPTIONS),
+  }
+}
 
 function loadSavedFilters() {
-  const defaults = {
-    query: '', categories: [], salaryMin: SALARY_FLOOR, salaryMax: SALARY_CEIL,
-    minExperience: 0, availability: [], workPreference: [], locations: [],
-  }
   try {
-    const saved = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || 'null')
-    if (!saved || typeof saved !== 'object') return defaults
-    // Only keep values the current UI still offers (options may change between releases)
-    const pick = (arr, allowed) => Array.isArray(arr) ? arr.filter(v => allowed.includes(v)) : []
-    const inRange = (n, fallback) => Number.isFinite(n) && n >= SALARY_FLOOR && n <= SALARY_CEIL ? n : fallback
-    const salaryMin = inRange(saved.salaryMin, SALARY_FLOOR)
-    const salaryMax = inRange(saved.salaryMax, SALARY_CEIL)
-    const validSalary = salaryMin < salaryMax
-    return {
-      query: typeof saved.query === 'string' ? saved.query.slice(0, 100) : '',
-      categories: pick(saved.categories, CATEGORY_CHIPS.map(c => c.key)),
-      salaryMin: validSalary ? salaryMin : SALARY_FLOOR,
-      salaryMax: validSalary ? salaryMax : SALARY_CEIL,
-      minExperience: EXPERIENCE_OPTIONS.some(o => o.value === saved.minExperience) ? saved.minExperience : 0,
-      availability: pick(saved.availability, AVAILABILITY_OPTIONS),
-      workPreference: pick(saved.workPreference, WORK_OPTIONS),
-      locations: pick(saved.locations, LOCATION_OPTIONS),
-    }
+    return sanitizeFilters(JSON.parse(localStorage.getItem(REMEMBERED_SEARCH_KEY) || 'null'))
   } catch {
-    return defaults
+    return DEFAULT_FILTERS
   }
 }
 
 function saveFilters(filters) {
-  try { localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters)) } catch { /* storage blocked — ignore */ }
+  try {
+    // Nothing set = nothing to remember (e.g. right after "New search")
+    if (isDefaultCriteria(filters)) localStorage.removeItem(REMEMBERED_SEARCH_KEY)
+    else localStorage.setItem(REMEMBERED_SEARCH_KEY, JSON.stringify(filters))
+  } catch { /* storage blocked — ignore */ }
 }
 
 const VIEW_MODES = [
@@ -238,7 +247,7 @@ function FocusView({ candidates }) {
 export default function MarketplaceDiscover() {
   const location = useLocation()
   const { viewMode, setViewMode } = useViewMode()
-  const { query: searchQuery } = useSearch()
+  const { query: searchQuery, setQuery: setTopbarQuery, searchCommand } = useSearch()
 
   const [candidates, setCandidates] = useState([])
   const [total, setTotal] = useState(0)
@@ -495,10 +504,81 @@ export default function MarketplaceDiscover() {
     setLocations([])
   }
 
-  function resetMarketplace() {
-    try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
-    setDiscoveryConfirmed(false)
+  // ── New search / Clear all: back to the initial search page, everything reset ──
+  const [announcement, setAnnouncement] = useState('')
+  const [resetTick, setResetTick] = useState(0)
+  const focusAfterReset = useRef(false)
+
+  function newSearchReset() {
+    clearRememberedSearch()          // the old search must not come back after a reload
     clearAllFilters()
+    closeSuggestions()
+    setShowMoreFilters(false)
+    setTrayDismissing(false)
+    setDiscoveryConfirmed(false)     // show the search panel again
+    setTopbarQuery('')
+    focusAfterReset.current = true
+    setResetTick(t => t + 1)
+  }
+
+  // After a reset has rendered: scroll to the search panel, focus the box, announce it
+  useEffect(() => {
+    if (!focusAfterReset.current) return
+    focusAfterReset.current = false
+    const input = trayInputRef.current
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    input?.closest('.mk-tray-wrap')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    input?.focus({ preventScroll: true })
+    const t1 = setTimeout(() => setAnnouncement('Search cleared'), 50)
+    const t2 = setTimeout(() => setAnnouncement(''), 2500)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [resetTick])
+
+  // "New search" pressed while on this page (sent from the search actions bar)
+  useEffect(() => {
+    if (searchCommand?.type !== 'reset') return
+    Promise.resolve().then(newSearchReset)
+  }, [searchCommand?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Arrived via "New search" from another page: state is already fresh, just focus + announce
+  useEffect(() => {
+    if (!location.state?.newSearch) return
+    // Drop the one-off flag so a reload doesn't repeat this. Done on the browser history
+    // directly: a router navigation would remount the page and lose the focus.
+    window.history.replaceState({ ...window.history.state, usr: null }, '')
+    focusAfterReset.current = true
+    Promise.resolve().then(() => setResetTick(t => t + 1))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Run a saved search: apply its text + filters (results and count update as usual)
+  function runSavedSearch(criteria) {
+    const c = sanitizeFilters(criteria)
+    setActiveCategories(c.categories)
+    setTrayQuery(c.query)
+    setAppliedQuery(c.query.trim().length >= 2 ? c.query.trim() : '')
+    closeSuggestions()
+    setSalaryMin(c.salaryMin)
+    setSalaryMax(c.salaryMax)
+    setMinExperience(c.minExperience)
+    setAvailability(c.availability)
+    setWorkPreference(c.workPreference)
+    setLocations(c.locations)
+    setShowMoreFilters(c.salaryMin > SALARY_FLOOR || c.salaryMax < SALARY_CEIL || c.minExperience > 0
+      || c.availability.length > 0 || c.workPreference.length > 0 || c.locations.length > 0)
+    setTrayDismissing(false)
+    setDiscoveryConfirmed(false)
+    setAnnouncement('Saved search applied')
+    setTimeout(() => setAnnouncement(''), 2500)
+  }
+
+  // The actions bar (in the page shell) has a slot for Saved searches + Save search
+  const [actionsSlot, setActionsSlot] = useState(null)
+  useEffect(() => {
+    Promise.resolve().then(() => setActionsSlot(document.getElementById('sa-slot')))
+  }, [])
+
+  function resetMarketplace() {
+    newSearchReset()
     setViewMode('stack')
   }
 
@@ -657,6 +737,7 @@ export default function MarketplaceDiscover() {
     setTimeout(() => { setViewMode(mode); setTimeout(() => setTransitioning(false), 20) }, 150)
   }
 
+  const currentCriteria = { query: trayQuery, categories: activeCategories, salaryMin, salaryMax, minExperience, availability, workPreference, locations }
   const salaryActive = salaryMin > SALARY_FLOOR || salaryMax < SALARY_CEIL
   const moreFiltersCount = (salaryActive ? 1 : 0) + (minExperience > 0 ? 1 : 0) + availability.length + workPreference.length + locations.length
   const hasActiveFilters = activeCategories.length > 0 || trayQuery.trim().length >= 2 || moreFiltersCount > 0
@@ -690,6 +771,12 @@ export default function MarketplaceDiscover() {
 
   return (
     <div className="mk-page" style={{ position: 'relative', minHeight: 'calc(100vh - 4rem)' }}>
+      {/* Saved searches + Save search, shown next to "New search" in the actions bar */}
+      {actionsSlot && createPortal(
+        <SaveSearchControls criteria={currentCriteria} hasCriteria={!isDefaultCriteria(currentCriteria)} onRun={runSavedSearch} />,
+        actionsSlot,
+      )}
+      <p className="mk-sr-only" role="status" aria-live="polite">{announcement}</p>
       {/* ── Page header ── */}
       <header className="mk-header reveal-fade-up" ref={headerRef} data-parallax-speed="0.08">
         <div className="mk-header-left">
@@ -699,16 +786,6 @@ export default function MarketplaceDiscover() {
             <span className="text-reveal-word" style={{ animationDelay: '340ms' }}>{COPY.marketplace.headingEnd}</span>
           </h2>
           <p className="mk-subtitle text-reveal-word" style={{ animationDelay: '460ms' }}>{COPY.marketplace.subtitle}</p>
-        </div>
-        <div className="mk-header-right">
-          <button className="mk-filter-btn press-scale">
-            <span className="material-symbols-outlined">filter_list</span>
-            {COPY.marketplace.filterBtn}
-          </button>
-          <button className="mk-new-search-btn press-scale">
-            <span className="material-symbols-outlined">add</span>
-            {COPY.marketplace.newSearchBtn}
-          </button>
         </div>
       </header>
 
@@ -957,7 +1034,7 @@ export default function MarketplaceDiscover() {
                           </li>
                         ))}
                       </ul>
-                      <button type="button" className="mk-tray-clear-all" onClick={clearAllFilters}>
+                      <button type="button" className="mk-tray-clear-all" onClick={newSearchReset}>
                         Clear all
                       </button>
                     </div>
@@ -992,7 +1069,7 @@ export default function MarketplaceDiscover() {
               {!loading && error && <ErrorBanner message={error} onRetry={() => { allCandidatesRef.current = []; loadCandidates() }} />}
 
               {!loading && !error && candidates.length === 0 && (
-                <EmptyState icon="search_off" message={COPY.emptyStates.marketplace} ctaLabel={COPY.emptyStates.marketplaceCta} onCta={clearAllFilters} />
+                <EmptyState icon="search_off" message={COPY.emptyStates.marketplace} ctaLabel={COPY.emptyStates.marketplaceCta} onCta={newSearchReset} />
               )}
 
               {!loading && !error && candidates.length > 0 && (

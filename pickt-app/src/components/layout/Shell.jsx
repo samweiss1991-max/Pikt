@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import LiquidBackground from './LiquidBackground'
+import SearchActionsBar from '../search/SearchActionsBar'
 import { useLayeredParallax } from '../../hooks/useParallax'
 
 export default function Shell() {
@@ -37,6 +38,8 @@ export default function Shell() {
           flex: 1,
           padding: '2rem',
         }}>
+          {/* "New search" (+ Save search on the marketplace), same spot on every search/candidate page */}
+          <SearchActionsBar />
           <div key={location.key} className="page-enter">
             <Outlet />
           </div>
