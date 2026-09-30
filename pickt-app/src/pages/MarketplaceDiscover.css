@@ -469,35 +469,63 @@
   font-size: 0.8125rem; font-weight: 800;
   color: var(--primary);
 }
-.mk-tray-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%; height: 6px;
+.mk-tray-range {
+  position: relative;
+  height: 44px; /* tall hit area for touch */
+}
+.mk-tray-range-track {
+  position: absolute; left: 0; right: 0; top: 50%;
+  height: 6px; margin-top: -3px;
   border-radius: 3px;
-  outline: none;
   background: linear-gradient(
     to right,
-    var(--color-primary) 0%, var(--color-primary) var(--pct, 100%),
-    var(--color-border-input) var(--pct, 100%), var(--color-border-input) 100%
+    var(--color-border-input) 0%, var(--color-border-input) var(--lo),
+    var(--color-primary) var(--lo), var(--color-primary) var(--hi),
+    var(--color-border-input) var(--hi), var(--color-border-input) 100%
   );
-  cursor: pointer;
 }
-.mk-tray-slider::-webkit-slider-thumb {
+/* Two native range inputs stacked on one track; only their thumbs take clicks */
+.mk-tray-range-input {
   -webkit-appearance: none;
-  width: 18px; height: 18px;
+  appearance: none;
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  outline: none;
+}
+.mk-tray-range-input::-webkit-slider-runnable-track { background: none; }
+.mk-tray-range-input::-moz-range-track { background: none; }
+.mk-tray-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 22px; height: 22px;
   border-radius: 50%;
   background: var(--color-primary);
   border: 2.5px solid #ffffff;
   box-shadow: 0 1px 4px rgba(0,35,102,0.3);
   cursor: pointer;
 }
-.mk-tray-slider::-moz-range-thumb {
-  width: 18px; height: 18px;
+.mk-tray-range-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 22px; height: 22px;
   border-radius: 50%;
   background: var(--color-primary);
   border: 2.5px solid #ffffff;
   box-shadow: 0 1px 4px rgba(0,35,102,0.3);
   cursor: pointer;
+}
+/* Focus ring goes on the focused handle, not around the whole (overlapping) input */
+.mk-tray-range-input:focus-visible {
+  outline: none !important;
+  box-shadow: none;
+}
+.mk-tray-range-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px var(--color-focus-ring);
+}
+.mk-tray-range-input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px var(--color-focus-ring);
 }
 .mk-tray-salary-range {
   display: flex; justify-content: space-between;
@@ -508,8 +536,8 @@
 
 /* Experience stepper */
 .mk-tray-experience {
-  flex: 0 0 auto;
-  min-width: 180px;
+  flex: 1 1 220px;
+  min-width: 0;
 }
 .mk-tray-exp-header {
   display: flex; align-items: center;
@@ -517,37 +545,6 @@
   flex-wrap: wrap;
   gap: 0.25rem 1rem;
   margin-bottom: 0.5rem;
-}
-.mk-tray-exp-controls {
-  display: flex; align-items: center;
-  gap: 0.625rem;
-  margin-top: 0.25rem;
-}
-.mk-tray-exp-btn {
-  width: 30px; height: 30px;
-  border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  font-family: 'Manrope', sans-serif;
-  transition: all 0.15s;
-  border: 1.5px solid var(--color-border-input);
-  background: #FFFFFF;
-  color: var(--color-text);
-}
-.mk-tray-exp-btn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  background: var(--color-primary-tint);
-  color: var(--color-primary);
-}
-.mk-tray-exp-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.mk-tray-exp-value {
-  font-size: 1.125rem; font-weight: 800;
-  color: var(--on-surface);
-  min-width: 56px;
-  text-align: center;
 }
 
 /* Pill filter row */

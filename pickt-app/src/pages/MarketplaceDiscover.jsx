@@ -50,6 +50,21 @@ const NAMED_CITIES = ['Sydney', 'Melbourne', 'Brisbane']
 const OTHER_CITIES = 'Other cities'
 const LOCATION_OPTIONS = [...NAMED_CITIES, OTHER_CITIES]
 
+// Salary slider bounds, in $k AUD. SALARY_CEIL means "no upper limit" ($300k+).
+const SALARY_FLOOR = 40
+const SALARY_CEIL = 300
+const SALARY_STEP = 5
+const EXPERIENCE_OPTIONS = [
+  { value: 0, label: 'Any' },
+  { value: 2, label: '2+ yrs' },
+  { value: 5, label: '5+ yrs' },
+  { value: 8, label: '8+ yrs' },
+]
+
+function formatSalaryK(k) {
+  return k >= SALARY_CEIL ? `$${SALARY_CEIL}k+` : `$${k}k`
+}
+
 const VIEW_MODES = [
   { key: 'stack', label: COPY.viewModes.stack, icon: 'view_agenda' },
   { key: 'carousel', label: COPY.viewModes.carousel, icon: 'view_carousel' },
@@ -192,7 +207,9 @@ export default function MarketplaceDiscover() {
   const [locations, setLocations] = useState([])
 
   // ── Salary & experience filters ──
-  const [salaryMax, setSalaryMax] = useState(300)
+  const [salaryMin, setSalaryMin] = useState(SALARY_FLOOR)
+  const [salaryMax, setSalaryMax] = useState(SALARY_CEIL)
+  const [topSalaryThumb, setTopSalaryThumb] = useState('max') // which handle sits on top when they overlap
   const [minExperience, setMinExperience] = useState(0)
 
   // ── Tray search state ──
@@ -217,6 +234,7 @@ export default function MarketplaceDiscover() {
   function fetchCandidates({
     categories = [],
     query = '',
+    salaryMin = null,
     salaryMax = null,
     minExperience = null,
     workPreferences = [],
@@ -246,9 +264,12 @@ export default function MarketplaceDiscover() {
       })
     }
 
-    // Filter by salary (candidate's min salary must be ≤ salaryMax)
+    // Filter by salary: the candidate's expected range must overlap the selected range
     if (salaryMax != null) {
       result = result.filter(c => (c.salaryLow || 0) <= salaryMax)
+    }
+    if (salaryMin != null) {
+      result = result.filter(c => (c.salaryHigh || c.salaryLow || 0) >= salaryMin)
     }
 
     // Filter by minimum years experience
@@ -303,7 +324,8 @@ export default function MarketplaceDiscover() {
       const result = fetchCandidates({
         categories: activeCategories,
         query: appliedQuery || searchQuery,
-        salaryMax: salaryMax < 300 ? salaryMax * 1000 : null,
+        salaryMin: salaryMin > SALARY_FLOOR ? salaryMin * 1000 : null,
+        salaryMax: salaryMax < SALARY_CEIL ? salaryMax * 1000 : null,
         minExperience: minExperience > 0 ? minExperience : null,
         workPreferences: workPreference,
         locations,
@@ -387,7 +409,7 @@ export default function MarketplaceDiscover() {
   useEffect(() => {
     if (!dataLoaded) return
     loadCandidates()
-  }, [dataLoaded, activeCategories, searchQuery, appliedQuery, salaryMax, minExperience, availability, workPreference, locations]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dataLoaded, activeCategories, searchQuery, appliedQuery, salaryMin, salaryMax, minExperience, availability, workPreference, locations]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function confirmDiscovery() {
     if (!discoveryConfirmed) {
@@ -406,7 +428,8 @@ export default function MarketplaceDiscover() {
     setActiveCategories([])
     setTrayQuery('')
     setAppliedQuery('')
-    setSalaryMax(300)
+    setSalaryMin(SALARY_FLOOR)
+    setSalaryMax(SALARY_CEIL)
     setMinExperience(0)
     setAvailability([])
     setWorkPreference([])
@@ -414,16 +437,24 @@ export default function MarketplaceDiscover() {
     setViewMode('stack')
   }
 
-  function handleExperienceChange(direction) {
-    setMinExperience(prev => Math.max(0, Math.min(20, prev + direction)))
-  }
 
   function togglePillFilter(value, setter) {
     setter(prev => prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value])
   }
 
-  function handleSalaryChange(val) {
-    setSalaryMax(val)
+  // Keep the two handles at least one step apart so they never cross
+  function handleSalaryMinChange(val) {
+    setSalaryMin(Math.min(val, salaryMax - SALARY_STEP))
+  }
+  function handleSalaryMaxChange(val) {
+    setSalaryMax(Math.max(val, salaryMin + SALARY_STEP))
+  }
+  // Raise whichever handle is nearest the pointer, so overlapping handles stay grabbable
+  function handleSalaryPointer(e) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const pointerVal = SALARY_FLOOR + pct * (SALARY_CEIL - SALARY_FLOOR)
+    setTopSalaryThumb(pointerVal < (salaryMin + salaryMax) / 2 ? 'min' : 'max')
   }
 
   // ── Tray search: type-ahead suggestions ──
@@ -562,7 +593,8 @@ export default function MarketplaceDiscover() {
     setTimeout(() => { setViewMode(mode); setTimeout(() => setTransitioning(false), 20) }, 150)
   }
 
-  const moreFiltersCount = (salaryMax < 300 ? 1 : 0) + (minExperience > 0 ? 1 : 0) + availability.length + workPreference.length + locations.length
+  const salaryActive = salaryMin > SALARY_FLOOR || salaryMax < SALARY_CEIL
+  const moreFiltersCount = (salaryActive ? 1 : 0) + (minExperience > 0 ? 1 : 0) + availability.length + workPreference.length + locations.length
   const hasActiveFilters = activeCategories.length > 0 || trayQuery.trim().length >= 2 || moreFiltersCount > 0
   const showCandidates = discoveryConfirmed || hasActiveFilters
 
@@ -721,24 +753,51 @@ export default function MarketplaceDiscover() {
                       <div className="mk-tray-quant-row">
                         <div className="mk-tray-salary">
                           <div className="mk-tray-salary-header">
-                            <span className="mk-tray-salary-label">Salary expectation</span>
+                            <span className="mk-tray-salary-label" id="mk-salary-label">Salary expectation</span>
                             <span className="mk-tray-salary-value">
-                              {salaryMax >= 300 ? '$300k+ AUD' : `Up to $${salaryMax}k AUD`}
+                              {formatSalaryK(salaryMin)} – {formatSalaryK(salaryMax)} AUD
                             </span>
                           </div>
-                          <input
-                            type="range"
-                            className="mk-tray-slider"
-                            min={40}
-                            max={300}
-                            step={5}
-                            value={salaryMax}
-                            onChange={e => handleSalaryChange(parseInt(e.target.value))}
-                            style={{ '--pct': `${((salaryMax - 40) / (300 - 40)) * 100}%` }}
-                          />
+                          <div
+                            className="mk-tray-range"
+                            onPointerMove={handleSalaryPointer}
+                            onPointerDown={handleSalaryPointer}
+                            style={{
+                              '--lo': `${((salaryMin - SALARY_FLOOR) / (SALARY_CEIL - SALARY_FLOOR)) * 100}%`,
+                              '--hi': `${((salaryMax - SALARY_FLOOR) / (SALARY_CEIL - SALARY_FLOOR)) * 100}%`,
+                            }}
+                          >
+                            <div className="mk-tray-range-track" aria-hidden="true" />
+                            <input
+                              type="range"
+                              className="mk-tray-range-input"
+                              min={SALARY_FLOOR}
+                              max={SALARY_CEIL}
+                              step={SALARY_STEP}
+                              value={salaryMin}
+                              style={{ zIndex: topSalaryThumb === 'min' ? 2 : 1 }}
+                              onFocus={() => setTopSalaryThumb('min')}
+                              aria-label="Minimum salary"
+                              aria-valuetext={`${formatSalaryK(salaryMin)} AUD`}
+                              onChange={e => handleSalaryMinChange(parseInt(e.target.value))}
+                            />
+                            <input
+                              type="range"
+                              className="mk-tray-range-input"
+                              min={SALARY_FLOOR}
+                              max={SALARY_CEIL}
+                              step={SALARY_STEP}
+                              value={salaryMax}
+                              style={{ zIndex: topSalaryThumb === 'max' ? 2 : 1 }}
+                              onFocus={() => setTopSalaryThumb('max')}
+                              aria-label="Maximum salary"
+                              aria-valuetext={`${formatSalaryK(salaryMax)} AUD`}
+                              onChange={e => handleSalaryMaxChange(parseInt(e.target.value))}
+                            />
+                          </div>
                           <div className="mk-tray-salary-range">
-                            <span>$40k</span>
-                            <span>$300k+</span>
+                            <span>{formatSalaryK(SALARY_FLOOR)}</span>
+                            <span>{formatSalaryK(SALARY_CEIL)}</span>
                           </div>
                         </div>
 
@@ -751,26 +810,17 @@ export default function MarketplaceDiscover() {
                               {minExperience === 0 ? 'Any experience' : `${minExperience}+ years`}
                             </span>
                           </div>
-                          <div className="mk-tray-exp-controls">
-                            <button
-                              type="button"
-                              className="mk-tray-exp-btn"
-                              disabled={minExperience <= 0}
-                              onClick={() => handleExperienceChange(-1)}
-                            >
-                              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
-                            </button>
-                            <span className="mk-tray-exp-value">
-                              {minExperience === 0 ? 'Any' : `${minExperience}+`}
-                            </span>
-                            <button
-                              type="button"
-                              className="mk-tray-exp-btn"
-                              disabled={minExperience >= 20}
-                              onClick={() => handleExperienceChange(1)}
-                            >
-                              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-                            </button>
+                          <div className="mk-tray-pills">
+                            {EXPERIENCE_OPTIONS.map(o => (
+                              <button
+                                key={o.value}
+                                type="button"
+                                className={`mk-tray-pill ${minExperience === o.value ? 'mk-tray-pill--active' : ''}`}
+                                onClick={() => setMinExperience(o.value)}
+                              >
+                                {o.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </div>
