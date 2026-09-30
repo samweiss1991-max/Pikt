@@ -157,8 +157,8 @@
 /* Cards share one grid cell, so the deck grows to fit the tallest card */
 .mk-tinder-stack { position: relative; display: grid; }
 .mk-tinder-card { position: relative; grid-area: 1 / 1; transition: transform 0.05s linear; }
-/* Only the front card shows its folder tabs, so tabs behind don't peek out */
-.mk-tinder-card[inert] .cc-tabs { visibility: hidden; }
+/* Only the front card shows its tabs and Save button, so the ones behind don't peek out */
+.mk-tinder-card[inert] .cc-tabrow { visibility: hidden; }
 .mk-tinder-hint { position: absolute; top: 40%; font-size: 28px; font-weight: 900; z-index: 10; pointer-events: none; letter-spacing: 2px; }
 .mk-tinder-hint--save { right: 24px; color: var(--primary); }
 .mk-tinder-hint--skip { left: 24px; color: var(--color-critical); }

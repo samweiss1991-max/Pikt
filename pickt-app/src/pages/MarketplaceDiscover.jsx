@@ -129,8 +129,21 @@ function TinderView({ candidates, onSave, onSkip }) {
   const cardRef = useRef(null)
   const remaining = candidates.length - currentIdx
 
-  function handlePointerDown(e) { startX.current = e.clientX; setDragging(true); cardRef.current?.setPointerCapture(e.pointerId) }
-  function handlePointerMove(e) { if (dragging) setDragX(e.clientX - startX.current) }
+  function handlePointerDown(e) {
+    // Let buttons / tabs inside the card receive their own clicks (no drag)
+    if (e.target.closest('button, a, [role="tab"]')) return
+    startX.current = e.clientX; setDragging(true)
+  }
+  function handlePointerMove(e) {
+    if (!dragging) return
+    const dx = e.clientX - startX.current
+    // Only take over the pointer once it's really a drag, so a plain tap still
+    // reaches the card (Fickt: tap to show / hide details)
+    if (Math.abs(dx) > 6 && !cardRef.current?.hasPointerCapture(e.pointerId)) {
+      cardRef.current?.setPointerCapture(e.pointerId)
+    }
+    setDragX(dx)
+  }
   function handlePointerUp() {
     if (!dragging) return
     setDragging(false)
