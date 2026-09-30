@@ -8,7 +8,6 @@ import { useViewMode } from '../context/ViewModeContext'
 import { useSearch } from '../context/SearchContext'
 import { addToShortlist } from '../lib/shortlist'
 import CandidateCard from '../components/CandidateCard'
-import GhostCandidateCard from '../components/GhostCandidateCard'
 import RightInsightsPanel from '../components/marketplace/RightInsightsPanel'
 import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
@@ -20,7 +19,6 @@ import './MarketplaceDiscover.css'
 
 const isDevMode = import.meta.env.DEV
 
-const GHOST_DELAYS = [0, 0.15, 0.3, 0.1, 0.25, 0.4]
 
 const CATEGORY_CHIPS = [
   { key: 'Engineering', icon: 'code' },
@@ -178,8 +176,6 @@ export default function MarketplaceDiscover() {
   const [activeRole, setActiveRole] = useState(null)
   const [totalCount, setTotalCount] = useState(0)
   const [categoryCounts, setCategoryCounts] = useState({})
-  const [ghostBlur, setGhostBlur] = useState(4)
-  const [ghostOpacity, setGhostOpacity] = useState(0.6)
   const [discoveryConfirmed, setDiscoveryConfirmed] = useState(() => {
     try { return sessionStorage.getItem('pickt_discovery_confirmed') === 'true' } catch { return false }
   })
@@ -400,17 +396,6 @@ export default function MarketplaceDiscover() {
     if (!dataLoaded) return
     loadCandidates()
   }, [dataLoaded, activeCategories, activeRole, searchQuery]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Ghost blur/opacity reacts to filter state
-  useEffect(() => {
-    if (activeCategories.length > 0) {
-      setGhostBlur(0); setGhostOpacity(1)
-    } else if (activeRole !== null) {
-      setGhostBlur(1); setGhostOpacity(0.85)
-    } else {
-      setGhostBlur(4); setGhostOpacity(0.6)
-    }
-  }, [activeCategories, activeRole])
 
   function confirmDiscovery() {
     if (!discoveryConfirmed) {
@@ -655,15 +640,213 @@ export default function MarketplaceDiscover() {
 
       {/* ── Bento grid ── */}
       <div className="mk-bento">
-        {/* Left: candidate list OR ghost grid */}
-        <div className={`mk-left ${transitioning ? 'mk-left--transitioning' : ''}`}>
-          {!showCandidates ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, padding: '20px 0 160px' }}>
-              {GHOST_DELAYS.map((delay, i) => (
-                <GhostCandidateCard key={i} animationDelay={delay} blur={ghostBlur} opacity={ghostOpacity} />
-              ))}
+        {/* Left: search panel + candidate list */}
+        <div className="mk-left">
+          {/* ── Discovery search panel (sits below view switcher until confirmed) ── */}
+          {!discoveryConfirmed && (
+            <div className={`mk-tray-wrap ${trayDismissing ? 'mk-tray-wrap--dismissing' : ''}`}>
+              <div className="mk-tray">
+                  <div className="mk-tray-top">
+                    <div>
+                      <h3 className="mk-tray-title">
+                        Find the right{' '}
+                        <span className="mk-tray-title-accent">candidate</span>
+                      </h3>
+                      <p className="mk-tray-subtitle">Search, filter by category, or pick a role</p>
+                    </div>
+                    <div className="mk-tray-badge">
+                      {totalCount > 0 ? (
+                        <>
+                          <span className="mk-tray-badge-dot" />
+                          {displayCount} candidates ready
+                        </>
+                      ) : ('Loading\u2026')}
+                    </div>
+                  </div>
+
+                  <div className="mk-tray-search" ref={traySearchRef}>
+                    <div className="mk-tray-search-input-wrap">
+                      <span className="material-symbols-outlined mk-tray-search-icon">search</span>
+                      <input
+                        type="text"
+                        className="mk-tray-search-input"
+                        placeholder="Search roles, skills, or companies..."
+                        value={trayQuery}
+                        onChange={e => setTrayQuery(e.target.value)}
+                        onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
+                      />
+                      {trayQuery && (
+                        <button type="button" className="mk-tray-search-clear" onClick={clearSearch}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+                        </button>
+                      )}
+                    </div>
+                    {showSuggestions && suggestions.length > 0 && (
+                      <div className="mk-tray-suggestions">
+                        {suggestions.map((s, i) => (
+                          <button key={i} type="button" className="mk-tray-suggestion" onClick={() => applySuggestion(s.text, s.type)}>
+                            <span className="material-symbols-outlined mk-tray-suggestion-icon">{s.icon}</span>
+                            <span className="mk-tray-suggestion-text">{s.type === 'company' ? `Referred by ${s.text}` : s.text}</span>
+                            <span className="mk-tray-suggestion-type">{s.type}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mk-tray-chips">
+                    {CATEGORY_CHIPS.map(({ key, icon }) => {
+                      const active = activeCategories.includes(key)
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''}`}
+                          onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
+                        >
+                          <span className="material-symbols-outlined mk-tray-chip-icon">{icon}</span>
+                          {key}
+                          <span className="mk-tray-chip-count">{categoryCounts[key] || 0}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="mk-tray-divider" />
+
+                  <p className="mk-tray-role-label">Or pick a specific role</p>
+                  <div className="mk-tray-roles">
+                    {(showAllRoles ? [...DEFAULT_ROLES, ...EXPANDED_ROLES] : DEFAULT_ROLES).map(r => {
+                      const active = activeRole === r
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          className={`mk-tray-role ${active ? 'mk-tray-role--active' : ''}`}
+                          onClick={() => {
+                            if (activeRole === r) { setActiveRole(null) }
+                            else { setActiveRole(r); setActiveCategories([]) }
+                          }}
+                        >
+                          {r}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="mk-tray-divider" />
+
+                  <div className="mk-tray-quant-row">
+                    <div className="mk-tray-salary">
+                      <div className="mk-tray-salary-header">
+                        <span className="mk-tray-salary-label">Salary expectation</span>
+                        <span className="mk-tray-salary-value">
+                          {salaryMax >= 300 ? '$300k+ AUD' : `Up to $${salaryMax}k AUD`}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        className="mk-tray-slider"
+                        min={40}
+                        max={300}
+                        step={5}
+                        value={salaryMax}
+                        onChange={e => handleSalaryChange(parseInt(e.target.value))}
+                        style={{ '--pct': `${((salaryMax - 40) / (300 - 40)) * 100}%` }}
+                      />
+                      <div className="mk-tray-salary-range">
+                        <span>$40k</span>
+                        <span>$300k+</span>
+                      </div>
+                    </div>
+
+                    <div className="mk-tray-quant-sep" />
+
+                    <div className="mk-tray-experience">
+                      <div className="mk-tray-exp-header">
+                        <span className="mk-tray-salary-label">Min. experience</span>
+                        <span className="mk-tray-salary-value">
+                          {minExperience === 0 ? 'Any experience' : `${minExperience}+ years`}
+                        </span>
+                      </div>
+                      <div className="mk-tray-exp-controls">
+                        <button
+                          type="button"
+                          className="mk-tray-exp-btn"
+                          disabled={minExperience <= 0}
+                          onClick={() => handleExperienceChange(-1)}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
+                        </button>
+                        <span className="mk-tray-exp-value">
+                          {minExperience === 0 ? 'Any' : `${minExperience}+`}
+                        </span>
+                        <button
+                          type="button"
+                          className="mk-tray-exp-btn"
+                          disabled={minExperience >= 20}
+                          onClick={() => handleExperienceChange(1)}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mk-tray-divider" />
+
+                  <div className="mk-tray-pill-row">
+                    <div className="mk-tray-pill-group">
+                      <span className="mk-tray-salary-label">Availability</span>
+                      <div className="mk-tray-pills">
+                        {['Available now', '2 weeks', '1 month', 'Flexible'].map(v => (
+                          <button key={v} type="button" className={`mk-tray-pill ${availability.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(availability, v, setAvailability, 'availability')}>
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mk-tray-quant-sep" />
+
+                    <div className="mk-tray-pill-group">
+                      <span className="mk-tray-salary-label">Work preference</span>
+                      <div className="mk-tray-pills">
+                        {['Remote', 'Hybrid', 'On-site'].map(v => (
+                          <button key={v} type="button" className={`mk-tray-pill ${workPreference.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(workPreference, v, setWorkPreference, 'workPreferences')}>
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mk-tray-quant-sep" />
+
+                    <div className="mk-tray-pill-group">
+                      <span className="mk-tray-salary-label">Location</span>
+                      <div className="mk-tray-pills">
+                        {['Sydney', 'Melbourne', 'Brisbane', 'Remote AU'].map(v => (
+                          <button key={v} type="button" className={`mk-tray-pill ${locations.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(locations, v, setLocations, 'locations')}>
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mk-tray-bottom">
+                    <button type="button" className="mk-tray-toggle press-scale" onClick={() => setShowAllRoles(v => !v)}>
+                      {showAllRoles ? 'Show less \u2191' : 'See all roles \u2192'}
+                    </button>
+                    <button type="button" className="mk-tray-confirm press-scale" onClick={confirmDiscovery}>
+                      Show me candidates &rarr;
+                    </button>
+                  </div>
+              </div>
             </div>
-          ) : (
+          )}
+          <div className={transitioning ? 'mk-left--transitioning' : ''}>
+          {showCandidates && (
             <>
               {loading && <SkeletonCard count={3} />}
 
@@ -691,6 +874,7 @@ export default function MarketplaceDiscover() {
               )}
             </>
           )}
+          </div>
         </div>
 
         {/* Right: insights panel */}
@@ -698,210 +882,6 @@ export default function MarketplaceDiscover() {
           <RightInsightsPanel />
         </div>
       </div>
-
-      {/* ── Discovery tray (floating card, visible until confirmed) ── */}
-      {!discoveryConfirmed && (
-        <div className={`mk-tray-wrap ${trayDismissing ? 'mk-tray-wrap--dismissing' : ''}`}>
-          <div className="mk-tray">
-              <div className="mk-tray-top">
-                <div>
-                  <h3 className="mk-tray-title">
-                    Find the right{' '}
-                    <span className="mk-tray-title-accent">candidate</span>
-                  </h3>
-                  <p className="mk-tray-subtitle">Search, filter by category, or pick a role</p>
-                </div>
-                <div className="mk-tray-badge">
-                  {totalCount > 0 ? (
-                    <>
-                      <span className="mk-tray-badge-dot" />
-                      {displayCount} candidates ready
-                    </>
-                  ) : ('Loading\u2026')}
-                </div>
-              </div>
-
-              <div className="mk-tray-search" ref={traySearchRef}>
-                <div className="mk-tray-search-input-wrap">
-                  <span className="material-symbols-outlined mk-tray-search-icon">search</span>
-                  <input
-                    type="text"
-                    className="mk-tray-search-input"
-                    placeholder="Search roles, skills, or companies..."
-                    value={trayQuery}
-                    onChange={e => setTrayQuery(e.target.value)}
-                    onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true) }}
-                  />
-                  {trayQuery && (
-                    <button type="button" className="mk-tray-search-clear" onClick={clearSearch}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
-                    </button>
-                  )}
-                </div>
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="mk-tray-suggestions">
-                    {suggestions.map((s, i) => (
-                      <button key={i} type="button" className="mk-tray-suggestion" onClick={() => applySuggestion(s.text, s.type)}>
-                        <span className="material-symbols-outlined mk-tray-suggestion-icon">{s.icon}</span>
-                        <span className="mk-tray-suggestion-text">{s.type === 'company' ? `Referred by ${s.text}` : s.text}</span>
-                        <span className="mk-tray-suggestion-type">{s.type}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="mk-tray-chips">
-                {CATEGORY_CHIPS.map(({ key, icon }) => {
-                  const active = activeCategories.includes(key)
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`mk-tray-chip ${active ? 'mk-tray-chip--active' : ''}`}
-                      onClick={() => setActiveCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
-                    >
-                      <span className="material-symbols-outlined mk-tray-chip-icon">{icon}</span>
-                      {key}
-                      <span className="mk-tray-chip-count">{categoryCounts[key] || 0}</span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="mk-tray-divider" />
-
-              <p className="mk-tray-role-label">Or pick a specific role</p>
-              <div className="mk-tray-roles">
-                {(showAllRoles ? [...DEFAULT_ROLES, ...EXPANDED_ROLES] : DEFAULT_ROLES).map(r => {
-                  const active = activeRole === r
-                  return (
-                    <button
-                      key={r}
-                      type="button"
-                      className={`mk-tray-role ${active ? 'mk-tray-role--active' : ''}`}
-                      onClick={() => {
-                        if (activeRole === r) { setActiveRole(null) }
-                        else { setActiveRole(r); setActiveCategories([]) }
-                      }}
-                    >
-                      {r}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="mk-tray-divider" />
-
-              <div className="mk-tray-quant-row">
-                <div className="mk-tray-salary">
-                  <div className="mk-tray-salary-header">
-                    <span className="mk-tray-salary-label">Salary expectation</span>
-                    <span className="mk-tray-salary-value">
-                      {salaryMax >= 300 ? '$300k+ AUD' : `Up to $${salaryMax}k AUD`}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    className="mk-tray-slider"
-                    min={40}
-                    max={300}
-                    step={5}
-                    value={salaryMax}
-                    onChange={e => handleSalaryChange(parseInt(e.target.value))}
-                    style={{ '--pct': `${((salaryMax - 40) / (300 - 40)) * 100}%` }}
-                  />
-                  <div className="mk-tray-salary-range">
-                    <span>$40k</span>
-                    <span>$300k+</span>
-                  </div>
-                </div>
-
-                <div className="mk-tray-quant-sep" />
-
-                <div className="mk-tray-experience">
-                  <div className="mk-tray-exp-header">
-                    <span className="mk-tray-salary-label">Min. experience</span>
-                    <span className="mk-tray-salary-value">
-                      {minExperience === 0 ? 'Any experience' : `${minExperience}+ years`}
-                    </span>
-                  </div>
-                  <div className="mk-tray-exp-controls">
-                    <button
-                      type="button"
-                      className="mk-tray-exp-btn"
-                      disabled={minExperience <= 0}
-                      onClick={() => handleExperienceChange(-1)}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>remove</span>
-                    </button>
-                    <span className="mk-tray-exp-value">
-                      {minExperience === 0 ? 'Any' : `${minExperience}+`}
-                    </span>
-                    <button
-                      type="button"
-                      className="mk-tray-exp-btn"
-                      disabled={minExperience >= 20}
-                      onClick={() => handleExperienceChange(1)}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mk-tray-divider" />
-
-              <div className="mk-tray-pill-row">
-                <div className="mk-tray-pill-group">
-                  <span className="mk-tray-salary-label">Availability</span>
-                  <div className="mk-tray-pills">
-                    {['Available now', '2 weeks', '1 month', 'Flexible'].map(v => (
-                      <button key={v} type="button" className={`mk-tray-pill ${availability.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(availability, v, setAvailability, 'availability')}>
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mk-tray-quant-sep" />
-
-                <div className="mk-tray-pill-group">
-                  <span className="mk-tray-salary-label">Work preference</span>
-                  <div className="mk-tray-pills">
-                    {['Remote', 'Hybrid', 'On-site'].map(v => (
-                      <button key={v} type="button" className={`mk-tray-pill ${workPreference.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(workPreference, v, setWorkPreference, 'workPreferences')}>
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mk-tray-quant-sep" />
-
-                <div className="mk-tray-pill-group">
-                  <span className="mk-tray-salary-label">Location</span>
-                  <div className="mk-tray-pills">
-                    {['Sydney', 'Melbourne', 'Brisbane', 'Remote AU'].map(v => (
-                      <button key={v} type="button" className={`mk-tray-pill ${locations.includes(v) ? 'mk-tray-pill--active' : ''}`} onClick={() => togglePillFilter(locations, v, setLocations, 'locations')}>
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mk-tray-bottom">
-                <button type="button" className="mk-tray-toggle press-scale" onClick={() => setShowAllRoles(v => !v)}>
-                  {showAllRoles ? 'Show less \u2191' : 'See all roles \u2192'}
-                </button>
-                <button type="button" className="mk-tray-confirm press-scale" onClick={confirmDiscovery}>
-                  Show me candidates &rarr;
-                </button>
-              </div>
-          </div>
-        </div>
-      )}
 
       {/* Reset to discovery button (only after confirmed) */}
       {discoveryConfirmed && (
