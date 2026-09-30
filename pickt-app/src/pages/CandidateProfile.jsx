@@ -1,344 +1,367 @@
-import { useEffect, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { getCandidateById, getCandidateWithPii } from '../lib/seedData'
-import { isUnlocked as checkUnlocked, persistUnlock } from '../lib/sanitizeCandidate'
-import { getIconForRole, getGradientClass, mapCandidate } from '../lib/candidateUtils'
-import {
-  getCvUrl,
-  fetchCandidateById,
-  fetchUnlockedCandidate,
-  checkUnlockStatus,
-} from '../lib/supabaseQueries'
-import { CANDIDATES } from '../data/discoveryOptions'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { getCvUrl } from '../lib/supabaseQueries'
+import { fetchCandidateProfile } from '../lib/candidateProfile'
 import UnlockModal from '../components/unlock/UnlockModal'
 import './CandidateProfile.css'
 
-const STAGE_COLORS = {
-  'Final round': { bg: 'var(--color-success-tint)', color: 'var(--color-success)', border: 'var(--color-success)' },
-  '3rd round': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-primary)' },
-  '2nd round': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-border-subtle)' },
-  'Technical screen': { bg: 'var(--color-primary-tint)', color: 'var(--color-primary)', border: 'var(--color-border-subtle)' },
-  '1st phone screen': { bg: 'var(--gray-100)', color: 'var(--color-text)', border: 'var(--color-border-subtle)' },
+// ── Activity wording ──
+// Header uses ranges; the unlock panel uses the exact day count.
+
+function activityRange(days) {
+  if (days == null) return { label: 'Activity not recorded', recent: false }
+  if (days === 0) return { label: 'Active today', recent: true }
+  if (days <= 7) return { label: 'Active this week', recent: true }
+  if (days <= 30) return { label: 'Active this month', recent: true }
+  return { label: 'Active over a month ago', recent: false }
 }
 
-const INTERVIEW_ROUNDS = [
-  '1st phone screen',
-  'Technical screen',
-  '2nd round',
-  '3rd round',
-  'Final round',
-]
+function activityExact(days) {
+  if (days == null) return 'Activity not recorded'
+  if (days === 0) return 'Active today'
+  if (days === 1) return 'Active yesterday'
+  return `Active ${days} days ago`
+}
 
-function CopyIcon({ value }) {
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
+
+// Stage icon squares darken the further the candidate got (1–5)
+const STAGE_SHADES = ['#DCE4F4', '#B9C7E4', '#93A4CA', '#4A64A0', '#002366']
+
+function stageProgressLabel(row) {
+  return row.stageRank === row.stageTotal
+    ? 'Reached final round'
+    : `Reached ${row.stage} (stage ${row.stageRank} of ${row.stageTotal})`
+}
+
+function Icon({ name, className = '' }) {
+  return <span className={`material-symbols-outlined ${className}`} aria-hidden="true">{name}</span>
+}
+
+function LockedBars({ widths = [100, 70] }) {
+  return (
+    <span className="pp-locked-bars" role="img" aria-label="Locked">
+      {widths.map((w, i) => <span key={i} className="pp-locked-bar" style={{ width: `${w}%` }} />)}
+    </span>
+  )
+}
+
+function CopyButton({ value, label }) {
   const [copied, setCopied] = useState(false)
-  function handleCopy(e) {
-    e.stopPropagation()
+  function copy() {
     navigator.clipboard.writeText(value).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     })
   }
   return (
-    <button className="cp-copy-btn" onClick={handleCopy} title="Copy">
-      {copied ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--on-surface-variant)" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-      )}
+    <button type="button" className="pp-copy-btn" onClick={copy} aria-label={copied ? `${label} copied` : `Copy ${label}`}>
+      <Icon name={copied ? 'check' : 'content_copy'} />
     </button>
+  )
+}
+
+// ── Interview track record row ──
+function TrackRow({ row, unlocked }) {
+  const shade = STAGE_SHADES[Math.min(row.stageRank, STAGE_SHADES.length) - 1]
+  const dark = row.stageRank >= 4
+  const isFinal = row.stageRank === row.stageTotal
+  return (
+    <li className="pp-track-row">
+      <span className={`pp-track-icon ${dark ? 'pp-track-icon--dark' : ''}`} style={{ background: shade }}>
+        <Icon name={unlocked ? 'apartment' : 'lock'} />
+      </span>
+
+      <div className="pp-track-body">
+        <div className="pp-track-head">
+          <div className="pp-track-employer">
+            {unlocked && row.employerName ? (
+              <>
+                <h3 className="pp-track-name">{row.employerName}</h3>
+                <p className="pp-track-desc">{row.employerDescription}</p>
+              </>
+            ) : (
+              <h3 className="pp-track-name">{row.employerDescription}</h3>
+            )}
+          </div>
+          <span className={`pp-stage-badge ${isFinal ? 'pp-stage-badge--final' : ''}`}>{row.stage}</span>
+        </div>
+
+        <div className="pp-progress" role="img" aria-label={stageProgressLabel(row)}>
+          <span className={`pp-progress-fill ${isFinal ? 'pp-progress-fill--final' : ''}`} style={{ width: `${(row.stageRank / row.stageTotal) * 100}%` }} />
+        </div>
+
+        {unlocked ? (
+          <div className="pp-track-full">
+            {row.feedback && <p className="pp-track-feedback">{row.feedback}</p>}
+            {row.outcomeReason && (
+              <p className="pp-track-reason">
+                <span className="pp-track-reason-label">Why they didn't get the offer:</span> {row.outcomeReason}
+              </p>
+            )}
+            {row.interviewsCompleted > 0 && (
+              <p className="pp-track-meta">{plural(row.interviewsCompleted, 'interview', 'interviews')} with this employer</p>
+            )}
+          </div>
+        ) : (
+          <>
+            {row.teaser && <p className="pp-track-teaser">“{row.teaser}”</p>}
+            <div className="pp-track-locked">
+              <div className="pp-track-locked-line">
+                <LockedBars widths={[100, 62]} />
+                <span className="pp-track-locked-label"><Icon name="lock" /> Full feedback · locked</span>
+              </div>
+              <div className="pp-track-locked-line">
+                <LockedBars widths={[80]} />
+                <span className="pp-track-locked-label"><Icon name="lock" /> Why they didn't get the offer · locked</span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </li>
+  )
+}
+
+// ── Contact details (locked bars or real values) ──
+function ContactCard({ profile }) {
+  const fields = [
+    ['Full name', profile.contact?.fullName],
+    ['Email', profile.contact?.email],
+    ['Mobile', profile.contact?.mobile],
+    ['LinkedIn', profile.contact?.linkedin],
+  ]
+  return (
+    <section className="pp-contact hover-lift" aria-labelledby="pp-contact-title">
+      <h2 className="pp-section-label" id="pp-contact-title">
+        {!profile.unlocked && <Icon name="lock" />} Contact details
+      </h2>
+      <dl className="pp-contact-list">
+        {fields.map(([label, value]) => (
+          <div key={label} className="pp-contact-row">
+            <dt className="pp-contact-label">{label}</dt>
+            <dd className="pp-contact-value">
+              {profile.unlocked ? (
+                value ? <><span className="pp-contact-text">{value}</span><CopyButton value={value} label={label} /></> : <span className="pp-muted">Not provided</span>
+              ) : (
+                <LockedBars widths={[label === 'Full name' ? 70 : 100]} />
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }
 
 export default function CandidateProfile() {
   const navigate = useNavigate()
   const { id } = useParams()
-  const { state } = useLocation()
-
-  const initialUnlocked = checkUnlocked(id)
+  const [profile, setProfile] = useState(null)
+  const [loadError, setLoadError] = useState(null)
   const [showModal, setShowModal] = useState(false)
-  const [unlocked, setUnlocked] = useState(initialUnlocked)
-  const [raw, setRaw] = useState(() =>
-    (initialUnlocked ? getCandidateWithPii(id) : getCandidateById(id)) || state?.candidate || CANDIDATES[0]
-  )
 
-  // Confirm unlock status against Supabase, then load the appropriate row.
-  // Falls back to seed data if Supabase is unreachable or returns nothing.
+  const load = useCallback(async () => {
+    try {
+      setProfile(await fetchCandidateProfile(id))
+      setLoadError(null)
+    } catch (e) {
+      setLoadError(e.message || 'Could not load this candidate.')
+    }
+  }, [id])
+
   useEffect(() => {
     let cancelled = false
-    async function loadProfile() {
-      let isUnlockedRemote = unlocked
-      try {
-        isUnlockedRemote = await checkUnlockStatus(id)
-        if (cancelled) return
-        if (isUnlockedRemote && !unlocked) {
-          persistUnlock(id)
-          setUnlocked(true)
-        }
-      } catch { /* offline / unauth — keep local state */ }
-
-      try {
-        const row = isUnlockedRemote
-          ? await fetchUnlockedCandidate(id)
-          : await fetchCandidateById(id)
-        if (cancelled) return
-        if (row) setRaw(row)
-      } catch {
-        // keep the seed/state fallback already in raw
-      }
-    }
-    loadProfile()
+    fetchCandidateProfile(id)
+      .then(p => { if (!cancelled) { setProfile(p); setLoadError(null) } })
+      .catch(e => { if (!cancelled) setLoadError(e.message || 'Could not load this candidate.') })
     return () => { cancelled = true }
-  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const c = mapCandidate(raw)
-
-  const saving = Math.round(((0.22 - c.fee / 100) * (c.salaryLow + c.salaryHigh) / 2) / 1000)
-  const savingHigh = saving + 6
-
-  const isRecent = (c.daysAgo || 99) <= 3
-  const stageStyle = STAGE_COLORS[c.interview_stage_reached] || STAGE_COLORS['1st phone screen']
+  }, [id])
 
   async function handleUnlockSuccess() {
-    persistUnlock(id)
-    setUnlocked(true)
     setShowModal(false)
-    try {
-      const row = await fetchUnlockedCandidate(id)
-      if (row) setRaw(row)
-    } catch { /* keep current data */ }
+    await load() // server now returns the unlocked version
   }
 
   async function handleCvDownload() {
     try {
-      const data = await getCvUrl(c.id)
+      const data = await getCvUrl(profile.id)
       window.open(data.signedUrl, '_blank')
     } catch {
       alert('Could not download CV. Please try again.')
     }
   }
 
-  return (
-    <div className="cp-page page-enter">
-      <button className="cp-back press-scale" onClick={() => navigate(-1)}>{'\u2190'} Back to marketplace</button>
-
-      <div className="cp-layout">
-        {/* ── LEFT COLUMN ── */}
-        <div className="cp-left" data-parallax-speed="0.06">
-          {/* Icon box matching card */}
-          <div className={`cp-icon-box bg-gradient-to-br ${getGradientClass(0)}`}>
-            <span className="material-symbols-outlined cp-icon-symbol">{getIconForRole(c.role)}</span>
-          </div>
-
-          {/* 1. Role + meta pills */}
-          <h1 className="cp-role">{c.role}</h1>
-          <div className="cp-meta-pills">
-            <span className="cp-pill">{c.seniority}</span>
-            <span className="cp-pill">{c.years} yrs exp</span>
-            <span className="cp-pill">{c.city}</span>
-            <span className="cp-pill">{c.preferred_work_type}</span>
-          </div>
-
-          {/* 2. Stage + interview + recency pills */}
-          <div className="cp-status-pills">
-            <span className="cp-stage" style={{ background: stageStyle.bg, color: stageStyle.color, borderColor: stageStyle.border }}>
-              {c.interview_stage_reached}
-            </span>
-            <span className="cp-pill cp-pill--filled">{c.interviews} interviews</span>
-            {isRecent && <span className="cp-pill cp-pill--hot">{'\uD83D\uDD25'} {c.daysAgo}d ago</span>}
-          </div>
-
-          {/* 3. Skills */}
-          <div className="cp-skills">
-            {(c.skills || []).map(s => <span key={s} className="cp-skill">{s}</span>)}
-          </div>
-
-          {/* 4. Interview timeline */}
-          <div className="cp-timeline-card">
-            <div className="cp-card-title">Interview stages</div>
-            <div className="cp-timeline">
-              {INTERVIEW_ROUNDS.map((round, i) => {
-                const passed = i < c.interviews
-                const isLast = round === c.interview_stage_reached && !passed
-                return (
-                  <div key={round} className="cp-timeline-item">
-                    <div className={`cp-timeline-dot ${passed ? 'cp-timeline-dot--pass' : isLast ? 'cp-timeline-dot--fail' : ''}`}>
-                      {passed && <span>{'\u2713'}</span>}
-                      {isLast && c.why_not_hired && <span>{'\u2717'}</span>}
-                    </div>
-                    {i < INTERVIEW_ROUNDS.length - 1 && <div className={`cp-timeline-line ${passed ? 'cp-timeline-line--pass' : ''}`} />}
-                    <div className="cp-timeline-label">
-                      <span className="cp-timeline-round">{round}</span>
-                      {passed && <span className="cp-timeline-note">Passed</span>}
-                      {isLast && c.why_not_hired && <span className="cp-timeline-note cp-timeline-note--fail">{c.why_not_hired}</span>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* 5. Strengths */}
-          {c.strengths && (
-            <div className="cp-block cp-block--strengths">
-              <div className="cp-block-title">Strengths</div>
-              <p className="cp-block-text">{c.strengths}</p>
-            </div>
-          )}
-
-          {/* 6. Development areas */}
-          {c.gaps && (
-            <div className="cp-block cp-block--gaps">
-              <div className="cp-block-title">Development areas</div>
-              <p className="cp-block-text">{c.gaps}</p>
-            </div>
-          )}
-
-          {/* 7. Feedback summary */}
-          {c.feedback_summary && (
-            <div className="cp-block cp-block--feedback">
-              <div className="cp-block-title">Feedback summary</div>
-              <p className="cp-block-text">{c.feedback_summary}</p>
-            </div>
-          )}
-
-          {/* 8. Personal details */}
-          <div className="cp-details-card">
-            <div className="cp-card-header">
-              {unlocked ? (
-                <span className="cp-card-title">Personal details</span>
-              ) : (
-                <span className="cp-card-title cp-card-title--locked">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--on-surface-variant)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                  Personal details {'\u2014'} locked
-                </span>
-              )}
-            </div>
-            <div className="cp-pii-rows">
-              <div className="cp-pii-row"><span className="cp-pii-label">Full name</span><span className="cp-pii-value">{unlocked && c.full_name ? c.full_name : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-              <div className="cp-pii-row"><span className="cp-pii-label">Email</span><span className="cp-pii-value">{unlocked && c.email ? c.email : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-              <div className="cp-pii-row"><span className="cp-pii-label">Mobile</span><span className="cp-pii-value">{unlocked ? (c.mobile_number || '\u2014') : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-              <div className="cp-pii-row"><span className="cp-pii-label">LinkedIn</span><span className="cp-pii-value">{unlocked ? (c.linkedin_url || '\u2014') : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-              <div className="cp-pii-row"><span className="cp-pii-label">Current employer</span><span className="cp-pii-value">{unlocked && c.current_employer ? c.current_employer : '\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-            </div>
-          </div>
-
-          {/* 9. CV section */}
-          <div className="cp-details-card">
-            <div className="cp-card-title">CV & documents</div>
-            {unlocked ? (
-              <div className="cp-cv-unlocked">
-                <button className="cp-cv-download-btn" onClick={handleCvDownload}>Download CV</button>
-                <span className="cp-cv-filename">candidate_cv.pdf</span>
-              </div>
-            ) : (
-              <div className="cp-cv-locked">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--on-surface-variant)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                <span className="cp-cv-locked-text">CV available after unlocking</span>
-                <button className="cp-cv-locked-btn" disabled>Download CV</button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── RIGHT COLUMN ── */}
-        <div className="cp-right">
-          {/* Placement fee card */}
-          <div className="cp-sidebar-card hover-lift">
-            <div className="cp-fee-number">{c.fee}%</div>
-            <div className="cp-fee-sub">of first-year salary</div>
-
-            {saving > 0 && (
-              <div className="cp-savings-box">
-                <span className="cp-savings-left">vs. typical agency (20{'\u2013'}25%)</span>
-                <span className="cp-savings-right">Save ${saving}k{'\u2013'}${savingHigh}k</span>
-              </div>
-            )}
-
-            <div className="cp-fee-divider" />
-
-            {unlocked ? (
-              <button className="cp-unlock-btn cp-unlock-btn--done" disabled>{'\u2713'} Profile unlocked</button>
-            ) : (
-              <button className="cp-unlock-btn" onClick={() => setShowModal(true)}>Unlock this candidate</button>
-            )}
-
-            <div className="cp-fee-note">Fee only due on successful hire</div>
-          </div>
-
-          {/* Recommendation card */}
-          {c.recommendation && (
-            <div className="cp-sidebar-card hover-lift">
-              <div className="cp-rec-badge">{c.recommendation}</div>
-              {c.why_not_hired && <div className="cp-rec-reason">{c.why_not_hired}</div>}
-            </div>
-          )}
-
-          {/* Contact details card */}
-          <div className="cp-sidebar-card hover-lift">
-            <div className="cp-card-title">Contact details</div>
-            {unlocked ? (
-              <div className="cp-contact-rows">
-                {c.email && (
-                  <div className="cp-contact-row">
-                    <span className="cp-contact-label">Email</span>
-                    <span className="cp-contact-value">{c.email}</span>
-                    <CopyIcon value={c.email} />
-                  </div>
-                )}
-                {c.mobile_number && (
-                  <div className="cp-contact-row">
-                    <span className="cp-contact-label">Mobile</span>
-                    <span className="cp-contact-value">{c.mobile_number}</span>
-                    <CopyIcon value={c.mobile_number} />
-                  </div>
-                )}
-                {c.linkedin_url && (
-                  <div className="cp-contact-row">
-                    <span className="cp-contact-label">LinkedIn</span>
-                    <span className="cp-contact-value">{c.linkedin_url}</span>
-                    <CopyIcon value={c.linkedin_url} />
-                  </div>
-                )}
-                {!c.email && !c.mobile_number && !c.linkedin_url && (
-                  <div className="cp-contact-row"><span className="cp-pii-label">No contact details on file</span></div>
-                )}
-              </div>
-            ) : (
-              <div className="cp-contact-locked">
-                <div className="cp-contact-rows">
-                  <div className="cp-contact-row"><span className="cp-contact-label">Email</span><span className="cp-pii-redacted">{'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-                  <div className="cp-contact-row"><span className="cp-contact-label">Mobile</span><span className="cp-pii-redacted">{'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-                  <div className="cp-contact-row"><span className="cp-contact-label">LinkedIn</span><span className="cp-pii-redacted">{'\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588'}</span></div>
-                </div>
-                <button className="cp-contact-unlock-btn" onClick={() => setShowModal(true)}>Unlock to view</button>
-              </div>
-            )}
-          </div>
-
-          {/* Referred by card */}
-          <div className="cp-sidebar-card hover-lift">
-            <div className="cp-card-title">Referred by</div>
-            <div className="cp-referrer-row">
-              <div className="cp-referrer-avatar">{(c.referringCompany || 'U')[0]}</div>
-              <div>
-                <div className="cp-referrer-name">{c.referringCompany || c.company}</div>
-                <div className="cp-referrer-score">{'\u2605'} 4.6 reputation</div>
-                <div className="cp-referrer-note">6 successful placements</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Mark as hired */}
-          {unlocked && (
-            <button className="cp-hired-btn">Mark as hired</button>
-          )}
-        </div>
+  if (loadError && !profile) {
+    return (
+      <div className="pp-page">
+        <button className="pp-back press-scale" onClick={() => navigate(-1)}><Icon name="arrow_back" /> Back to marketplace</button>
+        <p className="pp-error" role="alert">{loadError}</p>
       </div>
+    )
+  }
+  if (!profile) {
+    return <div className="pp-page"><p className="pp-muted" role="status">Loading profile…</p></div>
+  }
+
+  const { stats, activity, unlocked } = profile
+  const range = activityRange(activity.daysSince)
+  const meta = [
+    profile.seniority,
+    profile.years != null ? plural(profile.years, 'year experience', 'years experience') : null,
+    profile.city,
+  ].filter(Boolean)
+
+  // What the unlock modal needs to show the fee summary
+  const modalCandidate = {
+    id: profile.id,
+    fee: profile.fee,
+    salaryLow: profile.salaryLow,
+    salaryHigh: profile.salaryHigh,
+    referringCompany: profile.referringCompany,
+    interviews: stats.interviews,
+  }
+
+  const unlockButton = (
+    <button type="button" className="pp-unlock-btn press-scale" onClick={() => setShowModal(true)}>
+      Unlock profile <Icon name="arrow_forward" />
+    </button>
+  )
+
+  return (
+    <div className={`pp-page ${unlocked ? '' : 'pp-page--locked'}`}>
+      <button className="pp-back press-scale" onClick={() => navigate(-1)}><Icon name="arrow_back" /> Back to marketplace</button>
+
+      <div className="pp-layout">
+        {/* ── MAIN COLUMN ── */}
+        <div className="pp-main">
+          {/* Header: folder tab + card */}
+          <section className={`pp-folder ${stats.employers > 0 ? 'pp-folder--tabbed' : ''}`} aria-labelledby="pp-role">
+            {stats.employers > 0 && (
+              <div className="pp-tab">
+                <Icon name="check_circle" /> Vetted by {plural(stats.employers, 'employer', 'employers')}
+              </div>
+            )}
+            <div className="pp-card pp-header" data-parallax-speed="0.04">
+              <h1 className="pp-role" id="pp-role">{profile.role}</h1>
+
+              <p className="pp-details">
+                <span className={`pp-activity-dot ${range.recent ? '' : 'pp-activity-dot--stale'}`} aria-hidden="true" />
+                <span className={`pp-activity-text ${range.recent ? '' : 'pp-activity-text--stale'}`}>{range.label}</span>
+                {meta.map(m => <span key={m}> · {m}</span>)}
+              </p>
+
+              {profile.skills.length > 0 && (
+                <ul className="pp-skills" aria-label="Skills">
+                  {profile.skills.map(s => <li key={s} className="pp-skill">{s}</li>)}
+                </ul>
+              )}
+
+              <ul className="pp-stats" aria-label="Interview summary">
+                <li className="pp-stat">
+                  <span className="pp-stat-num">{stats.employers}</span>
+                  <span className="pp-stat-label">{stats.employers === 1 ? 'employer interviewed them' : 'employers interviewed them'}</span>
+                </li>
+                <li className="pp-stat">
+                  <span className="pp-stat-num">{stats.interviews}</span>
+                  <span className="pp-stat-label">{stats.interviews === 1 ? 'interview completed' : 'interviews completed'}</span>
+                </li>
+                {stats.finalRounds > 0 && (
+                  <li className="pp-stat pp-stat--final">
+                    <span className="pp-stat-num">{stats.finalRounds}</span>
+                    <span className="pp-stat-label">reached the final round</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          </section>
+
+          {/* Interview track record */}
+          <section className="pp-card pp-track" aria-labelledby="pp-track-title">
+            <h2 className="pp-section-label" id="pp-track-title">Interview track record</h2>
+            {profile.interviews.length > 0 ? (
+              <ol className="pp-track-list">
+                {profile.interviews.map(row => <TrackRow key={row.id} row={row} unlocked={unlocked} />)}
+              </ol>
+            ) : (
+              <p className="pp-muted">No interviews recorded yet.</p>
+            )}
+          </section>
+
+          {/* Unlocked extras from the referrer's assessment */}
+          {unlocked && (profile.strengths || profile.gaps || profile.recommendation) && (
+            <section className="pp-card pp-assessment" aria-labelledby="pp-assessment-title">
+              <h2 className="pp-section-label" id="pp-assessment-title">Referrer's assessment</h2>
+              {profile.recommendation && <p className="pp-recommendation">{profile.recommendation}</p>}
+              {profile.strengths && (<><h3 className="pp-sub-title">Strengths</h3><p className="pp-body">{profile.strengths}</p></>)}
+              {profile.gaps && (<><h3 className="pp-sub-title">Development areas</h3><p className="pp-body">{profile.gaps}</p></>)}
+            </section>
+          )}
+        </div>
+
+        {/* ── SIDE COLUMN (sticky on desktop) ── */}
+        <aside className="pp-aside">
+          {!unlocked && (
+            <section className="pp-unlock" aria-labelledby="pp-unlock-title">
+              <p className="pp-unlock-big">
+                <span className="pp-unlock-num">{stats.employers}</span>
+                <span className="pp-unlock-big-text">
+                  {stats.employers === 1 ? 'employer has' : 'employers have'} already done the vetting for you
+                </span>
+              </p>
+              <h2 className="pp-unlock-title" id="pp-unlock-title">See what they said</h2>
+              <p className="pp-unlock-lead">Skip the early rounds. Unlock to read every employer's feedback and reach out directly.</p>
+
+              <ul className="pp-checklist">
+                {['Which employers interviewed them', 'Full feedback from all interviews', "Why they didn't get each offer", 'Name, email, mobile and LinkedIn'].map(item => (
+                  <li key={item}><Icon name="check_circle" className="pp-check" /> {item}</li>
+                ))}
+              </ul>
+
+              <div className="pp-activity-box">
+                <Icon name="schedule" className="pp-activity-icon" />
+                <div>
+                  <p className="pp-activity-exact">{activityExact(activity.daysSince)}</p>
+                  {activity.openToOffers && <p className="pp-activity-sub">Open to offers</p>}
+                </div>
+              </div>
+
+              {unlockButton}
+              {profile.fee != null && <p className="pp-unlock-fee">{profile.fee}% placement fee · only charged on a successful hire</p>}
+            </section>
+          )}
+
+          <ContactCard profile={profile} />
+
+          {unlocked && (
+            <section className="pp-card pp-side-actions" aria-label="Candidate actions">
+              {profile.hasCv && (
+                <button type="button" className="pp-secondary-btn press-scale" onClick={handleCvDownload}>
+                  <Icon name="download" /> Download CV
+                </button>
+              )}
+              <button type="button" className="pp-secondary-btn press-scale">
+                <Icon name="how_to_reg" /> Mark as hired
+              </button>
+            </section>
+          )}
+        </aside>
+      </div>
+
+      {/* Mobile: sticky bottom bar with the unlock button */}
+      {!unlocked && (
+        <div className="pp-mobile-bar">
+          <p className="pp-mobile-bar-text">
+            <strong>{plural(stats.employers, 'employer', 'employers')}</strong> already vetted them
+          </p>
+          {unlockButton}
+        </div>
+      )}
 
       {showModal && (
         <UnlockModal
-          candidate={c}
-          candidateId={c.id}
+          candidate={modalCandidate}
+          candidateId={profile.id}
           onSuccess={handleUnlockSuccess}
           onCancel={() => setShowModal(false)}
         />

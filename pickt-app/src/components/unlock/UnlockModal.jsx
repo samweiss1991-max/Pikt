@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { persistUnlock } from '../../lib/sanitizeCandidate'
 import { unlockCandidate } from '../../lib/supabaseQueries'
+import { isDemoCandidateId } from '../../lib/candidateProfile'
 import './UnlockModal.css'
 
 export default function UnlockModal({ candidateId, candidate: c, onSuccess, onCancel }) {
@@ -16,7 +17,8 @@ export default function UnlockModal({ candidateId, candidate: c, onSuccess, onCa
     setError(null)
     try {
       const id = candidateId || c.id
-      await unlockCandidate(id)
+      // Demo/seed candidates aren't in the database, so they unlock locally only
+      if (!isDemoCandidateId(id)) await unlockCandidate(id)
       persistUnlock(id)
       onSuccess()
     } catch (err) {

@@ -51,6 +51,8 @@ const INITIAL = {
   portfolio_url: "",
   current_employer: "",
   current_job_title: "",
+  full_name: "",
+  email: "",
   mobile_number: "",
   fee_percentage: 8,
   consent_given: false,
@@ -80,6 +82,8 @@ export default function Refer() {
   const [skillInput, setSkillInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  // Set when the candidate was already on Pickt and this referral was added to their profile
+  const [mergedResult, setMergedResult] = useState(null);
   const saveTimer = useRef();
 
   // CV drop zone state
@@ -226,6 +230,10 @@ export default function Refer() {
     }
     if (s === 3) {
       if (!form.cv) errs.push("CV upload is required.");
+      if (!form.email.trim() && !form.mobile_number.trim())
+        errs.push("Add the candidate's email or mobile number — it's how we recognise candidates already on Pickt.");
+      if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+        errs.push("Enter a valid candidate email.");
       if (form.fee_percentage < 0 || form.fee_percentage > 100)
         errs.push("Fee must be between 0 and 100.");
     }
@@ -298,13 +306,15 @@ export default function Refer() {
       portfolio_url: form.portfolio_url || null,
       current_employer: form.current_employer || null,
       current_job_title: form.current_job_title || null,
+      full_name: form.full_name.trim() || null,
+      email: form.email.trim() || null,
       mobile_number: form.mobile_number || null,
       fee_percentage: form.fee_percentage,
       consent_given: form.consent_given,
     };
 
     try {
-      const { error } = await supabase.functions.invoke("create-candidate", {
+      const { data, error } = await supabase.functions.invoke("create-candidate", {
         body,
       });
       if (error) {
@@ -318,6 +328,12 @@ export default function Refer() {
       }
 
       localStorage.removeItem(STORAGE_KEY);
+      // Already on Pickt: tell the referrer their interview was added and points earned
+      if (data?.merged) {
+        setMergedResult({ points: data.pointsAwarded ?? 0 });
+        setSubmitting(false);
+        return;
+      }
       window.location.href = "/my-candidates";
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Something went wrong");
@@ -960,9 +976,23 @@ export default function Refer() {
           </div>
         </div>
 
+        <div className="rf-row">
+          <div>
+            <label className="rf-label" htmlFor="rf-full-name">Candidate full name</label>
+            <input id="rf-full-name" className="rf-input" placeholder="First and last name" autoComplete="off" value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
+          </div>
+          <div>
+            <label className="rf-label" htmlFor="rf-email">Candidate email</label>
+            <input id="rf-email" type="email" className="rf-input" placeholder="name@example.com" autoComplete="off" value={form.email} onChange={(e) => set("email", e.target.value)} />
+          </div>
+        </div>
+
         <div>
-          <label className="rf-label">Mobile number</label>
-          <input className="rf-input" style={{ maxWidth: 300 }} placeholder="+61 4XX XXX XXX" value={form.mobile_number} onChange={(e) => set("mobile_number", e.target.value)} />
+          <label className="rf-label" htmlFor="rf-mobile">Mobile number</label>
+          <input id="rf-mobile" className="rf-input" style={{ maxWidth: 300 }} placeholder="+61 4XX XXX XXX" value={form.mobile_number} onChange={(e) => set("mobile_number", e.target.value)} />
+          <p style={{ marginTop: '0.375rem', fontSize: '0.8125rem', color: 'var(--on-surface-variant)' }}>
+            Email or mobile is required. If this candidate is already on Pickt, your interview is added to their profile and you earn points instead of a fee.
+          </p>
         </div>
 
         <div>
@@ -1062,6 +1092,16 @@ export default function Refer() {
         {submitError && (
           <div className="rf-errors">
             <ul><li>{submitError}</li></ul>
+          </div>
+        )}
+
+        {mergedResult && (
+          <div role="status" style={{ padding: '1rem 1.25rem', borderRadius: '0.75rem', background: 'var(--color-success-tint)', color: 'var(--color-success)', border: '1px solid var(--color-success)' }}>
+            <p style={{ fontWeight: 800, margin: 0 }}>This candidate is already on Pickt</p>
+            <p style={{ margin: '0.25rem 0 0.75rem' }}>
+              Your interview has been added to their profile{mergedResult.points > 0 ? ` and you've earned ${mergedResult.points} points` : ''}. Repeat referrals earn points instead of a placement fee.
+            </p>
+            <a href="/my-candidates" style={{ fontWeight: 700, color: 'var(--color-success)', textDecoration: 'underline' }}>Go to my candidates</a>
           </div>
         )}
       </div>

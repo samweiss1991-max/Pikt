@@ -29,10 +29,6 @@
   .cc-title { font-size: 1.5rem; }
   .cc-referrer-badge { font-size: 9px; padding: 0.375rem 1rem; }
 
-  /* Profile */
-  .cp-layout { flex-direction: column; }
-  .cp-right { width: 100%; position: static; }
-  .cp-icon-box { width: 4rem; height: 4rem; }
 
   /* Integrations */
   .int-grid { grid-template-columns: 1fr; }
@@ -61,10 +57,6 @@
   .db-heading, .mk-heading, .sl-heading, .int-heading { font-size: 1.5rem; }
   .mk-subtitle, .db-subheading { font-size: 0.875rem; }
 
-  /* Profile */
-  .cp-role { font-size: 1.25rem; }
-  .cp-meta-pills { gap: 4px; }
-  .cp-sidebar-card { padding: 14px; }
 
   /* Marketplace header buttons */
   .mk-header-right { width: 100%; }
