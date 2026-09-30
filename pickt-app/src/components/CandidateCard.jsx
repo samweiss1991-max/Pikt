@@ -74,7 +74,7 @@ function CareerClimb({ history, maxBar = 150 }) {
   )
 }
 
-// ── Flip card (used by the Stack, Carousel, Focus, Matrix and Fickt views) ──
+// ── Flip card (used by the Stack, Carousel, Focus, Matrix and Flickt views) ──
 
 // "Senior Backend Engineer" → "backend engineer"; keeps acronyms like "ML / AI"
 const SENIORITY_WORDS = /^(senior|sr\.?|junior|jr\.?|staff|lead|principal|mid-level|graduate|associate)\s+/i
@@ -92,12 +92,12 @@ function stageSegments(rank) {
 }
 
 // Options let each view keep its own content:
-//   stacked     always one column (Matrix grid, Fickt deck)
+//   stacked     always one column (Matrix grid, Flickt deck)
 //   skillsLimit / climbMax / meta   compact variants
-//   extraTop    shown under the details line (Fickt stage + match pills)
+//   extraTop    shown under the details line (Flickt stage + match pills)
 //   actions     replaces the default Unlock / View profile buttons
 //   below       full-width section at the bottom of the front (Focus details)
-//   onFrontClick  clicking the front (not its buttons) — Fickt expand
+//   onFrontClick  clicking the front (not its buttons) — Flickt expand
 function FlipCard({
   c, unlocked, onUnlock, onViewProfile, saved, saving, saveError, onToggleSave,
   variant = 'stack', stacked = false, skillsLimit, climbMax = 150, meta: metaOverride,
@@ -160,26 +160,48 @@ function FlipCard({
                 aria-controls={`${base}-panel-${t.key}`}
                 tabIndex={active ? 0 : -1}
                 className={`cc-ftab cc-ftab--${t.key} ${active ? 'cc-ftab--active' : ''}`}
+                title={t.label}
                 onClick={() => setSide(t.key)}
                 onKeyDown={onTabKeyDown}
               >
                 <span className="material-symbols-outlined" aria-hidden="true">{t.icon}</span>
-                <span className="cc-ftab-label">{t.label}</span>
+                <span className="cc-ftab-label">
+                  {/* Matrix (narrow cards): "Referred by" is read out but not shown — the tick carries it */}
+                  {t.key === 'front' && referrer && variant === 'matrix'
+                    ? <><span className="cc-sr-only">{COPY.marketplace.referredBy} </span>{referrer}</>
+                    : t.label}
+                </span>
               </button>
             )
           })}
         </div>
-        <button
-          type="button"
-          className={`cc-save-btn ${saved ? 'cc-save-btn--saved' : ''}`}
-          aria-pressed={saved}
-          aria-busy={saving}
-          disabled={saving}
-          onClick={onToggleSave}
-        >
-          {saved && <span className="material-symbols-outlined" aria-hidden="true">check</span>}
-          {saved ? 'Saved' : 'Save'}
-        </button>
+        {variant === 'matrix' ? (
+          // Narrow Matrix cards: icon-only Save so both tabs fit beside it
+          <button
+            type="button"
+            className={`cc-save-btn cc-save-btn--icon ${saved ? 'cc-save-btn--saved' : ''}`}
+            aria-label="Save candidate"
+            title={saved ? 'Saved — click to remove' : 'Save'}
+            aria-pressed={saved}
+            aria-busy={saving}
+            disabled={saving}
+            onClick={onToggleSave}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">{saved ? 'bookmark_added' : 'bookmark_border'}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={`cc-save-btn ${saved ? 'cc-save-btn--saved' : ''}`}
+            aria-pressed={saved}
+            aria-busy={saving}
+            disabled={saving}
+            onClick={onToggleSave}
+          >
+            {saved && <span className="material-symbols-outlined" aria-hidden="true">check</span>}
+            {saved ? 'Saved' : 'Save'}
+          </button>
+        )}
       </div>
       {saveError && <p className="cc-save-error" role="alert">{saveError}</p>}
 
@@ -384,20 +406,6 @@ function NewCard({ candidate: c, viewMode }) {
     navigate(`/candidates/${c.id}`, { state: { candidate: c } })
   }
 
-  // ── COMPACT VIEW ──
-  if (viewMode === 'compact') {
-    return (
-      <div className="cc-compact" onClick={goToProfile}>
-        <span className="cc-compact-role">{c.role}</span>
-        <StageBadge stage={c.interview_stage_reached || 'Technical screen'} />
-        <span className="cc-compact-score">{matchScore}%</span>
-        <span className="cc-compact-fee">{c.fee}%</span>
-        <span className="cc-compact-interviews">{c.interviews} int.</span>
-        <button className="cc-btn-ghost cc-btn-sm" onClick={e => { e.stopPropagation(); goToProfile() }}>View</button>
-      </div>
-    )
-  }
-
   const viewProfileButton = (onClick = goToProfile) => (
     <button className="cc-stack-btn cc-stack-btn--outline press-scale" onClick={onClick}>
       View profile <span className="material-symbols-outlined cc-arrow" aria-hidden="true">arrow_forward</span>
@@ -417,7 +425,7 @@ function NewCard({ candidate: c, viewMode }) {
     onToggleSave: toggleSave,
   }
 
-  // ── FICKT VIEW — compact flip card; details expand on the front ──
+  // ── FLICKT VIEW — compact flip card; details expand on the front ──
   if (viewMode === 'tinder') {
     const toggle = () => setExpanded(v => !v)
     return (

@@ -28,7 +28,7 @@ export interface NavItem {
 }
 
 export type ViewMode =
-  'stack' | 'carousel' | 'matrix' | 'fickt' | 'compact' | 'focus'
+  'stack' | 'carousel' | 'matrix' | 'flickt' | 'focus'
 
 export type PageState = 'loading' | 'loaded' | 'empty' | 'error'
 

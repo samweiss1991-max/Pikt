@@ -47,7 +47,7 @@ npm run dev       # Vite dev server on http://localhost:5173
 
 - Never strip parallax, scroll reveal, hover-lift, or press-scale animations when rewriting pages
 - Candidate discovery (ghost cards, tray, chips) lives in Marketplace, NOT Dashboard
-- The app has 6 view modes: stack, carousel, matrix, tinder, compact, focus
+- The app has 5 view modes: stack, carousel, matrix, tinder (labelled "Flickt"), focus
 
 ## Git Workflow
 

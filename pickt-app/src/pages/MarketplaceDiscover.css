@@ -132,7 +132,6 @@
 .mk-grid-stack { display: flex; flex-direction: column; gap: 1.5rem; }
 .mk-grid-matrix { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
 @media (max-width: 768px) { .mk-grid-matrix { grid-template-columns: 1fr; } }
-.mk-compact-list { border-top: 1px solid var(--color-border-subtle); }
 
 /* ── Carousel ── */
 .mk-carousel { position: relative; padding: 0 52px; }

@@ -113,12 +113,11 @@ const VIEW_MODES = [
   { key: 'stack', label: COPY.viewModes.stack, icon: 'view_agenda' },
   { key: 'carousel', label: COPY.viewModes.carousel, icon: 'view_carousel' },
   { key: 'matrix', label: COPY.viewModes.matrix, icon: 'grid_view' },
-  { key: 'tinder', label: COPY.viewModes.fickt, icon: 'swipe' },
-  { key: 'compact', label: COPY.viewModes.compact, icon: 'density_small' },
+  { key: 'tinder', label: COPY.viewModes.flickt, icon: 'swipe' },
   { key: 'focus', label: COPY.viewModes.focus, icon: 'center_focus_strong' },
 ]
 
-const MOBILE_MODES = ['stack', 'tinder', 'compact']
+const MOBILE_MODES = ['stack', 'tinder']
 
 // ── Tinder stack ──
 function TinderView({ candidates, onSave, onSkip }) {
@@ -138,7 +137,7 @@ function TinderView({ candidates, onSave, onSkip }) {
     if (!dragging) return
     const dx = e.clientX - startX.current
     // Only take over the pointer once it's really a drag, so a plain tap still
-    // reaches the card (Fickt: tap to show / hide details)
+    // reaches the card (Flickt: tap to show / hide details)
     if (Math.abs(dx) > 6 && !cardRef.current?.hasPointerCapture(e.pointerId)) {
       cardRef.current?.setPointerCapture(e.pointerId)
     }
@@ -1006,9 +1005,6 @@ export default function MarketplaceDiscover() {
                     <div className="mk-grid-matrix" ref={cardsRef}>{candidates.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="matrix" index={i} /></div>)}</div>
                   )}
                   {viewMode === 'tinder' && <TinderView candidates={candidates} onSave={c => saveCandidate(c.id).catch(() => { /* card stays unsaved; user can retry from its Save button */ })} />}
-                  {viewMode === 'compact' && (
-                    <div className="mk-compact-list">{candidates.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="compact" index={i} />)}</div>
-                  )}
                   {viewMode === 'focus' && <FocusView candidates={candidates} />}
                 </>
               )}

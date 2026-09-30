@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-const VALID_MODES = ['stack', 'carousel', 'matrix', 'tinder', 'compact', 'focus']
+// A saved or linked mode that no longer exists (e.g. the removed 'compact') falls back to 'stack'
+const VALID_MODES = ['stack', 'carousel', 'matrix', 'tinder', 'focus']
 const STORAGE_KEY = 'pickt_view_mode'
 
 const ViewModeContext = createContext({ viewMode: 'stack', setViewMode: () => {} })

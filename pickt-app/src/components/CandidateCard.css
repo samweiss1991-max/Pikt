@@ -295,20 +295,6 @@
 /* ── Matrix card ── */
 .cc-card-new--matrix { padding: 1.5rem; }
 
-/* ── COMPACT VIEW ── */
-.cc-compact {
-  display: flex; align-items: center; gap: 14px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--outline-variant);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.cc-compact:hover { background: var(--surface-container); }
-.cc-compact-role { flex: 1; font-size: 13px; font-weight: 600; color: var(--on-surface); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cc-compact-score { font-size: 12px; font-weight: 600; color: var(--primary); min-width: 36px; text-align: right; }
-.cc-compact-fee { font-size: 12px; color: var(--on-surface-variant); min-width: 28px; text-align: right; }
-.cc-compact-interviews { font-size: 11px; color: var(--on-surface-variant); min-width: 36px; text-align: right; }
-
 .cc-btn-ghost {
   padding: 5px 12px; border-radius: 0.5rem;
   border: 2px solid var(--color-primary);
@@ -526,7 +512,7 @@
 
 /* ── Flip card variants (other views) ── */
 
-/* Full-width section at the bottom of the front (Focus details, Fickt expanded details) */
+/* Full-width section at the bottom of the front (Focus details, Flickt expanded details) */
 .cc-stack-below {
   grid-column: 1 / -1;
   margin-top: 1.5rem;
@@ -539,7 +525,7 @@
 .cc-stack-pills { margin: 0.75rem 0 0; }
 .cc-stack-btn--wide { width: 100%; }
 
-/* Always-stacked cards (Matrix grid, Fickt deck) */
+/* Always-stacked cards (Matrix grid, Flickt deck) */
 .cc-flipcard--stacked .cc-face--front { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; }
 .cc-flipcard--stacked .cc-face--front .cc-stack-side {
   margin: 1.25rem 0 0;
@@ -567,25 +553,37 @@
   .cc-flipcard--focus .cc-stack-title { font-size: 1.625rem; }
 }
 
-/* Fickt: tapping the front toggles details */
-.cc-flipcard--tinder .cc-face--front { cursor: pointer; user-select: none; }
+/* Matrix: narrow cards — smaller tabs on one line, icon-only Save */
+.cc-flipcard--matrix .cc-tabrow { gap: 6px; }
+.cc-flipcard--matrix .cc-tablist { flex-wrap: nowrap; gap: 3px; }
+.cc-flipcard--matrix .cc-ftab {
+  gap: 4px;
+  padding: 5px 8px 4px;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+.cc-flipcard--matrix .cc-ftab--active { padding-top: 11px; }
+.cc-flipcard--matrix .cc-ftab .material-symbols-outlined { font-size: 14px; }
+.cc-flipcard--matrix .cc-ftab--front { flex: 0 1 auto; }   /* the referrer tab gives way first… */
+.cc-flipcard--matrix .cc-ftab--back { flex: 0 0 auto; }    /* …the interviews tab keeps its size */
+.cc-flipcard--matrix .cc-ftab-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;   /* long referrer names end in "…"; full text in the tooltip */
+}
+/* (.cc-flipcard prefix so this beats the base .cc-save-btn rule further down) */
+.cc-flipcard .cc-save-btn--icon {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-bottom: 4px;
+  border-radius: 8px;
+}
+.cc-flipcard .cc-save-btn--icon .material-symbols-outlined { font-size: 18px; }
 
-/* ── Compact rows: match the card colours ── */
-.cc-compact-role { color: var(--color-primary); font-weight: 700; }
-.cc-compact-interviews {
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: var(--color-success-tint);
-  color: var(--color-success);
-  font-weight: 700;
-  min-width: 0;
-}
-.cc-compact-interviews { white-space: nowrap; }
-/* Narrow screens: role gets its own line so it's never squeezed out */
-@media (max-width: 640px) {
-  .cc-compact { flex-wrap: wrap; row-gap: 6px; }
-  .cc-compact-role { flex-basis: 100%; white-space: normal; }
-}
+/* Flickt: tapping the front toggles details */
+.cc-flipcard--tinder .cc-face--front { cursor: pointer; user-select: none; }
 
 /* ═══ STACK VIEW — flip card ═══ */
 

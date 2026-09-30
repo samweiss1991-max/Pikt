@@ -71,8 +71,7 @@ export const COPY = {
     stack: 'Stack',
     carousel: 'Carousel',
     matrix: 'Matrix',
-    fickt: 'Fickt',
-    compact: 'Compact',
+    flickt: 'Flickt',
     focus: 'Focus',
   },
   actions: {

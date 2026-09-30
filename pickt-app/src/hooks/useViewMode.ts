@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-type ViewMode = 'stack' | 'carousel' | 'matrix' | 'fickt' | 'compact' | 'focus'
+type ViewMode = 'stack' | 'carousel' | 'matrix' | 'flickt' | 'focus'
 
 const STORAGE_KEY = 'pickt-view-mode'
 const DEFAULT: ViewMode = 'stack'
