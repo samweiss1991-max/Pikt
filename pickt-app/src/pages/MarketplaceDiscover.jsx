@@ -6,7 +6,7 @@ import { fetchCandidatesPublic } from '../lib/supabaseQueries'
 import { COPY } from '../lib/copy'
 import { useViewMode } from '../context/ViewModeContext'
 import { useSearch } from '../context/SearchContext'
-import { addToShortlist } from '../lib/shortlist'
+import { saveCandidate } from '../lib/shortlist'
 import CandidateCard from '../components/CandidateCard'
 import RightInsightsPanel from '../components/marketplace/RightInsightsPanel'
 import EmptyState from '../components/shared/EmptyState'
@@ -992,7 +992,7 @@ export default function MarketplaceDiscover() {
                   {viewMode === 'matrix' && (
                     <div className="mk-grid-matrix" ref={cardsRef}>{candidates.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="matrix" index={i} /></div>)}</div>
                   )}
-                  {viewMode === 'tinder' && <TinderView candidates={candidates} onSave={c => addToShortlist(c.id)} />}
+                  {viewMode === 'tinder' && <TinderView candidates={candidates} onSave={c => saveCandidate(c.id).catch(() => { /* card stays unsaved; user can retry from its Save button */ })} />}
                   {viewMode === 'compact' && (
                     <div className="mk-compact-list">{candidates.map((c, i) => <CandidateCard key={c.id} candidate={c} viewMode="compact" index={i} />)}</div>
                   )}

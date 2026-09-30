@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK, WORK_HISTORY } from '../data/discoveryOptions'
 import { COPY } from '../lib/copy'
 import { getAvatarGradient } from '../lib/avatarGradients'
 import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
-import { getShortlist, removeFromShortlist, getStageOverrides, setStageOverride } from '../lib/shortlist'
+import { getShortlist, unsaveCandidate, syncSavedCandidates, getStageOverrides, setStageOverride } from '../lib/shortlist'
+import { fetchCandidatesByIds } from '../lib/supabaseQueries'
+import { isDemoCandidateId } from '../lib/candidateProfile'
 import EmptyState from '../components/shared/EmptyState'
 import { useStaggerReveal } from '../hooks/useScrollReveal'
 import { mapCandidate } from '../lib/candidateUtils'
@@ -105,6 +107,21 @@ export default function Shortlist() {
     return pool.filter(c => shortlistIds.includes(c.id))
   })
   const [loading] = useState(false)
+  const [removeError, setRemoveError] = useState(null)
+
+  // Add real (database) candidates the company has saved; demo ones are already in state
+  useEffect(() => {
+    let cancelled = false
+    syncSavedCandidates()
+      .then(ids => fetchCandidatesByIds(ids.filter(id => !isDemoCandidateId(id))))
+      .then(rows => {
+        if (cancelled || rows.length === 0) return
+        const saved = rows.map(mapCandidate)
+        setCandidates(prev => [...prev.filter(c => isDemoCandidateId(c.id)), ...saved])
+      })
+      .catch(() => { /* offline or not signed in: keep the local list */ })
+    return () => { cancelled = true }
+  }, [])
   const [dragTarget, setDragTarget] = useState(null)
 
   const stageOverrides = getStageOverrides()
@@ -113,9 +130,17 @@ export default function Shortlist() {
     return stageOverrides[c.id] || getDefaultStage(c)
   }
 
-  function handleRemove(id) {
-    removeFromShortlist(id)
+  async function handleRemove(id) {
+    const removed = candidates.find(c => c.id === id)
     setCandidates(prev => prev.filter(c => c.id !== id))
+    setRemoveError(null)
+    try {
+      await unsaveCandidate(id)
+    } catch {
+      // Put it back if the server didn't remove it
+      if (removed) setCandidates(prev => [...prev, removed])
+      setRemoveError("Couldn't remove that candidate. Please try again.")
+    }
   }
 
   // Native drag-and-drop for kanban
@@ -137,7 +162,7 @@ export default function Shortlist() {
   }
   function handleDragLeave() { setDragTarget(null) }
 
-  const cardsRef = useStaggerReveal({ staggerMs: 80 })
+  const cardsRef = useStaggerReveal({ staggerMs: 80, deps: [candidates, view, tab] })
 
   const filtered = candidates.filter(c => {
     if (tab === 'unlocked') return checkUnlocked(c.id) || c.status === 'unlocked'
@@ -164,6 +189,8 @@ export default function Shortlist() {
         <h1 className="sl-heading">{COPY.nav.picktList}</h1>
         <p className="sl-subheading">{filtered.length} candidate{filtered.length !== 1 ? 's' : ''}</p>
       </div>
+
+      {removeError && <p role="alert" style={{ color: 'var(--color-critical)', fontWeight: 700, margin: '0 0 1rem' }}>{removeError}</p>}
 
       <div className="sl-tabs">
         {['all', 'unlocked', 'locked'].map(t => (

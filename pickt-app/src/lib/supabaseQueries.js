@@ -50,6 +50,18 @@ export async function fetchCandidatesPublic(filters = {}) {
 }
 
 /** Fetch a single candidate by ID (public view) */
+/** Fetch several public candidates by id (e.g. the company's saved candidates) */
+export async function fetchCandidatesByIds(ids) {
+  if (!ids || ids.length === 0) return []
+  const { data, error } = await supabase
+    .from('candidates_public')
+    .select('*')
+    .in('id', ids)
+
+  if (error) throw error
+  return data || []
+}
+
 export async function fetchCandidateById(id) {
   const { data, error } = await supabase
     .from('candidates_public')

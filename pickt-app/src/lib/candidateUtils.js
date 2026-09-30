@@ -37,6 +37,8 @@ export function mapCandidate(c) {
     linkedin_url: c.linkedin_url,
     current_employer: c.current_employer || c.company,
     current_job_title: c.current_job_title || c.role_applied_for || c.role,
+    // Per-employer description / stage / teaser only (see migration 027)
+    interviewSnapshot: c.interview_snapshot || c.interviewSnapshot || null,
   }
 }
 
