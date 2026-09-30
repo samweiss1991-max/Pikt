@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { getCandidates, getCandidatesRaw } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
 import { fetchCandidatesPublic } from '../lib/supabaseQueries'
@@ -63,6 +63,44 @@ const EXPERIENCE_OPTIONS = [
 
 function formatSalaryK(k) {
   return k >= SALARY_CEIL ? `$${SALARY_CEIL}k+` : `$${k}k`
+}
+
+// ── Saved search (localStorage) ──
+// Remembers the last search + filters so they're restored on return.
+// Every access is wrapped in try/catch: storage can be blocked (private mode, browser settings).
+const SAVED_FILTERS_KEY = 'pickt_marketplace_filters'
+
+function loadSavedFilters() {
+  const defaults = {
+    query: '', categories: [], salaryMin: SALARY_FLOOR, salaryMax: SALARY_CEIL,
+    minExperience: 0, availability: [], workPreference: [], locations: [],
+  }
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY) || 'null')
+    if (!saved || typeof saved !== 'object') return defaults
+    // Only keep values the current UI still offers (options may change between releases)
+    const pick = (arr, allowed) => Array.isArray(arr) ? arr.filter(v => allowed.includes(v)) : []
+    const inRange = (n, fallback) => Number.isFinite(n) && n >= SALARY_FLOOR && n <= SALARY_CEIL ? n : fallback
+    const salaryMin = inRange(saved.salaryMin, SALARY_FLOOR)
+    const salaryMax = inRange(saved.salaryMax, SALARY_CEIL)
+    const validSalary = salaryMin < salaryMax
+    return {
+      query: typeof saved.query === 'string' ? saved.query.slice(0, 100) : '',
+      categories: pick(saved.categories, CATEGORY_CHIPS.map(c => c.key)),
+      salaryMin: validSalary ? salaryMin : SALARY_FLOOR,
+      salaryMax: validSalary ? salaryMax : SALARY_CEIL,
+      minExperience: EXPERIENCE_OPTIONS.some(o => o.value === saved.minExperience) ? saved.minExperience : 0,
+      availability: pick(saved.availability, AVAILABILITY_OPTIONS),
+      workPreference: pick(saved.workPreference, WORK_OPTIONS),
+      locations: pick(saved.locations, LOCATION_OPTIONS),
+    }
+  } catch {
+    return defaults
+  }
+}
+
+function saveFilters(filters) {
+  try { localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters)) } catch { /* storage blocked — ignore */ }
 }
 
 const VIEW_MODES = [
@@ -179,7 +217,6 @@ function FocusView({ candidates }) {
 
 // ══ MAIN ══
 export default function MarketplaceDiscover() {
-  const navigate = useNavigate()
   const location = useLocation()
   const { viewMode, setViewMode } = useViewMode()
   const { query: searchQuery } = useSearch()
@@ -191,30 +228,36 @@ export default function MarketplaceDiscover() {
   const [transitioning, setTransitioning] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
+  // Last search + filters, restored from localStorage (read once on mount)
+  const [saved] = useState(loadSavedFilters)
+
   // ── Discovery / tray state ──
-  const [activeCategories, setActiveCategories] = useState([])
-  const [totalCount, setTotalCount] = useState(0)
+  const [activeCategories, setActiveCategories] = useState(saved.categories)
   const [categoryCounts, setCategoryCounts] = useState({})
   const [discoveryConfirmed, setDiscoveryConfirmed] = useState(() => {
     try { return sessionStorage.getItem('pickt_discovery_confirmed') === 'true' } catch { return false }
   })
   const [trayDismissing, setTrayDismissing] = useState(false)
-  const [showMoreFilters, setShowMoreFilters] = useState(false)
+  // Open "More filters" straight away if any of its filters were restored
+  const [showMoreFilters, setShowMoreFilters] = useState(() =>
+    saved.salaryMin > SALARY_FLOOR || saved.salaryMax < SALARY_CEIL || saved.minExperience > 0 ||
+    saved.availability.length > 0 || saved.workPreference.length > 0 || saved.locations.length > 0
+  )
 
   // ── Pill filters ──
-  const [availability, setAvailability] = useState([])
-  const [workPreference, setWorkPreference] = useState([])
-  const [locations, setLocations] = useState([])
+  const [availability, setAvailability] = useState(saved.availability)
+  const [workPreference, setWorkPreference] = useState(saved.workPreference)
+  const [locations, setLocations] = useState(saved.locations)
 
   // ── Salary & experience filters ──
-  const [salaryMin, setSalaryMin] = useState(SALARY_FLOOR)
-  const [salaryMax, setSalaryMax] = useState(SALARY_CEIL)
+  const [salaryMin, setSalaryMin] = useState(saved.salaryMin)
+  const [salaryMax, setSalaryMax] = useState(saved.salaryMax)
   const [topSalaryThumb, setTopSalaryThumb] = useState('max') // which handle sits on top when they overlap
-  const [minExperience, setMinExperience] = useState(0)
+  const [minExperience, setMinExperience] = useState(saved.minExperience)
 
   // ── Tray search state ──
-  const [trayQuery, setTrayQuery] = useState('')
-  const [appliedQuery, setAppliedQuery] = useState('') // debounced trayQuery used for filtering
+  const [trayQuery, setTrayQuery] = useState(saved.query)
+  const [appliedQuery, setAppliedQuery] = useState(saved.query.trim().length >= 2 ? saved.query.trim() : '') // debounced trayQuery used for filtering
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [highlightIdx, setHighlightIdx] = useState(-1)
@@ -338,11 +381,9 @@ export default function MarketplaceDiscover() {
         setTotal(result.total)
       }
 
-      // Always compute category counts from the full uncandidates set
+      // Always compute category counts from the full, unfiltered set
       if (allCandidatesRef.current.length > 0) {
-        const { totalCount: t, categoryCounts: c } = computeCategoryCounts(allCandidatesRef.current)
-        setTotalCount(t)
-        setCategoryCounts(c)
+        setCategoryCounts(computeCategoryCounts(allCandidatesRef.current).categoryCounts)
       }
     } catch (err) {
       setError(err.message)
@@ -422,20 +463,30 @@ export default function MarketplaceDiscover() {
     }
   }
 
-  function resetMarketplace() {
-    try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
-    setDiscoveryConfirmed(false)
+  function clearAllFilters() {
     setActiveCategories([])
     setTrayQuery('')
     setAppliedQuery('')
+    setSuggestions([])
     setSalaryMin(SALARY_FLOOR)
     setSalaryMax(SALARY_CEIL)
     setMinExperience(0)
     setAvailability([])
     setWorkPreference([])
     setLocations([])
+  }
+
+  function resetMarketplace() {
+    try { sessionStorage.removeItem('pickt_discovery_confirmed') } catch { /* ignore */ }
+    setDiscoveryConfirmed(false)
+    clearAllFilters()
     setViewMode('stack')
   }
+
+  // Save the search + filters whenever they change
+  useEffect(() => {
+    saveFilters({ query: trayQuery, categories: activeCategories, salaryMin, salaryMax, minExperience, availability, workPreference, locations })
+  }, [trayQuery, activeCategories, salaryMin, salaryMax, minExperience, availability, workPreference, locations])
 
 
   function togglePillFilter(value, setter) {
@@ -580,13 +631,6 @@ export default function MarketplaceDiscover() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const displayCount = useMemo(() => {
-    if (activeCategories.length > 0) {
-      return activeCategories.reduce((sum, cat) => sum + (categoryCounts[cat] || 0), 0)
-    }
-    return totalCount
-  }, [activeCategories, categoryCounts, totalCount])
-
   function switchView(mode) {
     if (mode === viewMode) return
     setTransitioning(true)
@@ -596,6 +640,26 @@ export default function MarketplaceDiscover() {
   const salaryActive = salaryMin > SALARY_FLOOR || salaryMax < SALARY_CEIL
   const moreFiltersCount = (salaryActive ? 1 : 0) + (minExperience > 0 ? 1 : 0) + availability.length + workPreference.length + locations.length
   const hasActiveFilters = activeCategories.length > 0 || trayQuery.trim().length >= 2 || moreFiltersCount > 0
+
+  // Chips summarising every active filter, each with its own remove action
+  const removeFrom = (setter, value) => () => setter(prev => prev.filter(v => v !== value))
+  const activeFilterChips = [
+    ...(trayQuery.trim() ? [{ id: 'q', label: `“${trayQuery.trim()}”`, remove: clearSearch }] : []),
+    ...activeCategories.map(c => ({ id: 'cat:' + c, label: c, remove: removeFrom(setActiveCategories, c) })),
+    ...(salaryActive ? [{ id: 'salary', label: `${formatSalaryK(salaryMin)} – ${formatSalaryK(salaryMax)}`, remove: () => { setSalaryMin(SALARY_FLOOR); setSalaryMax(SALARY_CEIL) } }] : []),
+    ...(minExperience > 0 ? [{ id: 'exp', label: `${minExperience}+ yrs experience`, remove: () => setMinExperience(0) }] : []),
+    ...availability.map(v => ({ id: 'avail:' + v, label: v, remove: removeFrom(setAvailability, v) })),
+    ...workPreference.map(v => ({ id: 'work:' + v, label: v, remove: removeFrom(setWorkPreference, v) })),
+    ...locations.map(v => ({ id: 'loc:' + v, label: v, remove: removeFrom(setLocations, v) })),
+  ]
+
+  // Live match count for the main button, from the same filter logic as the results
+  const noMatches = dataLoaded && total === 0
+  const confirmLabel = !dataLoaded
+    ? 'Loading candidates…'
+    : noMatches
+      ? 'No matches – try removing a filter'
+      : `Show ${total} ${total === 1 ? 'candidate' : 'candidates'}`
   const showCandidates = discoveryConfirmed || hasActiveFilters
 
   const visibleModes = isMobile ? VIEW_MODES.filter(m => MOBILE_MODES.includes(m.key)) : VIEW_MODES
@@ -656,14 +720,6 @@ export default function MarketplaceDiscover() {
                         <span className="mk-tray-title-accent">candidate</span>
                       </h3>
                       <p className="mk-tray-subtitle">Search, filter by category, or pick a role</p>
-                    </div>
-                    <div className="mk-tray-badge">
-                      {totalCount > 0 ? (
-                        <>
-                          <span className="mk-tray-badge-dot" />
-                          {displayCount} candidates ready
-                        </>
-                      ) : ('Loading\u2026')}
                     </div>
                   </div>
 
@@ -851,12 +907,37 @@ export default function MarketplaceDiscover() {
                     </div>
                   )}
 
+                  {activeFilterChips.length > 0 && (
+                    <div className="mk-tray-active">
+                      <span className="mk-tray-active-label">Active filters</span>
+                      <ul className="mk-tray-active-list">
+                        {activeFilterChips.map(chip => (
+                          <li key={chip.id}>
+                            <button type="button" className="mk-tray-active-chip" onClick={chip.remove} aria-label={`Remove filter: ${chip.label}`}>
+                              {chip.label}
+                              <span className="material-symbols-outlined" aria-hidden="true">close</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <button type="button" className="mk-tray-clear-all" onClick={clearAllFilters}>
+                        Clear all
+                      </button>
+                    </div>
+                  )}
+
                   <div className="mk-tray-bottom">
                     <button type="button" className="mk-tray-toggle press-scale" onClick={showAllRoles}>
                       See all roles &rarr;
                     </button>
-                    <button type="button" className="mk-tray-confirm press-scale" onClick={confirmDiscovery}>
-                      Show me candidates &rarr;
+                    <button
+                      type="button"
+                      className="mk-tray-confirm press-scale"
+                      onClick={confirmDiscovery}
+                      disabled={!dataLoaded || noMatches}
+                      aria-live="polite"
+                    >
+                      {confirmLabel}{!noMatches && dataLoaded && <> &rarr;</>}
                     </button>
                   </div>
               </div>
@@ -870,7 +951,7 @@ export default function MarketplaceDiscover() {
               {!loading && error && <ErrorBanner message={error} onRetry={() => { allCandidatesRef.current = []; loadCandidates() }} />}
 
               {!loading && !error && candidates.length === 0 && (
-                <EmptyState icon="search_off" message={COPY.emptyStates.marketplace} ctaLabel={COPY.emptyStates.marketplaceCta} onCta={() => navigate('/marketplace')} />
+                <EmptyState icon="search_off" message={COPY.emptyStates.marketplace} ctaLabel={COPY.emptyStates.marketplaceCta} onCta={clearAllFilters} />
               )}
 
               {!loading && !error && candidates.length > 0 && (
