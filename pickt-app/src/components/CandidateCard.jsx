@@ -5,6 +5,7 @@ import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
 import { isInShortlist, addToShortlist, removeFromShortlist } from '../lib/shortlist'
 import { COPY } from '../lib/copy'
 import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
+import { careerSteps } from '../lib/careerSteps'
 import './CandidateCard.css'
 
 // Referrer badge variant based on index
@@ -45,6 +46,54 @@ function WorkHistory({ history }) {
           <div className="cc-wh-dates">{w.dates}</div>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Career climb (Stack view) ──
+// Work history drawn as rising steps: oldest (left, shortest, lightest) → newest (right, tallest, navy).
+
+// Lightest → navy; the two darkest steps use white text
+const STEP_COLORS = {
+  1: ['#002366'],
+  2: ['#DCE4F4', '#002366'],
+  3: ['#DCE4F4', '#4A64A0', '#002366'],
+  4: ['#DCE4F4', '#93A4CA', '#4A64A0', '#002366'],
+}
+const DARK_STEPS = ['#4A64A0', '#002366']
+
+function CareerClimb({ history }) {
+  const steps = careerSteps(history)
+  if (steps.length === 0) return null
+  const colors = STEP_COLORS[steps.length]
+  return (
+    <div className="cc-climb">
+      <h4 className="cc-label">Career climb</h4>
+      <ol className="cc-climb-steps" aria-label="Work history, oldest to newest">
+        {steps.map((job, i) => {
+          const newest = i === steps.length - 1
+          const bg = colors[i]
+          // Heights rise from 40% (oldest) to 100% (newest)
+          const height = steps.length === 1 ? 100 : 40 + (60 * i) / (steps.length - 1)
+          return (
+            <li key={i} className="cc-climb-step">
+              <div className="cc-climb-text">
+                <span className="cc-climb-company">{job.company}</span>
+                <span className="cc-climb-title">{job.title}</span>
+              </div>
+              <div
+                className={`cc-climb-bar ${DARK_STEPS.includes(bg) ? 'cc-climb-bar--dark' : ''}`}
+                style={{ height: `calc(150px * ${height / 100})`, background: bg }}
+              >
+                {/* Short years for sighted users, full dates for screen readers */}
+                <span className="cc-climb-years" aria-hidden="true">{job.when.short}</span>
+                <span className="cc-sr-only">{job.when.raw}</span>
+                {newest && <span className="material-symbols-outlined cc-climb-trend" aria-hidden="true">trending_up</span>}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }
@@ -256,7 +305,85 @@ function NewCard({ candidate: c, viewMode, index }) {
     )
   }
 
-  // ── STACK / CAROUSEL VIEW (default — new design) ──
+  // ── STACK VIEW — folder tabs + career climb ──
+  if (viewMode === 'stack') {
+    // Same source as the previous referral badge; 'Unknown' is mapCandidate's "no company" placeholder
+    const referrerName = c.referringCompany || c.company
+    const referrer = referrerName && referrerName !== 'Unknown' ? referrerName : null
+    const interviews = c.interviews || 0
+    const hasTabs = Boolean(referrer) || interviews > 0
+    const meta = [c.seniority, c.years ? `${c.years} yrs experience` : null, c.city].filter(Boolean)
+    const hasClimb = careerSteps(c.workHistory).length > 0
+    return (
+      <>
+        <article className={`cc-folder ${hasTabs ? 'cc-folder--tabbed' : ''}`} aria-label={c.role}>
+          {hasTabs && (
+            <div className="cc-tabs">
+              {referrer && (
+                <span className="cc-tab cc-tab--referral">
+                  <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                  {COPY.marketplace.referredBy} {referrer}
+                </span>
+              )}
+              {interviews > 0 && (
+                <span className="cc-tab cc-tab--interviews">
+                  {interviews} {interviews === 1 ? 'interview' : 'interviews'} done
+                </span>
+              )}
+            </div>
+          )}
+          <div className={`cc-card-new cc-card-new--stack ${hasClimb ? '' : 'cc-card-new--no-climb'}`}>
+            <div className="cc-stack-main">
+              <h3 className="cc-stack-title">{c.role}</h3>
+              {meta.length > 0 && <p className="cc-stack-meta">{meta.join(' \u00B7 ')}</p>}
+
+              {salaryStr && (
+                <div className="cc-stack-salary">
+                  <span className="cc-label">Salary · AUD</span>
+                  <span className="cc-stack-salary-value">{salaryStr.replace(' - ', ' – ')}</span>
+                </div>
+              )}
+
+              {(c.skills || []).length > 0 && (
+                <ul className="cc-stack-skills" aria-label="Skills">
+                  {c.skills.map(s => <li key={s} className="cc-stack-skill">{s}</li>)}
+                </ul>
+              )}
+
+              <div className="cc-stack-actions">
+                {unlocked ? (
+                  <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}>{'\u2713'} View full profile</button>
+                ) : (
+                  <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>Unlock</button>
+                )}
+                <button className="cc-stack-btn cc-stack-btn--outline press-scale" onClick={goToProfile}>
+                  View profile <span className="material-symbols-outlined cc-arrow" aria-hidden="true">arrow_forward</span>
+                </button>
+                <button
+                  className="cc-stack-bookmark"
+                  onClick={toggleSave}
+                  aria-label="Save candidate"
+                  aria-pressed={saved}
+                  title={saved ? 'Remove from Pickt List' : 'Save to Pickt List'}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true" style={saved ? { fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" } : undefined}>{saved ? 'bookmark' : 'bookmark_border'}</span>
+                </button>
+              </div>
+            </div>
+
+            {hasClimb && (
+              <div className="cc-stack-side">
+                <CareerClimb history={c.workHistory} />
+              </div>
+            )}
+          </div>
+        </article>
+        {showModal && <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />}
+      </>
+    )
+  }
+
+  // ── CAROUSEL VIEW (default) ──
   return (
     <>
       <div className="cc-card-new">
