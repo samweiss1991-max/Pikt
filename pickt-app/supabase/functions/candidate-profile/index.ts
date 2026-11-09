@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
   const { data: interviewRows, error: interviewsError } = await adminClient
     .from("candidate_interviews")
-    .select("id, employer_company_id, employer_industry, employer_location, stage_reached, stage_rank, interviews_completed, feedback, outcome_reason, feedback_teaser")
+    .select("id, employer_company_id, employer_industry, employer_location, stage_reached, stage_rank, interviews_completed, feedback, outcome_reason, feedback_teaser, outcome, outcome_other, strengths_list, development_areas, note_impressed, note_why_not_offer, note_best_fit")
     .eq("candidate_id", candidateId);
   if (interviewsError) return json({ error: interviewsError.message }, 500);
 

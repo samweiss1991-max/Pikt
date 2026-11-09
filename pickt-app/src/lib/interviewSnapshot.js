@@ -7,9 +7,8 @@
 
 import { demoInterviews } from '../data/demoInterviews'
 import { isDemoCandidateId } from './candidateProfile'
-import { feedbackTeaser, stageRank } from '../../supabase/functions/_shared/profileShape.js'
-
-export const CARD_TEASER_LENGTH = 55
+import { CARD_TEASER_LENGTH, feedbackTeaser, stageRank } from '../../supabase/functions/_shared/profileShape.js'
+import { SILVER_MEDALLIST } from '../../supabase/functions/_shared/candidateFields.js'
 
 export function getInterviewSnapshot(c) {
   if (!c) return []
@@ -29,7 +28,15 @@ export function getInterviewSnapshot(c) {
       stage: iv.stage_reached,
       stageRank: stageRank(iv.stage_reached),
       interviews: iv.interviews_completed || 0,
-      teaser: feedbackTeaser(iv.feedback, CARD_TEASER_LENGTH),
+      teaser: feedbackTeaser(iv.note_impressed || iv.feedback, CARD_TEASER_LENGTH),
     }))
     .sort((a, b) => b.stageRank - a.stageRank || b.interviews - a.interviews)
+}
+
+/** A positive signal shown before unlocking. Real candidates: from candidates_public. */
+export function isSilverMedallist(c) {
+  if (!c) return false
+  if (typeof c.is_silver_medallist === 'boolean') return c.is_silver_medallist
+  if (!isDemoCandidateId(c.id)) return false
+  return demoInterviews(c).some(iv => iv.outcome === SILVER_MEDALLIST)
 }

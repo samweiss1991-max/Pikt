@@ -3,13 +3,15 @@
 // ignores anything that no longer makes sense, so an old draft can't break the form.
 
 import {
-  bandFromYears, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, normaliseEmploymentType, normaliseWorkPreference,
+  bandFromYears, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, INTERVIEW_OUTCOMES, MAX_FEEDBACK_CHIP_LENGTH, MAX_FEEDBACK_CHIPS,
+  normaliseEmploymentType, normaliseWorkPreference, OTHER_OUTCOME,
   RESIDENCY_STATUSES, VISA_STATUSES, WORK_PREFERENCES, weeksFromDays,
 } from '../../supabase/functions/_shared/candidateFields.js'
 
 export function upgradeReferDraft(saved, initial) {
   const {
-    years_experience, preferred_work_type, employment_type, notice_period_days, ...rest
+    years_experience, preferred_work_type, employment_type, notice_period_days,
+    why_not_hired, strengths, gaps, feedback_summary, interview_notes, ...rest
   } = saved
   const draft = { ...initial, ...rest }
 
@@ -38,6 +40,32 @@ export function upgradeReferDraft(saved, initial) {
     draft.location_country_code = ''
   }
   if (!saved.location_state_code) draft.location_state_code = ''
+
+  // Interview feedback: old free text becomes chips if short, otherwise it moves to answer (a)
+  const text = v => (typeof v === 'string' ? v.trim() : '')
+  const fitsChip = t => t && t.length <= MAX_FEEDBACK_CHIP_LENGTH
+  const clean = v => (Array.isArray(v)
+    ? [...new Set(v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, MAX_FEEDBACK_CHIP_LENGTH)))].slice(0, MAX_FEEDBACK_CHIPS)
+    : [])
+
+  const roundNotes = Array.isArray(interview_notes) ? interview_notes.map(n => text(n?.note_text)).filter(Boolean) : []
+  const oldNotes = [
+    text(feedback_summary),
+    ...(fitsChip(text(strengths)) ? [] : [text(strengths)]),
+    ...(fitsChip(text(gaps)) ? [] : [text(gaps)]),
+    ...roundNotes,
+  ].filter(Boolean).join('\n\n')
+
+  draft.strengths_list = clean(saved.strengths_list).length ? clean(saved.strengths_list) : (fitsChip(text(strengths)) ? [text(strengths)] : [])
+  draft.development_areas = clean(saved.development_areas).length ? clean(saved.development_areas) : (fitsChip(text(gaps)) ? [text(gaps)] : [])
+  draft.note_impressed = text(saved.note_impressed) ? saved.note_impressed : oldNotes
+  draft.note_why_not_offer = typeof saved.note_why_not_offer === 'string' ? saved.note_why_not_offer : ''
+  draft.note_best_fit = typeof saved.note_best_fit === 'string' ? saved.note_best_fit : ''
+
+  const reason = text(saved.outcome ?? why_not_hired)
+  draft.outcome = INTERVIEW_OUTCOMES.includes(reason) ? reason : (reason ? OTHER_OUTCOME : '')
+  draft.outcome_other = draft.outcome !== OTHER_OUTCOME ? ''
+    : (text(saved.outcome_other) || (INTERVIEW_OUTCOMES.includes(reason) ? '' : reason))
 
   return draft
 }

@@ -53,6 +53,7 @@ export function mapCandidate(c) {
     current_job_title: c.current_job_title || c.role_applied_for || c.role,
     // Per-employer description / stage / teaser only (see migration 027)
     interviewSnapshot: c.interview_snapshot || c.interviewSnapshot || null,
+    is_silver_medallist: c.is_silver_medallist,
   }
 }
 

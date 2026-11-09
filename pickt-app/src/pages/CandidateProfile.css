@@ -373,3 +373,22 @@
   .pp-mobile-bar-text { display: none; }
   .pp-mobile-bar .pp-unlock-btn { width: 100%; }
 }
+
+/* Interview feedback */
+.pp-silver {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.375rem;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #065F46;
+}
+.pp-silver .material-symbols-outlined { font-size: 18px; }
+.pp-silver-note { font-size: 0.8125rem; font-weight: 500; color: var(--color-text); }
+.pp-chips { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0.25rem 0 0.5rem; padding: 0; list-style: none; }
+.pp-chip { padding: 0.25rem 0.625rem; font-size: 0.8125rem; font-weight: 700; border-radius: 999px; overflow-wrap: anywhere; }
+/* Strengths navy, development areas neutral grey: growth areas, never red */
+.pp-chip--strength { color: #FFFFFF; background: #002366; }
+.pp-chip--growth { color: #374151; background: #E5E7EB; }

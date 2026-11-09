@@ -8,17 +8,22 @@ import { supabase } from "../lib/supabase";
 import { mapParsedDataToForm } from "../lib/cvFieldMapper";
 import LocationSelect from "../components/forms/LocationSelect";
 import CheckboxGroup from "../components/forms/CheckboxGroup";
+import ChipPicker from "../components/forms/ChipPicker";
+import InterviewNotesCard from "../components/refer/InterviewNotesCard";
+import { DEVELOPMENT_GROUPS, STRENGTH_GROUPS } from "../data/feedbackOptions";
+import { CARD_TEASER_LENGTH, feedbackTeaser } from "../../supabase/functions/_shared/profileShape.js";
 import { upgradeReferDraft } from "../lib/referDraft";
 import {
-  EMPLOYMENT_TYPES, EXPERIENCE_BANDS, formatLocation, NOTICE_WEEKS_MAX, RESIDENCY_STATUSES, VISA_STATUSES, WORK_PREFERENCES,
+  EMPLOYMENT_TYPES, EXPERIENCE_BANDS, formatLocation, INTERVIEW_OUTCOMES, NOTICE_WEEKS_MAX, OTHER_OUTCOME, RESIDENCY_STATUSES,
+  SILVER_MEDALLIST, VISA_STATUSES, WORK_PREFERENCES,
 } from "../../supabase/functions/_shared/candidateFields.js";
+import '../components/refer/InterviewNotesCard.css';
 import './Refer.css';
 
 // ── Constants ────────────────────────────────────────────────
 
 const SENIORITY = ["Junior", "Mid", "Senior", "Lead", "Head of", "VP", "C-suite"];
 const STAGES = ["1st round", "2nd round", "3rd round", "Final round"];
-const WHY_NOT_HIRED = ["Headcount freeze", "Skills mismatch", "Timing", "Overqualified", "Culture fit", "Other"];
 const RECOMMENDATIONS = ["Strong hire", "Hire", "Maybe"];
 const STEP_LABELS = ["Role & experience", "Interview feedback", "CV & documents", "Review & publish"];
 const STORAGE_KEY = "pickt_refer_draft";
@@ -46,12 +51,14 @@ const INITIAL = {
   salary_expectation_max: "",
   skills: [],
   interview_stage_reached: "",
-  why_not_hired: "",
-  strengths: "",
-  gaps: "",
-  feedback_summary: "",
+  outcome: "",
+  outcome_other: "",
+  strengths_list: [],
+  development_areas: [],
+  note_impressed: "",
+  note_why_not_offer: "",
+  note_best_fit: "",
   recommendation: "",
-  interview_notes: [],
   skill_ratings: [],
   cv: null,
   cover_letter: null,
@@ -247,9 +254,12 @@ export default function Refer() {
       }
     }
     if (s === 2) {
-      if (!form.why_not_hired) errs.push("Reason for not hiring is required.");
-      if (!form.strengths.trim()) errs.push("Key strengths are required.");
-      if (!form.gaps.trim()) errs.push("Development areas are required.");
+      if (!form.outcome) errs.push("Interview outcome is required.");
+      if (form.outcome === OTHER_OUTCOME && !form.outcome_other.trim()) errs.push("Please describe the outcome.");
+      if (form.strengths_list.length === 0) errs.push("Add at least one key strength.");
+      if (form.development_areas.length === 0) errs.push("Add at least one development area.");
+      if (!form.note_impressed.trim()) errs.push("Answer 'What impressed you most?'.");
+      if (!form.note_why_not_offer.trim()) errs.push("Answer 'Why didn't they get the offer?'.");
       if (!form.recommendation) errs.push("Recommendation is required.");
     }
     if (s === 3) {
@@ -324,12 +334,14 @@ export default function Refer() {
       skills: form.skills,
       interview_stage_reached: form.interview_stage_reached,
       interviews_completed: form.interviews_completed || 0,
-      why_not_hired: form.why_not_hired,
-      strengths: form.strengths,
-      gaps: form.gaps,
-      feedback_summary: form.feedback_summary || null,
+      outcome: form.outcome,
+      outcome_other: form.outcome === OTHER_OUTCOME ? form.outcome_other.trim() : null,
+      strengths_list: form.strengths_list,
+      development_areas: form.development_areas,
+      note_impressed: form.note_impressed.trim(),
+      note_why_not_offer: form.note_why_not_offer.trim(),
+      note_best_fit: form.note_best_fit.trim() || null,
       recommendation: form.recommendation,
-      interview_notes: form.interview_notes.length > 0 ? form.interview_notes : null,
       skill_ratings: form.skill_ratings.length > 0 ? form.skill_ratings : null,
       cv_file_url: form.cv?.url,
       cv_filename: form.cv?.filename,
@@ -389,23 +401,6 @@ export default function Refer() {
   function removeSkill(skill) {
     set("skills", form.skills.filter((s) => s !== skill));
     set("skill_ratings", form.skill_ratings.filter((r) => r.skill !== skill));
-  }
-
-  function addInterviewNote() {
-    set("interview_notes", [
-      ...form.interview_notes,
-      { round_number: form.interview_notes.length + 1, interviewer_role: "", outcome: "", note_text: "", score: "", date: "" },
-    ]);
-  }
-
-  function updateNote(index, field, value) {
-    const notes = [...form.interview_notes];
-    notes[index] = { ...notes[index], [field]: value };
-    set("interview_notes", notes);
-  }
-
-  function removeNote(index) {
-    set("interview_notes", form.interview_notes.filter((_, i) => i !== index));
   }
 
   function updateSkillRating(skill, rating) {
@@ -883,67 +878,68 @@ export default function Refer() {
           <p className="rf-section-subtitle">Share your assessment of this candidate.</p>
         </div>
 
-        <div>
-          <label className="rf-label">Why were they not hired? *</label>
-          <select className="rf-select" value={form.why_not_hired} onChange={(e) => set("why_not_hired", e.target.value)}>
-            <option value="">Select reason</option>
-            {WHY_NOT_HIRED.map((r) => <option key={r}>{r}</option>)}
-          </select>
+        <div className="rf-row">
+          <div>
+            <label className="rf-label" htmlFor="rf-outcome">Interview outcome *</label>
+            <select
+              id="rf-outcome"
+              className="rf-select"
+              aria-required="true"
+              aria-describedby="rf-outcome-hint"
+              value={form.outcome}
+              onChange={(e) => {
+                const outcome = e.target.value;
+                // Choosing anything else clears the description
+                dispatch({ type: "MERGE", values: { outcome, ...(outcome === OTHER_OUTCOME ? {} : { outcome_other: "" }) } });
+              }}
+            >
+              <option value="">Select outcome</option>
+              {INTERVIEW_OUTCOMES.map((r) => <option key={r}>{r}</option>)}
+            </select>
+            <p id="rf-outcome-hint" style={{ marginTop: '0.375rem', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+              {SILVER_MEDALLIST}: Runner-up – reached the final stage but another candidate was chosen
+            </p>
+          </div>
+          {/* The live region stays on the page so screen readers announce the change */}
+          <div aria-live="polite">
+            {form.outcome === OTHER_OUTCOME && (
+              <>
+                <label className="rf-label" htmlFor="rf-outcome-other">Please describe the outcome *</label>
+                <input id="rf-outcome-other" className="rf-input" required aria-required="true" value={form.outcome_other} onChange={(e) => set("outcome_other", e.target.value)} />
+              </>
+            )}
+          </div>
         </div>
 
-        <div>
-          <label className="rf-label">Key strengths *</label>
-          <textarea className="rf-textarea" placeholder="What stood out about this candidate?" value={form.strengths} onChange={(e) => set("strengths", e.target.value)} />
-        </div>
+        <ChipPicker
+          label="Key strengths"
+          required
+          groups={STRENGTH_GROUPS}
+          value={form.strengths_list}
+          onChange={(v) => set("strengths_list", v)}
+          placeholder="Search strengths, or type your own"
+        />
 
-        <div>
-          <label className="rf-label">Development areas *</label>
-          <textarea className="rf-textarea" placeholder="Where could they improve?" value={form.gaps} onChange={(e) => set("gaps", e.target.value)} />
-        </div>
+        <ChipPicker
+          label="Development areas"
+          required
+          groups={DEVELOPMENT_GROUPS}
+          value={form.development_areas}
+          onChange={(v) => set("development_areas", v)}
+          placeholder="Search development areas, or type your own"
+        />
 
-        <div>
-          <label className="rf-label">Feedback summary</label>
-          <textarea className="rf-textarea" placeholder="This will be displayed on the marketplace profile." value={form.feedback_summary} onChange={(e) => set("feedback_summary", e.target.value)} />
-        </div>
+        <InterviewNotesCard values={form} onChange={set} />
 
         <div>
           <label className="rf-label">Your recommendation *</label>
           <div className="rf-card-grid rf-card-grid--3">
             {RECOMMENDATIONS.map((r) => (
-              <button key={r} type="button" onClick={() => set("recommendation", r)} className={`rf-card-option ${form.recommendation === r ? 'rf-card-option--active' : ''}`}>
+              <button key={r} type="button" aria-pressed={form.recommendation === r} onClick={() => set("recommendation", r)} className={`rf-card-option ${form.recommendation === r ? 'rf-card-option--active' : ''}`}>
                 {r}
               </button>
             ))}
           </div>
-        </div>
-
-        <div>
-          <div className="rf-note-header">
-            <label className="rf-label" style={{ marginBottom: 0 }}>Interview notes</label>
-            <button type="button" onClick={addInterviewNote} className="rf-note-add">+ Add round</button>
-          </div>
-          {form.interview_notes.map((note, i) => (
-            <div key={i} className="rf-note-card">
-              <div className="rf-note-top">
-                <span className="rf-note-round">Round {note.round_number}</span>
-                <button type="button" onClick={() => removeNote(i)} className="rf-note-remove">Remove</button>
-              </div>
-              <div className="rf-row rf-row--3">
-                <input className="rf-input" placeholder="Interviewer role" value={note.interviewer_role} onChange={(e) => updateNote(i, "interviewer_role", e.target.value)} />
-                <select className="rf-select" value={note.outcome} onChange={(e) => updateNote(i, "outcome", e.target.value)}>
-                  <option value="">Outcome</option>
-                  <option>Passed</option>
-                  <option>Failed</option>
-                  <option>Withdrew</option>
-                </select>
-                <div className="rf-row">
-                  <input className="rf-input" type="number" min={0} max={10} placeholder="Score /10" value={note.score} onChange={(e) => updateNote(i, "score", e.target.value ? Number(e.target.value) : "")} />
-                  <input className="rf-input" type="date" value={note.date} onChange={(e) => updateNote(i, "date", e.target.value)} />
-                </div>
-              </div>
-              <textarea className="rf-textarea" style={{ marginTop: '0.75rem' }} placeholder="Notes from this round" value={note.note_text} onChange={(e) => updateNote(i, "note_text", e.target.value)} />
-            </div>
-          ))}
         </div>
 
         {form.skills.length > 0 && (
@@ -1106,7 +1102,7 @@ export default function Refer() {
   function Step4() {
     const checks = [
       { label: "Skills added", ok: form.skills.length > 0 },
-      { label: "Feedback provided", ok: !!form.strengths && !!form.gaps },
+      { label: "Feedback provided", ok: form.strengths_list.length > 0 && form.development_areas.length > 0 && !!form.note_impressed.trim() && !!form.note_why_not_offer.trim() },
       { label: "CV uploaded", ok: !!form.cv?.url },
       { label: "PII will be redacted", ok: true },
     ];
@@ -1133,9 +1129,6 @@ export default function Refer() {
               {form.interview_stage_reached || "Stage"}
             </span>
           </div>
-          {form.feedback_summary && (
-            <p style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>{form.feedback_summary}</p>
-          )}
           <div className="rf-preview-footer">
             <span>Marketplace preview</span>
             <span className="rf-preview-unlock">Unlock profile</span>
@@ -1149,6 +1142,25 @@ export default function Refer() {
             salaryHigh={reviewStatus?.salaryHigh ?? form.salary_expectation_max}
           />
         )}
+
+        <section className="in-review" aria-labelledby="rf-review-feedback">
+          <h3 className="in-review-title" id="rf-review-feedback">Your interview feedback</h3>
+          <p className="in-review-q">Interview outcome</p>
+          <p className="in-review-a">{form.outcome === OTHER_OUTCOME ? (form.outcome_other || OTHER_OUTCOME) : (form.outcome || "\u2014")}</p>
+          <p className="in-review-q">Key strengths</p>
+          <p className="in-review-a">{form.strengths_list.join(", ") || "\u2014"}</p>
+          <p className="in-review-q">Development areas</p>
+          <p className="in-review-a">{form.development_areas.join(", ") || "\u2014"}</p>
+          <p className="in-review-q">What impressed you most?</p>
+          <p className="in-review-a">{form.note_impressed || "\u2014"}</p>
+          {form.note_impressed.trim() && (
+            <p className="in-review-preview">Preview shown on the card: "{feedbackTeaser(form.note_impressed, CARD_TEASER_LENGTH)}"</p>
+          )}
+          <p className="in-review-q">Why didn't they get the offer?</p>
+          <p className="in-review-a">{form.note_why_not_offer || "\u2014"}</p>
+          <p className="in-review-q">What kind of role or team would suit them best?</p>
+          <p className="in-review-a">{form.note_best_fit || "\u2014"}</p>
+        </section>
 
         <div className="rf-checklist">
           {checks.map((c) => (

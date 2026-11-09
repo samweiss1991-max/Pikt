@@ -84,6 +84,13 @@ export function demoInterviews(c) {
     interviews_completed: c.interviews_completed ?? c.interviews ?? 1,
     feedback: [c.feedback_summary, c.strengths].filter(Boolean).join(' ') || FEEDBACK[seed % FEEDBACK.length],
     outcome_reason: c.why_not_hired || REASONS[seed % REASONS.length],
+    // About a third of demo candidates are silver medallists
+    outcome: seed % 3 === 0 ? 'Silver medallist' : 'Timing',
+    strengths_list: ['Clear communicator', 'Problem solving', 'Ownership & accountability'],
+    development_areas: ['Delegation', 'Limited industry experience'],
+    note_impressed: [c.feedback_summary, c.strengths].filter(Boolean).join(' ') || FEEDBACK[seed % FEEDBACK.length],
+    note_why_not_offer: c.why_not_hired || REASONS[seed % REASONS.length],
+    note_best_fit: 'A growing team where they can own their work end to end.',
   }]
 
   const others = EMPLOYERS.filter(e => e.name !== referrer.name)

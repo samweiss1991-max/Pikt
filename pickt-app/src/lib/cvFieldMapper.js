@@ -25,10 +25,6 @@ export function mapParsedDataToForm(parsed, initial) {
     industry: parsed.industry || initial.industry,
     interview_stage_reached: parsed.interview_stage_reached || initial.interview_stage_reached,
     interviews_completed: parsed.interviews_completed || initial.interviews_completed,
-    why_not_hired: parsed.why_not_hired || initial.why_not_hired,
-    strengths: parsed.strengths || initial.strengths,
-    gaps: parsed.gaps || initial.gaps,
-    feedback_summary: parsed.feedback_summary || initial.feedback_summary,
     recommendation: parsed.recommendation || initial.recommendation,
   }
 }

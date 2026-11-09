@@ -21,7 +21,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { identityHash, normaliseEmail, normaliseMobile } from "../_shared/identity.ts";
 import { isAllowedUploadPath, storagePathFrom } from "../_shared/uploads.ts";
-import { candidateFieldsFromRequest } from "../_shared/candidateFields.js";
+import { candidateFieldsFromRequest, feedbackFieldsFromRequest } from "../_shared/candidateFields.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,9 +110,6 @@ Deno.serve(async (req) => {
     "location_city",
     "location_country",
     "interview_stage_reached",
-    "why_not_hired",
-    "strengths",
-    "gaps",
     "recommendation",
   ];
 
@@ -130,6 +127,14 @@ Deno.serve(async (req) => {
   if (fieldsError) {
     return new Response(
       JSON.stringify({ error: fieldsError }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const { interview: feedbackFields, candidate: feedbackColumns, error: feedbackError } = feedbackFieldsFromRequest(body);
+  if (feedbackError) {
+    return new Response(
+      JSON.stringify({ error: feedbackError }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -191,8 +196,7 @@ Deno.serve(async (req) => {
     employer_location: body.employer_location || body.location_city || null,
     stage_reached: body.interview_stage_reached,
     interviews_completed: body.interviews_completed ?? 0,
-    feedback: body.feedback_summary || body.strengths || null,
-    outcome_reason: body.why_not_hired || null,
+    ...feedbackFields,
   };
 
   // ── Repeat referral: same person already on Pickt ─────────
@@ -279,12 +283,8 @@ Deno.serve(async (req) => {
       skills: body.skills,
       interview_stage_reached: body.interview_stage_reached,
       interviews_completed: body.interviews_completed ?? 0,
-      why_not_hired: body.why_not_hired,
-      strengths: body.strengths,
-      gaps: body.gaps,
-      feedback_summary: body.feedback_summary || null,
+      ...feedbackColumns,
       recommendation: body.recommendation,
-      interview_notes: body.interview_notes || null,
       skill_ratings: body.skill_ratings || null,
       cv_file_url: cvPath,
       cv_filename: body.cv_filename || null,

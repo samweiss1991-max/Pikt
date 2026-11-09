@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import UnlockModal from './unlock/UnlockModal'
 import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
 import { isInShortlist, saveCandidate, unsaveCandidate } from '../lib/shortlist'
-import { getInterviewSnapshot } from '../lib/interviewSnapshot'
+import { getInterviewSnapshot, isSilverMedallist } from '../lib/interviewSnapshot'
 import { COPY } from '../lib/copy'
 import { experienceBandOf, getIconForRole, getGradientClass, locationLabelOf, noticeLabelOf, workPreferencesOf } from '../lib/candidateUtils'
 import { careerSteps } from '../lib/careerSteps'
@@ -222,6 +222,12 @@ function FlipCard({
           >
             <div className="cc-stack-main">
               <h3 className="cc-stack-title">{c.role}</h3>
+              {isSilverMedallist(c) && (
+                <p className="cc-silver" title="Runner-up – reached the final stage but another candidate was chosen">
+                  <span className="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
+                  Silver medallist
+                </p>
+              )}
               {meta.length > 0 && <p className="cc-stack-meta">{meta.join(' \u00B7 ')}</p>}
               {details.length > 0 && <p className="cc-stack-meta cc-stack-meta--details">{details.join(' \u00B7 ')}</p>}
               {extraTop}

@@ -12,8 +12,11 @@
 // outcome reasons, or contact details.
 
 import {
-  bandFromYears, formatLocation, formatNotice, normaliseEmploymentType, normaliseWorkPreference, weeksFromDays,
+  bandFromYears, formatLocation, formatNotice, normaliseEmploymentType, normaliseWorkPreference, SILVER_MEDALLIST, weeksFromDays,
 } from './candidateFields.js'
+
+// How much of the first sentence appears as a preview before unlocking
+export const CARD_TEASER_LENGTH = 120
 
 export const INTERVIEW_STAGES = [
   '1st phone screen',
@@ -81,12 +84,20 @@ export function shapeProfile({
         stageRank: rank,
         stageTotal: INTERVIEW_STAGES.length,
         interviewsCompleted: iv.interviews_completed || 0,
-        teaser: iv.feedback_teaser || feedbackTeaser(iv.feedback),
+        teaser: feedbackTeaser(iv.note_impressed || iv.feedback, CARD_TEASER_LENGTH) || iv.feedback_teaser || null,
       }
       if (unlocked) {
         row.employerName = iv.employer_name || null
         row.feedback = iv.feedback || null
         row.outcomeReason = iv.outcome_reason || null
+        row.silverMedallist = iv.outcome === SILVER_MEDALLIST
+        row.strengths = iv.strengths_list || []
+        row.developmentAreas = iv.development_areas || []
+        row.notes = {
+          impressed: iv.note_impressed || null,
+          whyNotOffer: iv.note_why_not_offer || null,
+          bestFit: iv.note_best_fit || null,
+        }
       }
       return row
     })
@@ -98,6 +109,8 @@ export function shapeProfile({
     unlocked,
     role: c.role_applied_for || c.role,
     seniority: c.seniority_level || c.seniority || null,
+    // A positive signal, so it's shown before unlocking. The outcome itself isn't.
+    silverMedallist: interviews.some(iv => iv.outcome === SILVER_MEDALLIST),
     experienceBand: c.experience_band || bandFromYears(c.years_experience ?? c.years),
     city: c.location_city || c.city || null,
     location: formatLocation({

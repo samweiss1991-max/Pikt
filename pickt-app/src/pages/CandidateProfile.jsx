@@ -62,6 +62,15 @@ function CopyButton({ value, label }) {
   )
 }
 
+function SilverBadge() {
+  return (
+    <p className="pp-silver" title="Runner-up – reached the final stage but another candidate was chosen">
+      <Icon name="workspace_premium" /> Silver medallist
+      <span className="pp-silver-note">Runner-up – reached the final stage but another candidate was chosen</span>
+    </p>
+  )
+}
+
 // ── Interview track record row ──
 function TrackRow({ row, unlocked }) {
   const shade = STAGE_SHADES[Math.min(row.stageRank, STAGE_SHADES.length) - 1]
@@ -94,8 +103,42 @@ function TrackRow({ row, unlocked }) {
 
         {unlocked ? (
           <div className="pp-track-full">
-            {row.feedback && <p className="pp-track-feedback">{row.feedback}</p>}
-            {row.outcomeReason && (
+            {row.silverMedallist && <SilverBadge />}
+            {row.notes?.impressed ? (
+              <>
+                <h4 className="pp-sub-title">What impressed them most</h4>
+                <p className="pp-track-feedback">{row.notes.impressed}</p>
+              </>
+            ) : row.feedback && <p className="pp-track-feedback">{row.feedback}</p>}
+            {row.notes?.whyNotOffer && (
+              <>
+                <h4 className="pp-sub-title">Why they didn't get the offer</h4>
+                <p className="pp-track-feedback">{row.notes.whyNotOffer}</p>
+              </>
+            )}
+            {row.notes?.bestFit && (
+              <>
+                <h4 className="pp-sub-title">What kind of role or team would suit them best</h4>
+                <p className="pp-track-feedback">{row.notes.bestFit}</p>
+              </>
+            )}
+            {row.strengths?.length > 0 && (
+              <>
+                <h4 className="pp-sub-title">Key strengths</h4>
+                <ul className="pp-chips" aria-label="Key strengths">
+                  {row.strengths.map(s => <li key={s} className="pp-chip pp-chip--strength">{s}</li>)}
+                </ul>
+              </>
+            )}
+            {row.developmentAreas?.length > 0 && (
+              <>
+                <h4 className="pp-sub-title">Development areas</h4>
+                <ul className="pp-chips" aria-label="Development areas">
+                  {row.developmentAreas.map(s => <li key={s} className="pp-chip pp-chip--growth">{s}</li>)}
+                </ul>
+              </>
+            )}
+            {row.outcomeReason && !row.notes?.whyNotOffer && (
               <p className="pp-track-reason">
                 <span className="pp-track-reason-label">Why they didn't get the offer:</span> {row.outcomeReason}
               </p>
@@ -255,6 +298,7 @@ export default function CandidateProfile() {
             )}
             <div className="pp-card pp-header" data-parallax-speed="0.04">
               <h1 className="pp-role" id="pp-role">{profile.role}</h1>
+              {profile.silverMedallist && <SilverBadge />}
 
               <p className="pp-details">
                 <span className={`pp-activity-dot ${range.recent ? '' : 'pp-activity-dot--stale'}`} aria-hidden="true" />
@@ -300,12 +344,13 @@ export default function CandidateProfile() {
           </section>
 
           {/* Unlocked extras from the referrer's assessment */}
-          {unlocked && (profile.strengths || profile.gaps || profile.recommendation) && (
+          {unlocked && (profile.recommendation || ((profile.strengths || profile.gaps) && !profile.interviews.some(r => r.strengths?.length))) && (
             <section className="pp-card pp-assessment" aria-labelledby="pp-assessment-title">
               <h2 className="pp-section-label" id="pp-assessment-title">Referrer's assessment</h2>
               {profile.recommendation && <p className="pp-recommendation">{profile.recommendation}</p>}
-              {profile.strengths && (<><h3 className="pp-sub-title">Strengths</h3><p className="pp-body">{profile.strengths}</p></>)}
-              {profile.gaps && (<><h3 className="pp-sub-title">Development areas</h3><p className="pp-body">{profile.gaps}</p></>)}
+              {/* Older records only: newer ones show chips under each employer above */}
+              {profile.strengths && !profile.interviews.some(r => r.strengths?.length) && (<><h3 className="pp-sub-title">Strengths</h3><p className="pp-body">{profile.strengths}</p></>)}
+              {profile.gaps && !profile.interviews.some(r => r.developmentAreas?.length) && (<><h3 className="pp-sub-title">Development areas</h3><p className="pp-body">{profile.gaps}</p></>)}
             </section>
           )}
         </div>

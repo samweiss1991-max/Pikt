@@ -12,6 +12,14 @@ export const RESIDENCY_STATUSES = ['Citizen', 'Permanent resident', 'Work visa',
 export const VISA_STATUSES = ['Work visa', 'Student visa']
 export const NOTICE_WEEKS_MAX = 26
 
+export const SILVER_MEDALLIST = 'Silver medallist'
+export const OTHER_OUTCOME = 'Other'
+export const INTERVIEW_OUTCOMES = [
+  'Headcount freeze', 'Skills mismatch', 'Timing', 'Overqualified', 'Culture fit', SILVER_MEDALLIST, OTHER_OUTCOME,
+]
+export const MAX_FEEDBACK_CHIPS = 6
+export const MAX_FEEDBACK_CHIP_LENGTH = 60
+
 // Lowest years in each band, kept in years_experience for ranking and matching
 const BAND_LOW_YEARS = { '<1 year': 0, '1–3 years': 1, '3–5 years': 3, '5–7 years': 5, '7+ years': 7 }
 
@@ -126,4 +134,91 @@ export function candidateFieldsFromRequest(body) {
     notice_period_days: isNewForm ? (weeks === null ? null : weeks * 7) : (body.notice_period_days || null),
   }
   return { fields }
+}
+
+function chipList(value) {
+  if (!Array.isArray(value)) return []
+  const seen = new Set()
+  return value
+    .map(v => String(v ?? '').trim())
+    .filter(v => v && !seen.has(v.toLowerCase()) && seen.add(v.toLowerCase()))
+}
+
+/**
+ * Turns a referral's interview feedback into the interview row and the candidate
+ * row, or returns an error message. Also accepts the old form's fields, while that
+ * site is live. The old text columns stay filled for anything that still reads them.
+ */
+export function feedbackFieldsFromRequest(body) {
+  const isNewForm = Array.isArray(body.strengths_list)
+
+  if (!isNewForm) {
+    for (const [field, label] of [['why_not_hired', 'Reason for not hiring'], ['strengths', 'Key strengths'], ['gaps', 'Development areas']]) {
+      if (!body[field]) return { error: `${label} is required` }
+    }
+    const known = INTERVIEW_OUTCOMES.includes(body.why_not_hired) && body.why_not_hired !== OTHER_OUTCOME
+    const notes = body.feedback_summary || body.strengths || null
+    return {
+      interview: {
+        outcome: known ? body.why_not_hired : OTHER_OUTCOME,
+        outcome_other: known ? null : body.why_not_hired,
+        strengths_list: [],
+        development_areas: [],
+        note_impressed: notes,
+        note_why_not_offer: null,
+        note_best_fit: null,
+        feedback: notes,
+        outcome_reason: body.why_not_hired,
+      },
+      candidate: {
+        why_not_hired: body.why_not_hired,
+        strengths: body.strengths,
+        gaps: body.gaps,
+        feedback_summary: body.feedback_summary || null,
+        interview_notes: body.interview_notes || null,
+      },
+    }
+  }
+
+  const outcome = body.outcome
+  if (!INTERVIEW_OUTCOMES.includes(outcome)) return { error: 'Choose an interview outcome' }
+  const other = outcome === OTHER_OUTCOME ? String(body.outcome_other ?? '').trim() : ''
+  if (outcome === OTHER_OUTCOME && !other) return { error: 'Please describe the outcome' }
+
+  const strengths = chipList(body.strengths_list)
+  const areas = chipList(body.development_areas)
+  for (const [list, name] of [[strengths, 'key strength'], [areas, 'development area']]) {
+    if (list.length === 0) return { error: `Add at least one ${name}` }
+    if (list.length > MAX_FEEDBACK_CHIPS) return { error: `Choose up to ${MAX_FEEDBACK_CHIPS} of each` }
+    if (list.some(v => v.length > MAX_FEEDBACK_CHIP_LENGTH)) return { error: `Keep each one under ${MAX_FEEDBACK_CHIP_LENGTH} characters` }
+  }
+
+  const impressed = String(body.note_impressed ?? '').trim()
+  const whyNot = String(body.note_why_not_offer ?? '').trim()
+  const bestFit = String(body.note_best_fit ?? '').trim()
+  if (!impressed) return { error: "Answer 'What impressed you most?'" }
+  if (!whyNot) return { error: "Answer 'Why didn't they get the offer?'" }
+
+  const reason = other || outcome
+  return {
+    interview: {
+      outcome,
+      outcome_other: other || null,
+      strengths_list: strengths,
+      development_areas: areas,
+      note_impressed: impressed,
+      note_why_not_offer: whyNot,
+      note_best_fit: bestFit || null,
+      // The card's preview is taken from this, so it's only ever answer (a)
+      feedback: impressed,
+      outcome_reason: reason,
+    },
+    candidate: {
+      why_not_hired: reason,
+      strengths: strengths.join(', '),
+      gaps: areas.join(', '),
+      feedback_summary: null,
+      interview_notes: null,
+    },
+  }
 }
