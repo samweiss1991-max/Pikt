@@ -199,6 +199,10 @@
             <label class="pickt-label">Development areas</label>
             <input class="pickt-input" id="pickt-gaps" placeholder="Where could they improve?" />
           </div>
+          <div class="pickt-fee-row">
+            <input class="pickt-fee-input" id="pickt-fee" type="number" min="0" max="100" value="8" />
+            <span class="pickt-fee-label">% of first-year salary</span>
+          </div>
           <label class="pickt-consent">
             <input type="checkbox" id="pickt-consent" />
             <span>Candidate has consented to referral</span>
@@ -269,6 +273,7 @@
     const why = document.getElementById("pickt-why").value;
     const strengths = document.getElementById("pickt-strengths").value.trim();
     const gaps = document.getElementById("pickt-gaps").value.trim();
+    const fee = Number(document.getElementById("pickt-fee").value) || 8;
     const consent = document.getElementById("pickt-consent").checked;
 
     if (!role) return alert("Role title is required.");
@@ -290,6 +295,7 @@
           why_not_hired: why,
           strengths: strengths || null,
           gaps: gaps || null,
+          fee_percentage: fee,
           consent_given: consent,
           full_name: detected.name || null,
           email: detected.email || null,
@@ -353,6 +359,7 @@
               ${c.referring_company ? `· Referred by ${c.referring_company}` : ""}
             </p>
             <div class="pickt-result-footer">
+              <span class="pickt-result-fee">${c.fee_percentage || 8}%</span>
               <a class="pickt-result-link" href="http://localhost:3000/dashboard/candidates/${c.id}" target="_blank">View profile</a>
             </div>
           </div>

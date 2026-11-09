@@ -266,7 +266,7 @@ export default function Shortlist() {
                 <div className="sl-compare-stats">
                   <div className="sl-compare-stat"><span className="sl-compare-stat-label">Experience</span><span className="sl-compare-stat-value">{c.years} yrs</span></div>
                   <div className="sl-compare-stat"><span className="sl-compare-stat-label">Interviews</span><span className="sl-compare-stat-value">{c.interviews}</span></div>
-                  {c.fee != null && <div className="sl-compare-stat"><span className="sl-compare-stat-label">Fee</span><span className="sl-compare-stat-value">{c.fee}%</span></div>}
+                  <div className="sl-compare-stat"><span className="sl-compare-stat-label">Fee</span><span className="sl-compare-stat-value">{c.fee}%</span></div>
                   <div className="sl-compare-stat"><span className="sl-compare-stat-label">Salary</span><span className="sl-compare-stat-value">${Math.round((c.salaryLow || 0) / 1000)}k{'\u2013'}${Math.round((c.salaryHigh || 0) / 1000)}k</span></div>
                 </div>
                 <div className="sl-compare-section-title">Skills</div>

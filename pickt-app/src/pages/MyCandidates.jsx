@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCandidates } from '../lib/seedData'
-import { fetchMyReferrals } from '../lib/supabaseQueries'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
 import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
 import EmptyState from '../components/shared/EmptyState'
@@ -9,74 +8,58 @@ import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import './MyCandidates.css'
 
 const STATUS_LABELS = {
-  referred: 'Referred',
-  hired: 'Hired',
-  paid: 'Paid',
+  available: 'Active',
+  unlocked: 'Unlocked',
+  placed: 'Placed',
+  withdrawn: 'Withdrawn',
 }
 
-// Reuses the existing pill colours
-const STATUS_PILLS = {
-  referred: 'available',
-  hired: 'unlocked',
-  paid: 'placed',
-}
+const STATUS_FILTERS = ['all', 'available', 'unlocked', 'placed', 'withdrawn']
 
-const STATUS_FILTERS = ['all', 'referred', 'hired', 'paid']
-
-const money = n => `$${Number(n || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-
-function mapReferral(r) {
+function mapCandidate(c) {
   return {
-    ...r,
-    id: r.candidateId,
-    daysLive: r.referredAt ? Math.floor((Date.now() - new Date(r.referredAt).getTime()) / 86400000) : 0,
-  }
-}
-
-// Only for the local test shortcut (pickt_dev_auth), which has no signed-in company
-function mapDemoCandidate(c) {
-  return mapReferral({
-    candidateId: c.id,
+    id: c.id,
     role: c.role_applied_for || c.role,
     seniority: c.seniority_level || c.seniority,
-    years: c.years_experience ?? c.years ?? 0,
     city: c.location_city || c.city,
     country: c.location_country || 'Australia',
+    company: c.current_employer || c.company || 'Unknown',
+    referringCompany: c.referring_company || c.referringCompany || c.company || 'Unknown',
     skills: c.skills || [],
-    stage: c.interview_stage_reached || 'Technical screen',
     interviews: c.interviews_completed ?? c.interviews ?? 0,
+    interview_stage_reached: c.interview_stage_reached || 'Technical screen',
+    fee: c.fee_percentage ?? c.fee ?? 8,
     salaryLow: c.salary_expectation_min ?? c.salaryLow ?? 0,
     salaryHigh: c.salary_expectation_max ?? c.salaryHigh ?? 0,
+    years: c.years_experience ?? c.years ?? 0,
     strengths: c.strengths,
     recommendation: c.recommendation,
-    referredAt: c.referred_at,
-    status: 'referred',
-    rate: null,
-    unlocks: 0,
-  })
+    industry: c.industry,
+    status: c.status || 'available',
+    daysLive: c.referred_at
+      ? Math.floor((Date.now() - new Date(c.referred_at).getTime()) / 86400000)
+      : c.daysAgo ?? 5,
+    unlockCount: c.status === 'unlocked' ? 1 : c.status === 'placed' ? 2 : 0,
+  }
 }
 
 export default function MyCandidates() {
   const navigate = useNavigate()
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [expandedId, setExpandedId] = useState(null)
 
   useEffect(() => {
-    let cancelled = false
-    fetchMyReferrals()
-      .then(data => { if (!cancelled) setCandidates(data.referrals.map(mapReferral)) })
-      .catch(err => {
-        if (cancelled) return
-        let devBypass = false
-        try { devBypass = localStorage.getItem('pickt_dev_auth') === 'true' } catch { /* ignore */ }
-        if (devBypass) setCandidates((getCandidates() || MOCK_CANDIDATES).map(mapDemoCandidate))
-        else setLoadError(err.message || 'Could not load your referrals.')
-      })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+    setLoading(true)
+    try {
+      const stored = getCandidates()
+      const mapped = (stored && stored.length > 0)
+        ? stored.map(mapCandidate)
+        : MOCK_CANDIDATES.map(mapCandidate)
+      setCandidates(mapped)
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
   }, [])
 
   const filtered = useMemo(() => {
@@ -86,29 +69,29 @@ export default function MyCandidates() {
 
   // Stats
   const stats = useMemo(() => {
-    const unlocked = candidates.filter(c => c.unlocks > 0).length
-    const hired = candidates.filter(c => c.status !== 'referred').length
-    const earned = candidates.reduce((sum, c) => sum + Number(c.commissionAmount || 0), 0)
-    return { total: candidates.length, unlocked, hired, earned }
+    const active = candidates.filter(c => c.status === 'available').length
+    const unlocked = candidates.filter(c => c.status === 'unlocked').length
+    const placed = candidates.filter(c => c.status === 'placed').length
+    const totalDays = candidates.reduce((sum, c) => sum + c.daysLive, 0)
+    const avgDays = candidates.length > 0 ? Math.round(totalDays / candidates.length) : 0
+    return { active, unlocked, placed, avgDays }
   }, [candidates])
 
   const headerRef = useScrollReveal()
   const statsRef = useStaggerReveal({ staggerMs: 80 })
   const tableRef = useStaggerReveal({ staggerMs: 60 })
 
+  function handleWithdraw(id) {
+    setCandidates(prev =>
+      prev.map(c => c.id === id ? { ...c, status: 'withdrawn' } : c)
+    )
+    setExpandedId(null)
+  }
+
   if (loading) {
     return (
       <div className="mc-page">
         <div className="mc-loading">Loading your candidates...</div>
-      </div>
-    )
-  }
-
-  if (loadError) {
-    return (
-      <div className="mc-page">
-        <h1 className="mc-heading">My Candidates</h1>
-        <div className="mc-empty-filter" role="alert">{loadError}</div>
       </div>
     )
   }
@@ -159,8 +142,8 @@ export default function MyCandidates() {
       <div className="mc-stats" ref={statsRef}>
         <div className="mc-stat mc-stat--green hover-lift" data-reveal>
           <span className="material-symbols-outlined mc-stat-icon">campaign</span>
-          <div className="mc-stat-label">Referred</div>
-          <div className="mc-stat-value">{stats.total}</div>
+          <div className="mc-stat-label">Active listings</div>
+          <div className="mc-stat-value">{stats.active}</div>
         </div>
         <div className="mc-stat mc-stat--gold hover-lift" data-reveal>
           <span className="material-symbols-outlined mc-stat-icon">lock_open</span>
@@ -169,13 +152,13 @@ export default function MyCandidates() {
         </div>
         <div className="mc-stat mc-stat--accent hover-lift" data-reveal>
           <span className="material-symbols-outlined mc-stat-icon">check_circle</span>
-          <div className="mc-stat-label">Hired</div>
-          <div className="mc-stat-value">{stats.hired}</div>
+          <div className="mc-stat-label">Placed</div>
+          <div className="mc-stat-value">{stats.placed}</div>
         </div>
         <div className="mc-stat mc-stat--stone hover-lift" data-reveal>
-          <span className="material-symbols-outlined mc-stat-icon">payments</span>
-          <div className="mc-stat-label">Commission earned</div>
-          <div className="mc-stat-value">{money(stats.earned)}</div>
+          <span className="material-symbols-outlined mc-stat-icon">schedule</span>
+          <div className="mc-stat-label">Avg. days live</div>
+          <div className="mc-stat-value">{stats.avgDays}</div>
         </div>
       </div>
 
@@ -204,7 +187,7 @@ export default function MyCandidates() {
           <div className="mc-col mc-col--status">Status</div>
           <div className="mc-col mc-col--unlocks">Unlocks</div>
           <div className="mc-col mc-col--days">Days live</div>
-          <div className="mc-col mc-col--fee">Your commission</div>
+          <div className="mc-col mc-col--fee">Fee</div>
           <div className="mc-col mc-col--actions">Actions</div>
         </div>
 
@@ -229,22 +212,18 @@ export default function MyCandidates() {
                   </div>
                   <div>
                     <div className="mc-role-title">{c.role}</div>
-                    <div className="mc-role-meta">{[c.seniority, c.years != null ? `${c.years} yrs` : null].filter(Boolean).join(' · ')}</div>
+                    <div className="mc-role-meta">{c.seniority} · {c.years} yrs</div>
                   </div>
                 </div>
-                <div className="mc-col mc-col--location">{[c.city, c.country].filter(Boolean).join(', ')}</div>
+                <div className="mc-col mc-col--location">{c.city}, {c.country}</div>
                 <div className="mc-col mc-col--status">
-                  <span className={`mc-status-pill mc-status-pill--${STATUS_PILLS[c.status]}`}>
+                  <span className={`mc-status-pill mc-status-pill--${c.status}`}>
                     {STATUS_LABELS[c.status] || c.status}
                   </span>
                 </div>
-                <div className="mc-col mc-col--unlocks">{c.unlocks}</div>
+                <div className="mc-col mc-col--unlocks">{c.unlockCount}</div>
                 <div className="mc-col mc-col--days">{c.daysLive}d</div>
-                <div className="mc-col mc-col--fee">
-                  {c.commissionAmount != null
-                    ? `${money(c.commissionAmount)} (${Number(c.rate)}%)`
-                    : c.rate != null ? `${Number(c.rate)}% if hired` : '—'}
-                </div>
+                <div className="mc-col mc-col--fee">{c.fee}%</div>
                 <div className="mc-col mc-col--actions">
                   <button
                     className="mc-action-btn press-scale"
@@ -273,7 +252,7 @@ export default function MyCandidates() {
                     </div>
                     <div className="mc-detail-section">
                       <div className="mc-detail-label">Interview stage</div>
-                      <div className="mc-detail-value">{c.stage} ({c.interviews} rounds)</div>
+                      <div className="mc-detail-value">{c.interview_stage_reached} ({c.interviews} rounds)</div>
                     </div>
                     <div className="mc-detail-section">
                       <div className="mc-detail-label">Recommendation</div>
@@ -298,6 +277,11 @@ export default function MyCandidates() {
                     <button className="mc-detail-btn mc-detail-btn--primary press-scale" onClick={() => navigate(`/candidates/${c.id}`, { state: { candidate: c } })}>
                       View full profile
                     </button>
+                    {c.status !== 'withdrawn' && c.status !== 'placed' && (
+                      <button className="mc-detail-btn mc-detail-btn--danger press-scale" onClick={() => handleWithdraw(c.id)}>
+                        Withdraw from marketplace
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

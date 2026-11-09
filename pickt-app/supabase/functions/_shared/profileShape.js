@@ -54,17 +54,8 @@ export function daysSince(date, now = Date.now()) {
  * @param candidate  row from `candidates` (server) or seed/mock data (demo)
  * @param interviews rows shaped like `candidate_interviews`, plus `employer_name`
  * @param unlocked   whether the viewing company has unlocked this candidate
- * @param isHired    whether any company has recorded a hire for this candidate
- * @param hire       hire details, passed only if the viewing company made the hire
- * @param fee        total fee for this viewer (server: null for the candidate's
- *                   referrers). Demo mode leaves it out and uses the demo data's value.
- * @param viewerIsReferrer  the viewing company referred this candidate
- * @param viewerReferrer    that company's own { position, rate }
  */
-export function shapeProfile({
-  candidate: c, interviews = [], unlocked = false, isHired = false, hire = null,
-  fee, viewerIsReferrer = false, viewerReferrer = null, now = Date.now(),
-}) {
+export function shapeProfile({ candidate: c, interviews = [], unlocked = false, now = Date.now() }) {
   const lastActiveAt = c.last_active_at || c.referred_at || c.created_at || null
 
   const rows = interviews
@@ -100,9 +91,7 @@ export function shapeProfile({
     skills: c.skills || [],
     salaryLow: c.salary_expectation_min ?? c.salaryLow ?? null,
     salaryHigh: c.salary_expectation_max ?? c.salaryHigh ?? null,
-    fee: fee !== undefined ? fee : (c.fee_percentage ?? c.fee ?? null),
-    viewerIsReferrer,
-    viewerReferrer,
+    fee: c.fee_percentage ?? c.fee ?? null,
     // Public by product decision: the referrer is shown on marketplace cards
     referringCompany: c.referring_company || c.referringCompany || null,
     activity: {
@@ -131,15 +120,6 @@ export function shapeProfile({
     profile.gaps = c.gaps || null
     profile.recommendation = c.recommendation || null
     profile.hasCv = Boolean(c.cv_file_url || c.cv_filename || c.has_cv)
-    profile.isHired = isHired
-    profile.hire = hire
-      ? {
-          startDate: hire.start_date,
-          salary: hire.first_year_salary,
-          totalFeePercentage: hire.total_fee_percentage,
-          totalFeeAmount: hire.total_fee_amount,
-        }
-      : null
   }
 
   return profile

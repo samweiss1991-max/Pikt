@@ -139,7 +139,7 @@
 
 .mc-row {
   display: grid;
-  grid-template-columns: 2.3fr 1.1fr 0.8fr 0.6fr 0.6fr 1.2fr 0.7fr;
+  grid-template-columns: 2.5fr 1.2fr 0.9fr 0.7fr 0.7fr 0.6fr 0.8fr;
   align-items: center;
   padding: 0 1.5rem;
   min-height: 3.5rem;

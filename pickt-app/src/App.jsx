@@ -17,7 +17,6 @@ const Placements = lazy(() => import('./pages/Placements'))
 const Earnings = lazy(() => import('./pages/Earnings'))
 const Integrations = lazy(() => import('./pages/Integrations'))
 const Refer = lazy(() => import('./pages/Refer'))
-const AdminCommissions = lazy(() => import('./pages/AdminCommissions'))
 const Login = lazy(() => import('./pages/auth/Login'))
 const Signup = lazy(() => import('./pages/auth/Signup'))
 
@@ -40,7 +39,6 @@ export default function App() {
         <Route path="earnings" element={<Earnings />} />
         <Route path="refer" element={<Refer />} />
         <Route path="integrations" element={<Integrations />} />
-        <Route path="admin/commissions" element={<AdminCommissions />} />
       </Route>
     </Routes>
     </Suspense>

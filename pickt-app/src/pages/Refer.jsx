@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import ReferGate from "../components/refer/ReferGate";
-import ReferralPanel from "../components/refer/ReferralPanel";
-import { checkReferralStatus } from "../lib/supabaseQueries";
+import { useNavigate } from "react-router-dom";
 import { INDUSTRIES } from "../data/discoveryOptions";
 import { supabase } from "../lib/supabase";
 import { mapParsedDataToForm } from "../lib/cvFieldMapper";
@@ -57,6 +54,7 @@ const INITIAL = {
   full_name: "",
   email: "",
   mobile_number: "",
+  fee_percentage: 8,
   consent_given: false,
 };
 
@@ -77,12 +75,7 @@ function reducer(state, action) {
 
 export default function Refer() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [form, dispatch] = useReducer(reducer, INITIAL);
-  // The email + mobile check has to pass before the form opens
-  const [gatePassed, setGatePassed] = useState(false);
-  // Fresh referral status for the Review step, in case the details changed
-  const [reviewStatus, setReviewStatus] = useState(null);
   const [step, setStep] = useState(0);
   const [intakeMethod, setIntakeMethod] = useState(null); // null | 'cv' | 'ats' | 'manual'
   const [errors, setErrors] = useState([]);
@@ -115,7 +108,6 @@ export default function Refer() {
         const hasData = parsed.role_applied_for || parsed.industry || (parsed.skills && parsed.skills.length > 0);
         dispatch({ type: "RESTORE", state: { ...INITIAL, ...parsed } });
         if (hasData) {
-          setGatePassed(true);
           setStep(1);
           setIntakeMethod(parsed._intakeMethod || 'manual');
         }
@@ -238,10 +230,12 @@ export default function Refer() {
     }
     if (s === 3) {
       if (!form.cv) errs.push("CV upload is required.");
-      if (!form.email.trim() || !form.mobile_number.trim())
-        errs.push("Add the candidate's email and mobile number — it's how we recognise candidates already on Pickt.");
+      if (!form.email.trim() && !form.mobile_number.trim())
+        errs.push("Add the candidate's email or mobile number — it's how we recognise candidates already on Pickt.");
       if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
         errs.push("Enter a valid candidate email.");
+      if (form.fee_percentage < 0 || form.fee_percentage > 100)
+        errs.push("Fee must be between 0 and 100.");
     }
     if (s === 4) {
       if (!form.consent_given) errs.push("Candidate consent is required.");
@@ -263,17 +257,6 @@ export default function Refer() {
     setErrors([]);
     setStep((s) => Math.max(1, s - 1));
   }
-
-  // Review step: re-check using the details as they are now
-  useEffect(() => {
-    if (step !== 4) return;
-    let cancelled = false;
-    setReviewStatus(null);
-    checkReferralStatus({ email: form.email.trim(), mobile: form.mobile_number.trim() })
-      .then((status) => { if (!cancelled) setReviewStatus(status); })
-      .catch(() => { /* the server still enforces the rules when publishing */ });
-    return () => { cancelled = true; };
-  }, [step, form.email, form.mobile_number]);
 
   // ── Submit ──────────────────────────────────────────────
 
@@ -326,6 +309,7 @@ export default function Refer() {
       full_name: form.full_name.trim() || null,
       email: form.email.trim() || null,
       mobile_number: form.mobile_number || null,
+      fee_percentage: form.fee_percentage,
       consent_given: form.consent_given,
     };
 
@@ -346,7 +330,7 @@ export default function Refer() {
       localStorage.removeItem(STORAGE_KEY);
       // Already on Pickt: tell the referrer their interview was added
       if (data?.merged) {
-        setMergedResult({ rate: data.referrerRate });
+        setMergedResult(true);
         setSubmitting(false);
         return;
       }
@@ -1007,7 +991,7 @@ export default function Refer() {
           <label className="rf-label" htmlFor="rf-mobile">Mobile number</label>
           <input id="rf-mobile" className="rf-input" style={{ maxWidth: 300 }} placeholder="+61 4XX XXX XXX" value={form.mobile_number} onChange={(e) => set("mobile_number", e.target.value)} />
           <p style={{ marginTop: '0.375rem', fontSize: '0.8125rem', color: 'var(--on-surface-variant)' }}>
-            Email and mobile are both required. If this candidate is already on Pickt, your interview is added to their profile.
+            Email or mobile is required. If this candidate is already on Pickt, your interview is added to their profile.
           </p>
         </div>
 
@@ -1026,6 +1010,7 @@ export default function Refer() {
                   ["Role, skills, seniority", "Visible"],
                   ["Location, work type", "Visible"],
                   ["Interview feedback", "Visible"],
+                  ["Fee percentage", "Visible"],
                   ["Full name, email, phone", "Hidden"],
                   ["LinkedIn, portfolio", "Hidden"],
                   ["Current employer & title", "Hidden"],
@@ -1051,6 +1036,7 @@ export default function Refer() {
       { label: "Skills added", ok: form.skills.length > 0 },
       { label: "Feedback provided", ok: !!form.strengths && !!form.gaps },
       { label: "CV uploaded", ok: !!form.cv?.url },
+      { label: "Fee set", ok: form.fee_percentage > 0 },
       { label: "PII will be redacted", ok: true },
     ];
 
@@ -1080,18 +1066,10 @@ export default function Refer() {
             <p style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>{form.feedback_summary}</p>
           )}
           <div className="rf-preview-footer">
-            <span>Marketplace preview</span>
+            <span><span className="rf-preview-fee">{form.fee_percentage}%</span> placement fee</span>
             <span className="rf-preview-unlock">Unlock profile</span>
           </div>
         </div>
-
-        {!mergedResult && (
-          <ReferralPanel
-            status={reviewStatus}
-            salaryLow={reviewStatus?.salaryLow ?? form.salary_expectation_min}
-            salaryHigh={reviewStatus?.salaryHigh ?? form.salary_expectation_max}
-          />
-        )}
 
         <div className="rf-checklist">
           {checks.map((c) => (
@@ -1122,7 +1100,6 @@ export default function Refer() {
             <p style={{ fontWeight: 800, margin: 0 }}>This candidate is already on Pickt</p>
             <p style={{ margin: '0.25rem 0 0.75rem' }}>
               Your interview has been added to their profile.
-              {mergedResult.rate != null && ` You'll earn ${mergedResult.rate}% of their first-year salary if they're hired.`}
             </p>
             <a href="/my-candidates" style={{ fontWeight: 700, color: 'var(--color-success)', textDecoration: 'underline' }}>Go to my candidates</a>
           </div>
@@ -1137,19 +1114,7 @@ export default function Refer() {
     <div className="rf-page">
       <div className="rf-container">
         {/* Step 0: Intake method selection */}
-        {step === 0 && !gatePassed && (
-          <ReferGate
-            candidateId={searchParams.get("candidate") || undefined}
-            initialEmail={form.email}
-            initialMobile={form.mobile_number}
-            onContinue={({ email, mobile }) => {
-              set("email", email);
-              set("mobile_number", mobile);
-              setGatePassed(true);
-            }}
-          />
-        )}
-        {step === 0 && gatePassed && !intakeMethod && <IntakeSelector />}
+        {step === 0 && !intakeMethod && <IntakeSelector />}
         {step === 0 && intakeMethod === 'cv' && <CvDropZone />}
         {step === 0 && intakeMethod === 'ats' && <AtsImportFlow />}
 
@@ -1170,7 +1135,7 @@ export default function Refer() {
               {step > 1 ? (
                 <button type="button" onClick={prevStep} className="rf-btn-back press-scale">Back</button>
               ) : (
-                <button type="button" onClick={() => { setStep(0); setIntakeMethod(null); setGatePassed(false); }} className="rf-btn-back press-scale">
+                <button type="button" onClick={() => { setStep(0); setIntakeMethod(null); }} className="rf-btn-back press-scale">
                   <span className="material-symbols-outlined" style={{ fontSize: 16, marginRight: 4 }}>arrow_back</span>
                   Start over
                 </button>
@@ -1178,7 +1143,7 @@ export default function Refer() {
               {step < 4 ? (
                 <button type="button" onClick={nextStep} className="rf-btn-next press-scale">Continue</button>
               ) : (
-                <button type="button" onClick={handlePublish} disabled={submitting || ["full", "hired", "yours"].includes(reviewStatus?.state)} className="rf-btn-next press-scale">
+                <button type="button" onClick={handlePublish} disabled={submitting} className="rf-btn-next press-scale">
                   {submitting ? "Publishing\u2026" : "Publish to marketplace"}
                 </button>
               )}

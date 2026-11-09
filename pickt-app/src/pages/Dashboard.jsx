@@ -101,7 +101,7 @@ export default function Dashboard() {
           <div className="db-stat-card db-stat-card--gold hover-lift" data-reveal style={{ gridColumn: 'span 2' }}>
             <div className="db-stat-heading">Network Efficiency</div>
             <div className="db-stat-value">{formatSaved(stats.savedAmount)} <span className="db-stat-value-sub">Saved</span></div>
-            <p className="db-stat-body">Your savings on hires made through Pickt vs traditional agency fees.</p>
+            <p className="db-stat-body">Aggregate savings across all placements vs traditional agency fees this quarter.</p>
             <div className="db-stat-blur-circle" />
           </div>
           <div className="db-stat-card db-stat-card--green hover-lift" data-reveal>

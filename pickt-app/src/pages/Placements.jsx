@@ -24,8 +24,8 @@ export default function Placements() {
           <div className="placeholder-card-icon">
             <span className="material-symbols-outlined" style={{ fontSize: 24, color: 'var(--color-primary)' }}>receipt_long</span>
           </div>
-          <div className="placeholder-card-title">Placement Fees</div>
-          <div className="placeholder-card-desc">See the placement fee for each hire and when it is due.</div>
+          <div className="placeholder-card-title">Fee Breakdown</div>
+          <div className="placeholder-card-desc">See detailed placement fee calculations and payment schedules.</div>
         </div>
         <div className="placeholder-card pikt-card">
           <div className="placeholder-card-icon">

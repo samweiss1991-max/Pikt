@@ -89,49 +89,6 @@ Deno.serve(async (req) => {
     interviews = interviews.map((r) => ({ ...r, employer_name: names.get(r.employer_company_id) ?? null }));
   }
 
-  // Hire details: full figures go only to the company that made the hire
-  const { data: hireRow } = await adminClient
-    .from("hires")
-    .select("hiring_company_id, start_date, first_year_salary, total_fee_percentage, total_fee_amount")
-    .eq("candidate_id", candidateId)
-    .maybeSingle();
-
-  // Fee rules: a candidate's referrers get only their own rate; everyone else
-  // gets only the total. Nobody here gets Pickt's share.
-  const { data: referrerRows } = await adminClient
-    .from("candidate_referrers")
-    .select("company_id, referrer_position")
-    .eq("candidate_id", candidateId);
-
-  const ownReferral = (referrerRows ?? []).find((r) => r.company_id === userData.company_id);
-  const viewerIsReferrer = Boolean(ownReferral) || candidate.uploaded_by_company_id === userData.company_id;
-
-  let fee: number | null = null;
-  let viewerReferrer: { position: number; rate: number } | null = null;
-
-  if (ownReferral) {
-    const { data: rateRow } = await adminClient
-      .from("commission_settings")
-      .select("referrer_rate")
-      .eq("referrer_position", ownReferral.referrer_position)
-      .single();
-    viewerReferrer = { position: ownReferral.referrer_position, rate: rateRow?.referrer_rate ?? null };
-  } else if (!viewerIsReferrer) {
-    const { data: total } = await adminClient.rpc("employer_fee_for", {
-      p_referrer_count: Math.max(1, referrerRows?.length ?? 0),
-    });
-    fee = total ?? null;
-  }
-
   // shapeProfile drops everything a locked viewer must not see
-  return json(shapeProfile({
-    candidate,
-    interviews,
-    unlocked,
-    fee,
-    viewerIsReferrer,
-    viewerReferrer,
-    isHired: Boolean(hireRow),
-    hire: hireRow && hireRow.hiring_company_id === userData.company_id ? hireRow : null,
-  }));
+  return json(shapeProfile({ candidate, interviews, unlocked }));
 });

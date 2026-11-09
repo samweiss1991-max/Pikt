@@ -64,7 +64,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 4,
     referred_at: "2026-03-29",
-    fee_percentage: 8,
+    fee_percentage: 9,
     referring_company: "Helix AI",
   },
   {
@@ -96,7 +96,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 4,
     referred_at: "2026-03-27",
-    fee_percentage: 8,
+    fee_percentage: 7,
     referring_company: "Vertex CRM",
   },
   {
@@ -112,7 +112,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "On-site interview",
     interviews_completed: 2,
     referred_at: "2026-03-10",
-    fee_percentage: 8,
+    fee_percentage: 6,
     referring_company: "ScaleUp Co",
   },
   {
@@ -160,7 +160,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 4,
     referred_at: "2026-03-28",
-    fee_percentage: 8,
+    fee_percentage: 7,
     referring_company: "Bloom Media",
   },
   {
@@ -224,7 +224,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 4,
     referred_at: "2026-03-29",
-    fee_percentage: 8,
+    fee_percentage: 9,
     referring_company: "DataNest",
   },
   {
@@ -256,7 +256,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 4,
     referred_at: "2026-03-25",
-    fee_percentage: 8,
+    fee_percentage: 7,
     referring_company: "PeopleFirst",
   },
   {
@@ -272,7 +272,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 4,
     referred_at: "2026-03-27",
-    fee_percentage: 8,
+    fee_percentage: 7,
     referring_company: "RetainHQ",
   },
   {
@@ -288,7 +288,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 4,
     referred_at: "2026-03-21",
-    fee_percentage: 8,
+    fee_percentage: 10,
     referring_company: "Lex Partners",
   },
   {
@@ -320,7 +320,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 4,
     referred_at: "2026-03-30",
-    fee_percentage: 8,
+    fee_percentage: 9,
     referring_company: "ShieldSec",
   },
   {
@@ -336,7 +336,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 5,
     referred_at: "2026-03-24",
-    fee_percentage: 8,
+    fee_percentage: 9,
     referring_company: "Maison Growth",
   },
   {
@@ -352,7 +352,7 @@ export const CANDIDATES: CandidateRecord[] = [
     interview_stage_reached: "Final round",
     interviews_completed: 5,
     referred_at: "2026-03-17",
-    fee_percentage: 8,
+    fee_percentage: 9,
     referring_company: "RevenueCo",
   },
   {
