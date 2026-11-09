@@ -51,4 +51,6 @@ npm run dev       # Vite dev server on http://localhost:5173
 
 ## Git Workflow
 
-All changes should be committed with clear messages and pushed to GitHub (origin: `samweiss1991-max/Pikt`). The repo uses the `master` branch.
+Always work on a separate branch. Never push to `master` until the user has tested the change and said it's OK.
+
+Commit with clear messages and push the branch to GitHub (origin: `samweiss1991-max/Pikt`). `master` is the main branch.
