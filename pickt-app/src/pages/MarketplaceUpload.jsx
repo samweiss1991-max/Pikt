@@ -8,6 +8,11 @@ import './MarketplaceUpload.css'
 const ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.txt']
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 
+const READ_FAILED = "We couldn't read that job description – please try again or paste the text instead."
+
+// A message that's safe and useful to show as it is
+class FriendlyError extends Error {}
+
 export default function MarketplaceUpload() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
@@ -63,20 +68,26 @@ export default function MarketplaceUpload() {
         body: { text },
       })
       if (fnError) {
-        let message = fnError.message
+        // The technical detail goes to the console; the referrer gets something they can act on
+        const status = fnError.context?.status
+        let detail = fnError.message
         try {
           const body = await fnError.context?.json?.()
-          if (body?.error) message = body.error
-        } catch { /* ignore */ }
-        throw new Error(message)
+          if (body?.error) detail = body.error
+        } catch { /* no details in the response */ }
+        console.error('[Upload] parse-jd failed:', status, detail)
+        if (status === 400) throw new FriendlyError(detail)
+        if (status === 401) throw new FriendlyError('Your session has expired. Please log in again and try once more.')
+        throw new FriendlyError(READ_FAILED)
       }
 
       navigate('/marketplace/matches', {
         state: { parsed: data.parsed, candidates: data.candidates, totalConsidered: data.total_considered },
       })
     } catch (err) {
+      if (!(err instanceof FriendlyError)) console.error('[Upload] could not read the job description:', err)
       setStage('error')
-      setError(err.message || 'Something went wrong. Please try again.')
+      setError(err instanceof FriendlyError ? err.message : READ_FAILED)
     }
   }
 
@@ -151,7 +162,7 @@ export default function MarketplaceUpload() {
           disabled={!!file}
         />
 
-        {error && <div className="up-error">{error}</div>}
+        {error && <div className="up-error" role="alert">{error}</div>}
 
         <button
           type="submit"

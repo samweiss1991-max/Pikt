@@ -228,6 +228,7 @@ interface CandidateRow {
   skills: string[] | null;
   location_city: string | null;
   preferred_work_type: string | null;
+  preferred_work_types: string[] | null;
   salary_expectation_min: number | null;
   salary_expectation_max: number | null;
   years_experience: number | null;
@@ -275,7 +276,7 @@ function scoreCandidate(c: CandidateRow, j: JdCriteria): { score: number; matche
     }
   }
 
-  if (j.preferred_work_type && c.preferred_work_type === j.preferred_work_type) {
+  if (j.preferred_work_type && (c.preferred_work_types?.length ? c.preferred_work_types.includes(j.preferred_work_type) : c.preferred_work_type === j.preferred_work_type)) {
     score += 10;
     matched.push("work type");
   }
@@ -308,7 +309,6 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authHeader } },
@@ -321,8 +321,6 @@ Deno.serve(async (req) => {
       headers: jsonHeaders,
     });
   }
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
     const { text } = await req.json();
@@ -350,8 +348,10 @@ Deno.serve(async (req) => {
       parsed = heuristicParseJd(text);
     }
 
-    // Query candidates_public with broad filters from parsed criteria
-    let query = adminClient.from("candidates_public").select("*").eq("status", "available");
+    // Query candidates_public with broad filters from parsed criteria. Read as the
+    // signed-in user, not with full server access, because this view decides per viewer
+    // who gets the total fee: a candidate's own referrers must not.
+    let query = userClient.from("candidates_public").select("*").eq("status", "available");
     if (parsed.industry) query = query.eq("industry", parsed.industry);
     if (parsed.location_city) query = query.ilike("location_city", `%${parsed.location_city}%`);
 
