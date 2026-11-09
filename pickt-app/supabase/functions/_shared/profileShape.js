@@ -5,11 +5,15 @@
 //   - supabase/functions/candidate-profile (the real server response)
 //   - src/lib/candidateProfile.js (demo/offline mode, so it matches the server)
 //
-// Plain JavaScript with no imports so both Deno (edge functions) and Vite can load it.
+// Plain JavaScript so both Deno (edge functions) and Vite can load it.
 //
 // LOCKED payloads contain only: employer descriptions, stages, counts,
 // activity and short feedback teasers. Never employer names, full feedback,
 // outcome reasons, or contact details.
+
+import {
+  bandFromYears, formatLocation, formatNotice, normaliseEmploymentType, normaliseWorkPreference, weeksFromDays,
+} from './candidateFields.js'
 
 export const INTERVIEW_STAGES = [
   '1st phone screen',
@@ -94,9 +98,22 @@ export function shapeProfile({
     unlocked,
     role: c.role_applied_for || c.role,
     seniority: c.seniority_level || c.seniority || null,
-    years: c.years_experience ?? c.years ?? null,
+    experienceBand: c.experience_band || bandFromYears(c.years_experience ?? c.years),
     city: c.location_city || c.city || null,
-    workType: c.preferred_work_type || null,
+    location: formatLocation({
+      city: c.location_city || c.city,
+      stateCode: c.location_state_code || c.stateCode,
+      state: c.location_state || c.state,
+      country: c.location_country || c.country,
+    }) || null,
+    // Sorted for display: "Hybrid · Remote"
+    workPreferences: [...new Set((c.preferred_work_types?.length ? c.preferred_work_types : [c.preferred_work_type || c.workType])
+      .map(normaliseWorkPreference).filter(Boolean))].sort(),
+    employmentTypes: [...new Set((c.employment_types?.length ? c.employment_types : [c.employment_type])
+      .map(normaliseEmploymentType).filter(Boolean))],
+    notice: formatNotice(c.notice_period_weeks ?? weeksFromDays(c.notice_period_days)),
+    // Residency status is shown to everyone; visa type only after unlocking (below)
+    residencyStatus: c.residency_status || null,
     skills: c.skills || [],
     salaryLow: c.salary_expectation_min ?? c.salaryLow ?? null,
     salaryHigh: c.salary_expectation_max ?? c.salaryHigh ?? null,
@@ -126,6 +143,7 @@ export function shapeProfile({
       mobile: c.mobile_number || null,
       linkedin: c.linkedin_url || null,
     }
+    profile.visaType = c.visa_type || null
     profile.currentEmployer = c.current_employer || null
     profile.strengths = c.strengths || null
     profile.gaps = c.gaps || null

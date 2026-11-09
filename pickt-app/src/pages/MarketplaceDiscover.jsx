@@ -14,7 +14,12 @@ import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import { computeCategoryCounts, ROLE_TO_CATEGORY } from '../lib/roleCategories'
-import { mapCandidate } from '../lib/candidateUtils'
+import {
+  employmentTypesOf, experienceBandOf, locationLabelOf, mapCandidate, matchesLocation, noticeWeeksOf, workPreferencesOf,
+} from '../lib/candidateUtils'
+import LocationSelect from '../components/forms/LocationSelect'
+import { EMPTY_LOCATION } from '../lib/locations'
+import { EMPLOYMENT_TYPES, EXPERIENCE_BANDS, formatLocation, WORK_PREFERENCES } from '../../supabase/functions/_shared/candidateFields.js'
 import SaveSearchControls from '../components/search/SaveSearchControls'
 import { SALARY_FLOOR, SALARY_CEIL, REMEMBERED_SEARCH_KEY, clearRememberedSearch, isDefaultCriteria } from '../lib/searchCriteria'
 import './MarketplaceDiscover.css'
@@ -48,19 +53,30 @@ const EXPANDED_ROLES = [
 const ALL_ROLES = [...DEFAULT_ROLES, ...EXPANDED_ROLES]
 
 const AVAILABILITY_OPTIONS = ['Available now', '2 weeks', '1 month', 'Flexible', 'Final round']
-const WORK_OPTIONS = ['Remote', 'Hybrid', 'On-site']
-const NAMED_CITIES = ['Sydney', 'Melbourne', 'Brisbane']
-const OTHER_CITIES = 'Other cities'
-const LOCATION_OPTIONS = [...NAMED_CITIES, OTHER_CITIES]
 
 // Salary slider bounds (SALARY_FLOOR / SALARY_CEIL, in $k AUD) come from lib/searchCriteria
 const SALARY_STEP = 5
-const EXPERIENCE_OPTIONS = [
-  { value: 0, label: 'Any' },
-  { value: 2, label: '2+ yrs' },
-  { value: 5, label: '5+ yrs' },
-  { value: 8, label: '8+ yrs' },
-]
+
+// Saved or remembered searches from before these filters changed
+const OLD_MIN_EXPERIENCE_TO_BANDS = {
+  2: EXPERIENCE_BANDS.slice(1),
+  5: EXPERIENCE_BANDS.slice(3),
+  8: EXPERIENCE_BANDS.slice(4),
+}
+const OLD_CITY_TO_LOCATION = {
+  Sydney: { countryCode: 'AU', country: 'Australia', stateCode: 'NSW', state: 'New South Wales', city: 'Sydney' },
+  Melbourne: { countryCode: 'AU', country: 'Australia', stateCode: 'VIC', state: 'Victoria', city: 'Melbourne' },
+  Brisbane: { countryCode: 'AU', country: 'Australia', stateCode: 'QLD', state: 'Queensland', city: 'Brisbane' },
+}
+
+function sanitizeLocation(saved) {
+  if (saved?.location?.country) {
+    const { countryCode = '', country, stateCode = '', state = '', city = '' } = saved.location
+    return { countryCode, country, stateCode, state, city }
+  }
+  // Only a single named city converts exactly; "Other cities" or several don't
+  return (Array.isArray(saved?.locations) && saved.locations.length === 1 && OLD_CITY_TO_LOCATION[saved.locations[0]]) || null
+}
 
 function formatSalaryK(k) {
   return k >= SALARY_CEIL ? `$${SALARY_CEIL}k+` : `$${k}k`
@@ -79,7 +95,7 @@ function salarySpoken(k) {
 
 const DEFAULT_FILTERS = {
   query: '', categories: [], salaryMin: SALARY_FLOOR, salaryMax: SALARY_CEIL,
-  minExperience: 0, availability: [], workPreference: [], locations: [],
+  experienceBands: [], availability: [], workPreference: [], employmentTypes: [], location: null,
 }
 
 // Only keep values the current UI still offers (options may change between releases)
@@ -95,10 +111,11 @@ function sanitizeFilters(saved) {
     categories: pick(saved.categories, CATEGORY_CHIPS.map(c => c.key)),
     salaryMin: validSalary ? salaryMin : SALARY_FLOOR,
     salaryMax: validSalary ? salaryMax : SALARY_CEIL,
-    minExperience: EXPERIENCE_OPTIONS.some(o => o.value === saved.minExperience) ? saved.minExperience : 0,
+    experienceBands: pick(saved.experienceBands ?? OLD_MIN_EXPERIENCE_TO_BANDS[saved.minExperience], EXPERIENCE_BANDS),
     availability: pick(saved.availability, AVAILABILITY_OPTIONS),
-    workPreference: pick(saved.workPreference, WORK_OPTIONS),
-    locations: pick(saved.locations, LOCATION_OPTIONS),
+    workPreference: pick(saved.workPreference, WORK_PREFERENCES),
+    employmentTypes: pick(saved.employmentTypes, EMPLOYMENT_TYPES),
+    location: sanitizeLocation(saved),
   }
 }
 
@@ -268,20 +285,21 @@ export default function MarketplaceDiscover() {
   const [trayDismissing, setTrayDismissing] = useState(false)
   // Open "More filters" straight away if any of its filters were restored
   const [showMoreFilters, setShowMoreFilters] = useState(() =>
-    saved.salaryMin > SALARY_FLOOR || saved.salaryMax < SALARY_CEIL || saved.minExperience > 0 ||
-    saved.availability.length > 0 || saved.workPreference.length > 0 || saved.locations.length > 0
+    saved.salaryMin > SALARY_FLOOR || saved.salaryMax < SALARY_CEIL || saved.experienceBands.length > 0 ||
+    saved.availability.length > 0 || saved.workPreference.length > 0 || saved.employmentTypes.length > 0 || Boolean(saved.location)
   )
 
   // ── Pill filters ──
   const [availability, setAvailability] = useState(saved.availability)
   const [workPreference, setWorkPreference] = useState(saved.workPreference)
-  const [locations, setLocations] = useState(saved.locations)
+  const [employmentTypes, setEmploymentTypes] = useState(saved.employmentTypes)
+  const [locationFilter, setLocationFilter] = useState(saved.location)
 
   // ── Salary & experience filters ──
   const [salaryMin, setSalaryMin] = useState(saved.salaryMin)
   const [salaryMax, setSalaryMax] = useState(saved.salaryMax)
   const [topSalaryThumb, setTopSalaryThumb] = useState('max') // which handle sits on top when they overlap
-  const [minExperience, setMinExperience] = useState(saved.minExperience)
+  const [experienceBands, setExperienceBands] = useState(saved.experienceBands)
 
   // ── Tray search state ──
   const [trayQuery, setTrayQuery] = useState(saved.query)
@@ -300,16 +318,15 @@ export default function MarketplaceDiscover() {
   const allCandidatesRef = useRef([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
-  const WORK_TYPE_MAP = { 'Remote': 'remote', 'Hybrid': 'hybrid', 'On-site': 'on_site', 'On-Site': 'on_site' }
-
   function fetchCandidates({
     categories = [],
     query = '',
     salaryMin = null,
     salaryMax = null,
-    minExperience = null,
+    bands = [],
     workPreferences = [],
-    locations = [],
+    employment = [],
+    place = null,
     interviewDepth = null,
     availability = [],
   } = {}) {
@@ -320,19 +337,17 @@ export default function MarketplaceDiscover() {
       result = result.filter(c => categories.includes(ROLE_TO_CATEGORY[c.role]))
     }
 
-    // Filter by work preference (Remote, Hybrid, On-site)
+    // Work preference and employment type: candidates with ANY of the selected options
     if (workPreferences.length > 0) {
-      const mapped = workPreferences.map(w => (WORK_TYPE_MAP[w] || w).toLowerCase())
-      result = result.filter(c => mapped.includes((c.preferred_work_type || '').toLowerCase()))
+      result = result.filter(c => workPreferencesOf(c).some(w => workPreferences.includes(w)))
+    }
+    if (employment.length > 0) {
+      result = result.filter(c => employmentTypesOf(c).some(t => employment.includes(t)))
     }
 
-    // Filter by location (named city match, or any city outside the named ones)
-    if (locations.length > 0) {
-      const named = NAMED_CITIES.map(l => l.toLowerCase())
-      result = result.filter(c => {
-        const city = (c.city || '').toLowerCase()
-        return locations.some(l => l === OTHER_CITIES ? !named.includes(city) : city === l.toLowerCase())
-      })
+    // Location: Country, then State, then City, as far as chosen
+    if (place?.country) {
+      result = result.filter(c => matchesLocation(c, place))
     }
 
     // Filter by salary: the candidate's expected range must overlap the selected range
@@ -343,9 +358,9 @@ export default function MarketplaceDiscover() {
       result = result.filter(c => (c.salaryHigh || c.salaryLow || 0) >= salaryMin)
     }
 
-    // Filter by minimum years experience
-    if (minExperience != null) {
-      result = result.filter(c => (c.years || 0) >= minExperience)
+    // Experience: candidates in ANY of the selected bands
+    if (bands.length > 0) {
+      result = result.filter(c => bands.includes(experienceBandOf(c)))
     }
 
     // Filter by interview depth
@@ -359,14 +374,14 @@ export default function MarketplaceDiscover() {
       }
     }
 
-    // Filter by availability (based on notice_period_days)
+    // Filter by availability (based on notice period in weeks; unknown counts as 4)
     if (availability.length > 0) {
       result = result.filter(c => {
-        const notice = c.notice_period_days ?? 30
+        const notice = noticeWeeksOf(c) ?? 4
         return availability.some(a => {
           if (a === 'Available now') return notice <= 0
-          if (a === '2 weeks') return notice <= 14
-          if (a === '1 month') return notice <= 30
+          if (a === '2 weeks') return notice <= 2
+          if (a === '1 month') return notice <= 4
           if (a === 'Flexible') return true
           if (a === 'Final round') return (c.interview_stage_reached || '').toLowerCase().includes('final')
           return false
@@ -379,7 +394,7 @@ export default function MarketplaceDiscover() {
       const q = query.toLowerCase()
       result = result.filter(c =>
         c.role.toLowerCase().includes(q) ||
-        (c.city || '').toLowerCase().includes(q) ||
+        locationLabelOf(c).toLowerCase().includes(q) ||
         (c.skills || []).some(s => s.toLowerCase().includes(q)) ||
         (c.seniority || '').toLowerCase().includes(q)
       )
@@ -397,9 +412,10 @@ export default function MarketplaceDiscover() {
         query: appliedQuery || searchQuery,
         salaryMin: salaryMin > SALARY_FLOOR ? salaryMin * 1000 : null,
         salaryMax: salaryMax < SALARY_CEIL ? salaryMax * 1000 : null,
-        minExperience: minExperience > 0 ? minExperience : null,
+        bands: experienceBands,
         workPreferences: workPreference,
-        locations,
+        employment: employmentTypes,
+        place: locationFilter,
         availability,
       })
       if (result.error) {
@@ -478,7 +494,7 @@ export default function MarketplaceDiscover() {
   useEffect(() => {
     if (!dataLoaded) return
     loadCandidates()
-  }, [dataLoaded, activeCategories, searchQuery, appliedQuery, salaryMin, salaryMax, minExperience, availability, workPreference, locations]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dataLoaded, activeCategories, searchQuery, appliedQuery, salaryMin, salaryMax, experienceBands, availability, workPreference, employmentTypes, locationFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function confirmDiscovery() {
     if (!discoveryConfirmed) {
@@ -498,10 +514,11 @@ export default function MarketplaceDiscover() {
     setSuggestions([])
     setSalaryMin(SALARY_FLOOR)
     setSalaryMax(SALARY_CEIL)
-    setMinExperience(0)
+    setExperienceBands([])
     setAvailability([])
     setWorkPreference([])
-    setLocations([])
+    setEmploymentTypes([])
+    setLocationFilter(null)
   }
 
   // ── New search / Clear all: back to the initial search page, everything reset ──
@@ -559,12 +576,13 @@ export default function MarketplaceDiscover() {
     closeSuggestions()
     setSalaryMin(c.salaryMin)
     setSalaryMax(c.salaryMax)
-    setMinExperience(c.minExperience)
+    setExperienceBands(c.experienceBands)
     setAvailability(c.availability)
     setWorkPreference(c.workPreference)
-    setLocations(c.locations)
-    setShowMoreFilters(c.salaryMin > SALARY_FLOOR || c.salaryMax < SALARY_CEIL || c.minExperience > 0
-      || c.availability.length > 0 || c.workPreference.length > 0 || c.locations.length > 0)
+    setEmploymentTypes(c.employmentTypes)
+    setLocationFilter(c.location)
+    setShowMoreFilters(c.salaryMin > SALARY_FLOOR || c.salaryMax < SALARY_CEIL || c.experienceBands.length > 0
+      || c.availability.length > 0 || c.workPreference.length > 0 || c.employmentTypes.length > 0 || Boolean(c.location))
     setTrayDismissing(false)
     setDiscoveryConfirmed(false)
     setAnnouncement('Saved search applied')
@@ -584,8 +602,8 @@ export default function MarketplaceDiscover() {
 
   // Save the search + filters whenever they change
   useEffect(() => {
-    saveFilters({ query: trayQuery, categories: activeCategories, salaryMin, salaryMax, minExperience, availability, workPreference, locations })
-  }, [trayQuery, activeCategories, salaryMin, salaryMax, minExperience, availability, workPreference, locations])
+    saveFilters({ query: trayQuery, categories: activeCategories, salaryMin, salaryMax, experienceBands, availability, workPreference, employmentTypes, location: locationFilter })
+  }, [trayQuery, activeCategories, salaryMin, salaryMax, experienceBands, availability, workPreference, employmentTypes, locationFilter])
 
 
   function togglePillFilter(value, setter) {
@@ -737,9 +755,9 @@ export default function MarketplaceDiscover() {
     setTimeout(() => { setViewMode(mode); setTimeout(() => setTransitioning(false), 20) }, 150)
   }
 
-  const currentCriteria = { query: trayQuery, categories: activeCategories, salaryMin, salaryMax, minExperience, availability, workPreference, locations }
+  const currentCriteria = { query: trayQuery, categories: activeCategories, salaryMin, salaryMax, experienceBands, availability, workPreference, employmentTypes, location: locationFilter }
   const salaryActive = salaryMin > SALARY_FLOOR || salaryMax < SALARY_CEIL
-  const moreFiltersCount = (salaryActive ? 1 : 0) + (minExperience > 0 ? 1 : 0) + availability.length + workPreference.length + locations.length
+  const moreFiltersCount = (salaryActive ? 1 : 0) + experienceBands.length + availability.length + workPreference.length + employmentTypes.length + (locationFilter?.country ? 1 : 0)
   const hasActiveFilters = activeCategories.length > 0 || trayQuery.trim().length >= 2 || moreFiltersCount > 0
 
   // Chips summarising every active filter, each with its own remove action
@@ -748,10 +766,11 @@ export default function MarketplaceDiscover() {
     ...(trayQuery.trim() ? [{ id: 'q', label: `“${trayQuery.trim()}”`, remove: clearSearch }] : []),
     ...activeCategories.map(c => ({ id: 'cat:' + c, label: c, remove: removeFrom(setActiveCategories, c) })),
     ...(salaryActive ? [{ id: 'salary', label: `${formatSalaryK(salaryMin)} – ${formatSalaryK(salaryMax)}`, remove: () => { setSalaryMin(SALARY_FLOOR); setSalaryMax(SALARY_CEIL) } }] : []),
-    ...(minExperience > 0 ? [{ id: 'exp', label: `${minExperience}+ yrs experience`, remove: () => setMinExperience(0) }] : []),
+    ...experienceBands.map(v => ({ id: 'exp:' + v, label: v, remove: removeFrom(setExperienceBands, v) })),
     ...availability.map(v => ({ id: 'avail:' + v, label: v, remove: removeFrom(setAvailability, v) })),
     ...workPreference.map(v => ({ id: 'work:' + v, label: v, remove: removeFrom(setWorkPreference, v) })),
-    ...locations.map(v => ({ id: 'loc:' + v, label: v, remove: removeFrom(setLocations, v) })),
+    ...employmentTypes.map(v => ({ id: 'emp:' + v, label: v, remove: removeFrom(setEmploymentTypes, v) })),
+    ...(locationFilter?.country ? [{ id: 'loc', label: formatLocation(locationFilter), remove: () => setLocationFilter(null) }] : []),
   ]
 
   // Live match count for the main button, from the same filter logic as the results
@@ -966,27 +985,22 @@ export default function MarketplaceDiscover() {
 
                         <div className="mk-tray-quant-sep" />
 
-                        <div className="mk-tray-experience" role="group" aria-labelledby="mk-exp-label">
-                          <div className="mk-tray-exp-header">
-                            <span className="mk-tray-salary-label" id="mk-exp-label">Min. experience</span>
-                            <span className="mk-tray-salary-value">
-                              {minExperience === 0 ? 'Any experience' : `${minExperience}+ years`}
-                            </span>
-                          </div>
+                        <fieldset className="mk-tray-experience mk-tray-fieldset">
+                          <legend className="mk-tray-salary-label">Years of experience</legend>
                           <div className="mk-tray-pills">
-                            {EXPERIENCE_OPTIONS.map(o => (
+                            {EXPERIENCE_BANDS.map(band => (
                               <button
-                                key={o.value}
+                                key={band}
                                 type="button"
-                                className={`mk-tray-pill ${minExperience === o.value ? 'mk-tray-pill--active' : ''}`}
-                                aria-pressed={minExperience === o.value}
-                                onClick={() => setMinExperience(o.value)}
+                                className={`mk-tray-pill ${experienceBands.includes(band) ? 'mk-tray-pill--active' : ''}`}
+                                aria-pressed={experienceBands.includes(band)}
+                                onClick={() => togglePillFilter(band, setExperienceBands)}
                               >
-                                {o.label}
+                                {band}
                               </button>
                             ))}
                           </div>
-                        </div>
+                        </fieldset>
                       </div>
 
                       <div className="mk-tray-divider" />
@@ -994,8 +1008,8 @@ export default function MarketplaceDiscover() {
                       <div className="mk-tray-pill-row">
                         {[
                           { label: 'Availability', options: AVAILABILITY_OPTIONS, value: availability, setter: setAvailability },
-                          { label: 'Work preference', options: WORK_OPTIONS, value: workPreference, setter: setWorkPreference },
-                          { label: 'Location', options: LOCATION_OPTIONS, value: locations, setter: setLocations },
+                          { label: 'Work preference', options: WORK_PREFERENCES, value: workPreference, setter: setWorkPreference },
+                          { label: 'Employment type', options: EMPLOYMENT_TYPES, value: employmentTypes, setter: setEmploymentTypes },
                         ].map(({ label, options, value, setter }, gi) => (
                           <div key={label} style={{ display: 'contents' }}>
                             {gi > 0 && <div className="mk-tray-quant-sep" />}
@@ -1018,6 +1032,16 @@ export default function MarketplaceDiscover() {
                           </div>
                         ))}
                       </div>
+
+                      <div className="mk-tray-divider" />
+
+                      <fieldset className="mk-tray-fieldset">
+                        <legend className="mk-tray-salary-label">Location</legend>
+                        <LocationSelect
+                          value={locationFilter || EMPTY_LOCATION}
+                          onChange={next => setLocationFilter(next.country ? next : null)}
+                        />
+                      </fieldset>
                     </div>
                   )}
 

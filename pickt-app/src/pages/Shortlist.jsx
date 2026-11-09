@@ -10,7 +10,7 @@ import { fetchCandidatesByIds } from '../lib/supabaseQueries'
 import { isDemoCandidateId } from '../lib/candidateProfile'
 import EmptyState from '../components/shared/EmptyState'
 import { useStaggerReveal } from '../hooks/useScrollReveal'
-import { mapCandidate } from '../lib/candidateUtils'
+import { experienceBandOf, locationLabelOf, mapCandidate } from '../lib/candidateUtils'
 import './Shortlist.css'
 
 function getDefaultStage(c) {
@@ -72,7 +72,7 @@ function CandidateCardInline({ c, i, navigate, onRemove, draggable, onDragStart 
         </div>
         <div className="sl-card-info">
           <div className="sl-card-role">{c.role}</div>
-          <div className="sl-card-meta">{c.seniority} {'\u00B7'} {c.city} {'\u00B7'} {c.years} yrs</div>
+          <div className="sl-card-meta">{[c.seniority, locationLabelOf(c), experienceBandOf(c)].filter(Boolean).join(' \u00B7 ')}</div>
         </div>
       </div>
       <div className="sl-card-skills">
@@ -261,10 +261,10 @@ export default function Shortlist() {
                     {isLocked ? <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--on-surface-variant)' }}>lock</span> : <span style={{ color: 'white', fontWeight: 900 }}>{(c.role || 'X')[0]}</span>}
                   </div>
                   <div className="sl-compare-title">{c.role}</div>
-                  <div className="sl-compare-subtitle">{c.seniority} {'\u00B7'} {c.city}</div>
+                  <div className="sl-compare-subtitle">{[c.seniority, locationLabelOf(c)].filter(Boolean).join(' \u00B7 ')}</div>
                 </div>
                 <div className="sl-compare-stats">
-                  <div className="sl-compare-stat"><span className="sl-compare-stat-label">Experience</span><span className="sl-compare-stat-value">{c.years} yrs</span></div>
+                  <div className="sl-compare-stat"><span className="sl-compare-stat-label">Experience</span><span className="sl-compare-stat-value">{experienceBandOf(c) || '—'}</span></div>
                   <div className="sl-compare-stat"><span className="sl-compare-stat-label">Interviews</span><span className="sl-compare-stat-value">{c.interviews}</span></div>
                   {c.fee != null && <div className="sl-compare-stat"><span className="sl-compare-stat-label">Fee</span><span className="sl-compare-stat-value">{c.fee}%</span></div>}
                   <div className="sl-compare-stat"><span className="sl-compare-stat-label">Salary</span><span className="sl-compare-stat-value">${Math.round((c.salaryLow || 0) / 1000)}k{'\u2013'}${Math.round((c.salaryHigh || 0) / 1000)}k</span></div>

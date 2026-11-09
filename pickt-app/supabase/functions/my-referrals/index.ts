@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
   const [candidates, rates, commissions, hires, unlocks] = await Promise.all([
     adminClient
       .from("candidates")
-      .select("id, uploaded_by_company_id, role_applied_for, seniority_level, years_experience, location_city, location_country, skills, interview_stage_reached, interviews_completed, salary_expectation_min, salary_expectation_max, strengths, recommendation")
+      .select("id, uploaded_by_company_id, role_applied_for, seniority_level, years_experience, location_city, location_state, location_state_code, location_country, experience_band, skills, interview_stage_reached, interviews_completed, salary_expectation_min, salary_expectation_max, strengths, recommendation")
       .in("id", ids),
     adminClient.from("commission_settings").select("referrer_position, referrer_rate"),
     // This company's own rows only. Salary is deliberately not selected.
@@ -91,7 +91,10 @@ Deno.serve(async (req) => {
         role: c?.role_applied_for ?? null,
         seniority: c?.seniority_level ?? null,
         years: c?.years_experience ?? null,
+        experienceBand: c?.experience_band ?? null,
         city: c?.location_city ?? null,
+        stateCode: c?.location_state_code ?? null,
+        state: c?.location_state ?? null,
         country: c?.location_country ?? null,
         skills: c?.skills ?? [],
         stage: c?.interview_stage_reached ?? null,

@@ -5,7 +5,7 @@ import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
 import { isInShortlist, saveCandidate, unsaveCandidate } from '../lib/shortlist'
 import { getInterviewSnapshot } from '../lib/interviewSnapshot'
 import { COPY } from '../lib/copy'
-import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
+import { experienceBandOf, getIconForRole, getGradientClass, locationLabelOf, noticeLabelOf, workPreferencesOf } from '../lib/candidateUtils'
 import { careerSteps } from '../lib/careerSteps'
 import './CandidateCard.css'
 
@@ -102,7 +102,7 @@ function stageSegments(rank) {
 function FlipCard({
   c, unlocked, onUnlock, onViewProfile, saved, saving, saveError, onToggleSave,
   variant = 'stack', stacked = false, skillsLimit, climbMax = 150, meta: metaOverride,
-  extraTop, actions, below, onFrontClick,
+  extraTop, actions, below, onFrontClick, showDetails = true,
 }) {
   const [side, setSide] = useState('front')
   const tabRefs = useRef({})
@@ -117,7 +117,8 @@ function FlipCard({
   const hasBack = interviewCount > 0 && snapshot.length > 0
   const flipped = hasBack && side === 'back'
 
-  const meta = (metaOverride || [c.seniority, c.years ? `${c.years} yrs experience` : null, c.city]).filter(Boolean)
+  const meta = (metaOverride || [c.seniority, experienceBandOf(c), locationLabelOf(c)]).filter(Boolean)
+  const details = showDetails ? [...workPreferencesOf(c), noticeLabelOf(c)].filter(Boolean) : []
   const skills = skillsLimit ? (c.skills || []).slice(0, skillsLimit) : (c.skills || [])
   const hasClimb = careerSteps(c.workHistory).length > 0
   const salaryStr = c.salaryLow && c.salaryHigh
@@ -222,6 +223,7 @@ function FlipCard({
             <div className="cc-stack-main">
               <h3 className="cc-stack-title">{c.role}</h3>
               {meta.length > 0 && <p className="cc-stack-meta">{meta.join(' \u00B7 ')}</p>}
+              {details.length > 0 && <p className="cc-stack-meta cc-stack-meta--details">{details.join(' \u00B7 ')}</p>}
               {extraTop}
               {salaryStr && (
                 <div className="cc-stack-salary">
@@ -397,8 +399,7 @@ function NewCard({ candidate: c, viewMode }) {
   const roleMatch = Math.min(99, 65 + (c.interviews || 0) * 6)
   const interviewMatch = Math.min(99, (c.interviews || 0) * 20)
   const recencyMatch = Math.max(10, 100 - (c.daysAgo || 5) * 8)
-  const workType = c.preferred_work_type || c.workType || 'Hybrid'
-  const description = c.strengths || c.feedback_summary || `${c.seniority} with ${c.years}+ years experience in ${c.city}. ${c.interviews} interviews completed.`
+  const description = c.strengths || c.feedback_summary || [c.seniority, experienceBandOf(c), locationLabelOf(c)].filter(Boolean).join(' \u00B7 ') + `. ${c.interviews} interviews completed.`
 
   function handleUnlockSuccess() {
     setUnlocked(true)
@@ -439,7 +440,8 @@ function NewCard({ candidate: c, viewMode }) {
           stacked
           skillsLimit={3}
           climbMax={56}
-          meta={[c.seniority, c.city]}
+          meta={[c.seniority, locationLabelOf(c)]}
+          showDetails={false}
           onFrontClick={toggle}
           extraTop={
             <div className="cc-pills-row cc-stack-pills">
@@ -458,6 +460,7 @@ function NewCard({ candidate: c, viewMode }) {
               <MatchBar label="Role match" value={roleMatch} color="var(--primary)" />
               <MatchBar label="Interviews" value={interviewMatch} color="var(--color-primary)" />
               <MatchBar label="Recency" value={recencyMatch} color="var(--color-primary)" />
+              <p className="cc-stack-meta">{[experienceBandOf(c), ...workPreferencesOf(c), noticeLabelOf(c)].filter(Boolean).join(' \u00B7 ')}</p>
               <p className="cc-description">{description}</p>
               <div className="cc-flip-actions">
                 <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}>{COPY.marketplace.requestInterview}</button>
@@ -478,7 +481,6 @@ function NewCard({ candidate: c, viewMode }) {
         <FlipCard
           {...flipProps}
           variant="focus"
-          meta={[c.seniority, c.years ? `${c.years} yrs experience` : null, c.city, workType]}
           actions={<>
             {unlocked ? (
               <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}><span aria-hidden="true">{'\u2713'}</span>View full profile</button>

@@ -6,14 +6,17 @@ import { checkReferralStatus } from "../lib/supabaseQueries";
 import { INDUSTRIES } from "../data/discoveryOptions";
 import { supabase } from "../lib/supabase";
 import { mapParsedDataToForm } from "../lib/cvFieldMapper";
+import LocationSelect from "../components/forms/LocationSelect";
+import CheckboxGroup from "../components/forms/CheckboxGroup";
+import { upgradeReferDraft } from "../lib/referDraft";
+import {
+  EMPLOYMENT_TYPES, EXPERIENCE_BANDS, formatLocation, NOTICE_WEEKS_MAX, RESIDENCY_STATUSES, VISA_STATUSES, WORK_PREFERENCES,
+} from "../../supabase/functions/_shared/candidateFields.js";
 import './Refer.css';
 
 // ── Constants ────────────────────────────────────────────────
 
 const SENIORITY = ["Junior", "Mid", "Senior", "Lead", "Head of", "VP", "C-suite"];
-const WORK_PREFS = ["Remote", "Hybrid", "On-site"];
-const RESIDENCY = ["Citizen", "Permanent resident", "Work visa", "Student visa", "Other"];
-const EMPLOYMENT = ["Full-time", "Part-time", "Contract", "Casual"];
 const STAGES = ["1st round", "2nd round", "3rd round", "Final round"];
 const WHY_NOT_HIRED = ["Headcount freeze", "Skills mismatch", "Timing", "Overqualified", "Culture fit", "Other"];
 const RECOMMENDATIONS = ["Strong hire", "Hire", "Maybe"];
@@ -26,15 +29,18 @@ const INITIAL = {
   industry: "",
   role_applied_for: "",
   seniority_level: "",
-  years_experience: "",
-  location_city: "",
+  experience_band: "",
+  location_country: "Australia",
+  location_country_code: "AU",
   location_state: "",
-  location_country: "",
+  location_state_code: "",
+  location_city: "",
   residency_status: "",
-  preferred_work_type: "",
+  visa_type: "",
+  preferred_work_types: [],
   willing_to_relocate: false,
-  employment_type: "",
-  notice_period_days: "",
+  employment_types: [],
+  notice_period_weeks: "",
   available_from: "",
   salary_expectation_min: "",
   salary_expectation_max: "",
@@ -64,6 +70,8 @@ function reducer(state, action) {
   switch (action.type) {
     case "SET":
       return { ...state, [action.field]: action.value };
+    case "MERGE":
+      return { ...state, ...action.values };
     case "RESTORE":
       return action.state;
     case "RESET":
@@ -113,7 +121,7 @@ export default function Refer() {
       if (saved) {
         const parsed = JSON.parse(saved);
         const hasData = parsed.role_applied_for || parsed.industry || (parsed.skills && parsed.skills.length > 0);
-        dispatch({ type: "RESTORE", state: { ...INITIAL, ...parsed } });
+        dispatch({ type: "RESTORE", state: upgradeReferDraft(parsed, INITIAL) });
         if (hasData) {
           setGatePassed(true);
           setStep(1);
@@ -219,11 +227,15 @@ export default function Refer() {
     const errs = [];
     if (s === 1) {
       if (!form.industry) errs.push("Industry is required.");
-      if (!form.role_applied_for) errs.push("Role title is required.");
+      if (!form.role_applied_for) errs.push("Current role title is required.");
       if (!form.seniority_level) errs.push("Seniority level is required.");
-      if (!form.location_city) errs.push("City is required.");
       if (!form.location_country) errs.push("Country is required.");
-      if (!form.preferred_work_type) errs.push("Work preference is required.");
+      if (!form.location_city) errs.push("City is required.");
+      if (VISA_STATUSES.includes(form.residency_status) && !form.visa_type.trim()) errs.push("Visa type is required.");
+      if (form.preferred_work_types.length === 0) errs.push("Choose at least one work preference.");
+      if (form.employment_types.length === 0) errs.push("Choose at least one employment type.");
+      if (form.notice_period_weeks !== "" && !(Number.isInteger(Number(form.notice_period_weeks)) && Number(form.notice_period_weeks) >= 0 && Number(form.notice_period_weeks) <= NOTICE_WEEKS_MAX))
+        errs.push(`Notice period must be a whole number of weeks from 0 to ${NOTICE_WEEKS_MAX}.`);
       if (form.skills.length === 0) errs.push("Add at least one skill.");
       if (!form.interview_stage_reached) errs.push("Interview stage is required.");
       if (
@@ -294,15 +306,18 @@ export default function Refer() {
       industry: form.industry,
       role_applied_for: form.role_applied_for,
       seniority_level: form.seniority_level,
-      years_experience: form.years_experience || null,
+      experience_band: form.experience_band || null,
       location_city: form.location_city,
       location_state: form.location_state || null,
+      location_state_code: form.location_state_code || null,
       location_country: form.location_country,
+      location_country_code: form.location_country_code || null,
       residency_status: form.residency_status || null,
-      preferred_work_type: form.preferred_work_type,
+      visa_type: VISA_STATUSES.includes(form.residency_status) ? form.visa_type.trim() : null,
+      preferred_work_types: form.preferred_work_types,
       willing_to_relocate: form.willing_to_relocate,
-      employment_type: form.employment_type || null,
-      notice_period_days: form.notice_period_days || null,
+      employment_types: form.employment_types,
+      notice_period_weeks: form.notice_period_weeks === "" ? null : Number(form.notice_period_weeks),
       available_from: form.available_from || null,
       salary_expectation_min: form.salary_expectation_min || null,
       salary_expectation_max: form.salary_expectation_max || null,
@@ -701,8 +716,8 @@ export default function Refer() {
             </select>
           </div>
           <div>
-            <label className="rf-label">Role title *</label>
-            <input className="rf-input" placeholder="e.g. Senior Frontend Engineer" value={form.role_applied_for} onChange={(e) => set("role_applied_for", e.target.value)} />
+            <label className="rf-label" htmlFor="rf-role">Current Role Title *</label>
+            <input id="rf-role" className="rf-input" placeholder="e.g. Senior Frontend Engineer" value={form.role_applied_for} onChange={(e) => set("role_applied_for", e.target.value)} />
           </div>
           <div>
             <label className="rf-label">Seniority level *</label>
@@ -712,64 +727,106 @@ export default function Refer() {
             </select>
           </div>
           <div>
-            <label className="rf-label">Years experience</label>
-            <input className="rf-input" type="number" min={0} placeholder="e.g. 5" value={form.years_experience} onChange={(e) => set("years_experience", e.target.value ? Number(e.target.value) : "")} />
+            <label className="rf-label" htmlFor="rf-experience">Years of experience</label>
+            <select id="rf-experience" className="rf-select" value={form.experience_band} onChange={(e) => set("experience_band", e.target.value)}>
+              <option value="">Select experience</option>
+              {EXPERIENCE_BANDS.map((b) => <option key={b}>{b}</option>)}
+            </select>
           </div>
         </div>
 
-        <div className="rf-row rf-row--3">
+        <LocationSelect
+          required
+          value={{
+            countryCode: form.location_country_code,
+            country: form.location_country,
+            stateCode: form.location_state_code,
+            state: form.location_state,
+            city: form.location_city,
+          }}
+          onChange={(l) => dispatch({
+            type: "MERGE",
+            values: {
+              location_country_code: l.countryCode,
+              location_country: l.country,
+              location_state_code: l.stateCode,
+              location_state: l.state,
+              location_city: l.city,
+            },
+          })}
+        />
+
+        <div className="rf-row">
           <div>
-            <label className="rf-label">City *</label>
-            <input className="rf-input" placeholder="e.g. Sydney" value={form.location_city} onChange={(e) => set("location_city", e.target.value)} />
+            <label className="rf-label" htmlFor="rf-residency">Residency status</label>
+            <select
+              id="rf-residency"
+              className="rf-select"
+              value={form.residency_status}
+              onChange={(e) => {
+                const status = e.target.value;
+                // Leaving a visa status clears the visa type
+                dispatch({ type: "MERGE", values: { residency_status: status, ...(VISA_STATUSES.includes(status) ? {} : { visa_type: "" }) } });
+              }}
+            >
+              <option value="">Select status</option>
+              {RESIDENCY_STATUSES.map((r) => <option key={r}>{r}</option>)}
+            </select>
           </div>
-          <div>
-            <label className="rf-label">State</label>
-            <input className="rf-input" placeholder="e.g. NSW" value={form.location_state} onChange={(e) => set("location_state", e.target.value)} />
-          </div>
-          <div>
-            <label className="rf-label">Country *</label>
-            <input className="rf-input" placeholder="e.g. Australia" value={form.location_country} onChange={(e) => set("location_country", e.target.value)} />
+          {/* The live region stays on the page so screen readers announce the change */}
+          <div aria-live="polite" aria-atomic="false">
+            {VISA_STATUSES.includes(form.residency_status) && (
+              <>
+                <label className="rf-label" htmlFor="rf-visa-type">Visa type *</label>
+                <input
+                  id="rf-visa-type"
+                  className="rf-input"
+                  required
+                  aria-required="true"
+                  aria-describedby="rf-visa-hint"
+                  placeholder="e.g. Subclass 482"
+                  value={form.visa_type}
+                  onChange={(e) => set("visa_type", e.target.value)}
+                />
+                <p id="rf-visa-hint" style={{ marginTop: '0.375rem', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                  Only shown to employers after they unlock this profile.
+                </p>
+              </>
+            )}
           </div>
         </div>
 
         <div className="rf-row">
+          <CheckboxGroup
+            label="Work preferences"
+            required
+            options={WORK_PREFERENCES}
+            value={form.preferred_work_types}
+            onChange={(v) => set("preferred_work_types", v)}
+          />
+          <CheckboxGroup
+            label="Employment type"
+            required
+            options={EMPLOYMENT_TYPES}
+            value={form.employment_types}
+            onChange={(v) => set("employment_types", v)}
+          />
+        </div>
+
+        <div className="rf-row rf-row--3">
           <div>
-            <label className="rf-label">Residency status</label>
-            <select className="rf-select" value={form.residency_status} onChange={(e) => set("residency_status", e.target.value)}>
-              <option value="">Select status</option>
-              {RESIDENCY.map((r) => <option key={r}>{r}</option>)}
-            </select>
+            <label className="rf-label" htmlFor="rf-notice">Notice period (weeks)</label>
+            <input id="rf-notice" className="rf-input" type="number" min={0} max={NOTICE_WEEKS_MAX} step={1} placeholder="e.g. 4" value={form.notice_period_weeks} onChange={(e) => set("notice_period_weeks", e.target.value === "" ? "" : Number(e.target.value))} />
           </div>
           <div>
-            <label className="rf-label">Work preference *</label>
-            <select className="rf-select" value={form.preferred_work_type} onChange={(e) => set("preferred_work_type", e.target.value)}>
-              <option value="">Select preference</option>
-              {WORK_PREFS.map((w) => <option key={w}>{w}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="rf-label">Employment type</label>
-            <select className="rf-select" value={form.employment_type} onChange={(e) => set("employment_type", e.target.value)}>
-              <option value="">Select type</option>
-              {EMPLOYMENT.map((t) => <option key={t}>{t}</option>)}
-            </select>
+            <label className="rf-label" htmlFor="rf-available">Available from</label>
+            <input id="rf-available" className="rf-input" type="date" value={form.available_from} onChange={(e) => set("available_from", e.target.value)} />
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.25rem' }}>
             <label className="rf-checkbox-label">
               <input type="checkbox" checked={form.willing_to_relocate} onChange={(e) => set("willing_to_relocate", e.target.checked)} />
               Willing to relocate
             </label>
-          </div>
-        </div>
-
-        <div className="rf-row rf-row--3">
-          <div>
-            <label className="rf-label">Notice period (days)</label>
-            <input className="rf-input" type="number" min={0} placeholder="e.g. 30" value={form.notice_period_days} onChange={(e) => set("notice_period_days", e.target.value ? Number(e.target.value) : "")} />
-          </div>
-          <div>
-            <label className="rf-label">Available from</label>
-            <input className="rf-input" type="date" value={form.available_from} onChange={(e) => set("available_from", e.target.value)} />
           </div>
         </div>
 
@@ -1064,7 +1121,7 @@ export default function Refer() {
         <div className="rf-preview pikt-card">
           <h3 className="rf-preview-role">{form.role_applied_for || "Role title"}</h3>
           <p className="rf-preview-meta">
-            {form.seniority_level || "Seniority"} &middot; {form.years_experience ? `${form.years_experience} yrs` : "\u2014"} &middot; {form.location_city || "City"}, {form.location_country || "Country"} &middot; {form.preferred_work_type || "Work type"}
+            {[form.seniority_level || "Seniority", form.experience_band, formatLocation({ city: form.location_city, stateCode: form.location_state_code, state: form.location_state, country: form.location_country }), [...form.preferred_work_types].sort().join(" \u00B7 ")].filter(Boolean).join(" \u00B7 ")}
           </p>
           <div className="rf-preview-pills">
             {form.skills.map((s) => (

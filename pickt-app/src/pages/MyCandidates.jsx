@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCandidates } from '../lib/seedData'
 import { fetchMyReferrals } from '../lib/supabaseQueries'
+import { bandFromYears, formatLocation } from '../../supabase/functions/_shared/candidateFields.js'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
 import { getIconForRole, getGradientClass } from '../lib/candidateUtils'
 import EmptyState from '../components/shared/EmptyState'
@@ -229,10 +230,10 @@ export default function MyCandidates() {
                   </div>
                   <div>
                     <div className="mc-role-title">{c.role}</div>
-                    <div className="mc-role-meta">{[c.seniority, c.years != null ? `${c.years} yrs` : null].filter(Boolean).join(' · ')}</div>
+                    <div className="mc-role-meta">{[c.seniority, c.experienceBand || bandFromYears(c.years)].filter(Boolean).join(' · ')}</div>
                   </div>
                 </div>
-                <div className="mc-col mc-col--location">{[c.city, c.country].filter(Boolean).join(', ')}</div>
+                <div className="mc-col mc-col--location">{formatLocation(c)}</div>
                 <div className="mc-col mc-col--status">
                   <span className={`mc-status-pill mc-status-pill--${STATUS_PILLS[c.status]}`}>
                     {STATUS_LABELS[c.status] || c.status}

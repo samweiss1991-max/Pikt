@@ -8,7 +8,7 @@ const PII_FIELDS = [
   'full_name', 'email', 'mobile_number', 'linkedin_url', 'portfolio_url',
   'current_employer', 'current_job_title',
   'cv_file_url', 'cv_filename', 'cover_letter_url', 'additional_documents',
-  'date_of_birth', 'gender',
+  'date_of_birth', 'gender', 'visa_type',
 ]
 
 // Fields that must NEVER appear in any client response, even after unlock

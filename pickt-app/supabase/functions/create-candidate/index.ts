@@ -21,6 +21,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { identityHash, normaliseEmail, normaliseMobile } from "../_shared/identity.ts";
 import { isAllowedUploadPath, storagePathFrom } from "../_shared/uploads.ts";
+import { candidateFieldsFromRequest } from "../_shared/candidateFields.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -108,7 +109,6 @@ Deno.serve(async (req) => {
     "seniority_level",
     "location_city",
     "location_country",
-    "preferred_work_type",
     "interview_stage_reached",
     "why_not_hired",
     "strengths",
@@ -123,6 +123,15 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+  }
+
+  // Allowed options, conversions and the old columns, all decided in one place
+  const { fields: candidateFields, error: fieldsError } = candidateFieldsFromRequest(body);
+  if (fieldsError) {
+    return new Response(
+      JSON.stringify({ error: fieldsError }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   if (!body.skills || body.skills.length === 0) {
@@ -262,15 +271,8 @@ Deno.serve(async (req) => {
       industry: body.industry,
       role_applied_for: body.role_applied_for,
       seniority_level: body.seniority_level,
-      years_experience: body.years_experience || null,
-      location_city: body.location_city,
-      location_state: body.location_state || null,
-      location_country: body.location_country,
-      residency_status: body.residency_status || null,
-      preferred_work_type: body.preferred_work_type,
+      ...candidateFields,
       willing_to_relocate: body.willing_to_relocate ?? false,
-      employment_type: body.employment_type || null,
-      notice_period_days: body.notice_period_days || null,
       available_from: body.available_from || null,
       salary_expectation_min: body.salary_expectation_min || null,
       salary_expectation_max: body.salary_expectation_max || null,

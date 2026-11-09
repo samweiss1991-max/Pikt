@@ -32,7 +32,7 @@ export async function fetchCandidatesPublic(filters = {}) {
     query = query.ilike('location_city', `%${filters.location}%`)
   }
   if (filters.workType) {
-    query = query.eq('preferred_work_type', filters.workType)
+    query = query.contains('preferred_work_types', [filters.workType])
   }
   if (filters.status) {
     query = query.eq('status', filters.status)

@@ -215,8 +215,12 @@ export default function CandidateProfile() {
   const range = activityRange(activity.daysSince)
   const meta = [
     profile.seniority,
-    profile.years != null ? plural(profile.years, 'year experience', 'years experience') : null,
-    profile.city,
+    profile.experienceBand,
+    profile.location,
+    profile.workPreferences?.length ? profile.workPreferences.join(' \u00B7 ') : null,
+    profile.notice,
+    profile.employmentTypes?.length ? profile.employmentTypes.join(', ') : null,
+    profile.residencyStatus ? (profile.visaType ? `${profile.residencyStatus} (${profile.visaType})` : profile.residencyStatus) : null,
   ].filter(Boolean)
 
   // What the unlock modal needs to show the fee summary

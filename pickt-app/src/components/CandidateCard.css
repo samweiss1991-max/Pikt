@@ -850,3 +850,5 @@
   .cc-snap-strip-text { flex-basis: calc(100% - 2rem); font-size: 0.75rem; }
   .cc-snap-unlock { width: 100%; }
 }
+
+.cc-stack-meta--details { margin-top: 0.125rem; }

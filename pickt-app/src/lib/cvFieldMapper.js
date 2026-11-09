@@ -1,3 +1,5 @@
+import { bandFromYears } from '../../supabase/functions/_shared/candidateFields.js'
+
 /**
  * Maps parsed CV or ATS candidate data to the Refer form shape.
  * Accepts partial data — only overrides fields that have values.
@@ -7,7 +9,10 @@ export function mapParsedDataToForm(parsed, initial) {
     ...initial,
     role_applied_for: parsed.current_job_title || parsed.role_applied_for || initial.role_applied_for,
     location_city: parsed.location_city || initial.location_city,
+    // Names only: the location picker matches these to their codes once its lists load
     location_state: parsed.location_state || initial.location_state,
+    location_state_code: parsed.location_state ? '' : initial.location_state_code,
+    location_country_code: parsed.location_country ? '' : initial.location_country_code,
     location_country: parsed.location_country || initial.location_country,
     skills: (parsed.skills && parsed.skills.length > 0) ? parsed.skills : initial.skills,
     current_employer: parsed.current_employer || initial.current_employer,
@@ -15,7 +20,7 @@ export function mapParsedDataToForm(parsed, initial) {
     mobile_number: parsed.phone || parsed.mobile_number || initial.mobile_number,
     linkedin_url: parsed.linkedin_url || initial.linkedin_url,
     portfolio_url: parsed.portfolio_url || initial.portfolio_url,
-    years_experience: parsed.years_experience || initial.years_experience,
+    experience_band: bandFromYears(parsed.years_experience) || initial.experience_band,
     seniority_level: parsed.seniority_level || initial.seniority_level,
     industry: parsed.industry || initial.industry,
     interview_stage_reached: parsed.interview_stage_reached || initial.interview_stage_reached,
