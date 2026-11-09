@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { getCandidates, getCandidatesRaw } from '../lib/seedData'
@@ -7,12 +7,10 @@ import { fetchCandidatesPublic } from '../lib/supabaseQueries'
 import { COPY } from '../lib/copy'
 import { useViewMode } from '../context/ViewModeContext'
 import { useSearch } from '../context/SearchContext'
-import { saveCandidate } from '../lib/shortlist'
-import CandidateCard from '../components/CandidateCard'
 import RightInsightsPanel from '../components/marketplace/RightInsightsPanel'
 import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
-import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
+import { useScrollReveal } from '../hooks/useScrollReveal'
 import { computeCategoryCounts, ROLE_TO_CATEGORY } from '../lib/roleCategories'
 import {
   employmentTypesOf, experienceBandOf, locationLabelOf, mapCandidate, matchesLocation, noticeWeeksOf, workPreferencesOf,
@@ -22,6 +20,7 @@ import { EMPTY_LOCATION } from '../lib/locations'
 import { EMPLOYMENT_TYPES, EXPERIENCE_BANDS, formatLocation, WORK_PREFERENCES } from '../../supabase/functions/_shared/candidateFields.js'
 import SaveSearchControls from '../components/search/SaveSearchControls'
 import { SALARY_FLOOR, SALARY_CEIL, REMEMBERED_SEARCH_KEY, clearRememberedSearch, isDefaultCriteria } from '../lib/searchCriteria'
+import CandidateResults, { ViewSwitcher } from '../components/results/CandidateResults'
 import './MarketplaceDiscover.css'
 
 const isDevMode = import.meta.env.DEV
@@ -135,143 +134,15 @@ function saveFilters(filters) {
   } catch { /* storage blocked — ignore */ }
 }
 
-const VIEW_MODES = [
-  { key: 'stack', label: COPY.viewModes.stack, icon: 'view_agenda' },
-  { key: 'carousel', label: COPY.viewModes.carousel, icon: 'view_carousel' },
-  { key: 'matrix', label: COPY.viewModes.matrix, icon: 'grid_view' },
-  { key: 'tinder', label: COPY.viewModes.flickt, icon: 'swipe' },
-  { key: 'focus', label: COPY.viewModes.focus, icon: 'center_focus_strong' },
-]
-
-const MOBILE_MODES = ['stack', 'tinder']
-
-// ── Tinder stack ──
-function TinderView({ candidates, onSave, onSkip }) {
-  const [currentIdx, setCurrentIdx] = useState(0)
-  const [dragX, setDragX] = useState(0)
-  const [dragging, setDragging] = useState(false)
-  const startX = useRef(0)
-  const cardRef = useRef(null)
-  const remaining = candidates.length - currentIdx
-
-  function handlePointerDown(e) {
-    // Let buttons / tabs inside the card receive their own clicks (no drag)
-    if (e.target.closest('button, a, [role="tab"]')) return
-    startX.current = e.clientX; setDragging(true)
-  }
-  function handlePointerMove(e) {
-    if (!dragging) return
-    const dx = e.clientX - startX.current
-    // Only take over the pointer once it's really a drag, so a plain tap still
-    // reaches the card (Flickt: tap to show / hide details)
-    if (Math.abs(dx) > 6 && !cardRef.current?.hasPointerCapture(e.pointerId)) {
-      cardRef.current?.setPointerCapture(e.pointerId)
-    }
-    setDragX(dx)
-  }
-  function handlePointerUp() {
-    if (!dragging) return
-    setDragging(false)
-    if (dragX > 80) doSave()
-    else if (dragX < -80) doSkip()
-    setDragX(0)
-  }
-  function doSave() { if (currentIdx < candidates.length) { onSave?.(candidates[currentIdx]); setCurrentIdx(i => i + 1) } }
-  function doSkip() { if (currentIdx < candidates.length) { onSkip?.(candidates[currentIdx]); setCurrentIdx(i => i + 1) } }
-
-  if (remaining <= 0) return <EmptyState message="You've reviewed all candidates" />
-
-  return (
-    <div className="mk-tinder-wrap">
-      <div className="mk-tinder-counter">{remaining} candidates remaining</div>
-      <div className="mk-tinder-stack">
-        {[2, 1, 0].map(offset => {
-          const idx = currentIdx + offset
-          if (idx >= candidates.length) return null
-          const isFront = offset === 0
-          const style = isFront
-            ? { transform: `translateX(${dragX}px) rotate(${dragX * 0.1}deg)`, zIndex: 3 }
-            : { transform: `scale(${1 - offset * 0.03}) translateY(${offset * 6}px)`, zIndex: 3 - offset, pointerEvents: 'none' }
-          return (
-            // Cards behind the front one are visual only: not clickable or reachable by keyboard
-            <div key={candidates[idx].id} ref={isFront ? cardRef : undefined} className="mk-tinder-card" style={style} inert={!isFront}
-              onPointerDown={isFront ? handlePointerDown : undefined} onPointerMove={isFront ? handlePointerMove : undefined} onPointerUp={isFront ? handlePointerUp : undefined}>
-              {isFront && dragging && <>
-                <div className="mk-tinder-hint mk-tinder-hint--save" style={{ opacity: Math.max(0, dragX / 150) }}>SAVE {'\u2713'}</div>
-                <div className="mk-tinder-hint mk-tinder-hint--skip" style={{ opacity: Math.max(0, -dragX / 150) }}>SKIP {'\u2717'}</div>
-              </>}
-              <CandidateCard candidate={candidates[idx]} viewMode="tinder" index={idx} />
-            </div>
-          )
-        })}
-      </div>
-      <div className="mk-tinder-actions">
-        <button className="mk-tinder-btn mk-tinder-btn--skip" onClick={doSkip} aria-label="Skip candidate">{'\u2717'}</button>
-        <button className="mk-tinder-btn mk-tinder-btn--save" onClick={doSave} aria-label="Save candidate">{'\u2713'}</button>
-      </div>
-    </div>
-  )
-}
-
-// ── Carousel ──
-function CarouselView({ candidates }) {
-  const [current, setCurrent] = useState(0)
-  const total = candidates.length
-  const prev = useCallback(() => setCurrent(i => (i - 1 + total) % total), [total])
-  const next = useCallback(() => setCurrent(i => (i + 1) % total), [total])
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'ArrowLeft') prev(); if (e.key === 'ArrowRight') next() }
-    window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
-  }, [prev, next])
-
-  const startXRef = useRef(0)
-  if (total === 0) return null
-  return (
-    <div className="mk-carousel" onPointerDown={e => { startXRef.current = e.clientX }} onPointerUp={e => { const d = e.clientX - startXRef.current; if (d > 60) prev(); else if (d < -60) next() }}>
-      <button className="mk-carousel-arrow mk-carousel-arrow--left" onClick={prev} aria-label="Previous candidate">{'\u2039'}</button>
-      <CandidateCard candidate={candidates[current]} viewMode="carousel" index={current} />
-      <button className="mk-carousel-arrow mk-carousel-arrow--right" onClick={next} aria-label="Next candidate">{'\u203A'}</button>
-      <div className="mk-carousel-dots">{candidates.map((_, i) => <span key={i} className={`mk-carousel-dot ${i === current ? 'mk-carousel-dot--active' : ''}`} onClick={() => setCurrent(i)} />)}</div>
-    </div>
-  )
-}
-
-// ── Focus ──
-function FocusView({ candidates }) {
-  const [current, setCurrent] = useState(0)
-  const total = candidates.length
-  const prev = useCallback(() => setCurrent(i => (i - 1 + total) % total), [total])
-  const next = useCallback(() => setCurrent(i => (i + 1) % total), [total])
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'ArrowLeft') prev(); if (e.key === 'ArrowRight') next() }
-    window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
-  }, [prev, next])
-
-  if (total === 0) return null
-  return (
-    <div className="mk-focus">
-      <div className="mk-focus-counter">Candidate {current + 1} of {total}</div>
-      <button className="mk-focus-arrow mk-focus-arrow--left" onClick={prev} aria-label="Previous candidate">{'\u2039'}</button>
-      <CandidateCard candidate={candidates[current]} viewMode="focus" index={current} />
-      <button className="mk-focus-arrow mk-focus-arrow--right" onClick={next} aria-label="Next candidate">{'\u203A'}</button>
-    </div>
-  )
-}
-
-// ══ MAIN ══
 export default function MarketplaceDiscover() {
   const location = useLocation()
-  const { viewMode, setViewMode } = useViewMode()
+  const { setViewMode } = useViewMode()
   const { query: searchQuery, setQuery: setTopbarQuery, searchCommand } = useSearch()
 
   const [candidates, setCandidates] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [transitioning, setTransitioning] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
 
   // Last search + filters, restored from localStorage (read once on mount)
   const [saved] = useState(loadSavedFilters)
@@ -445,17 +316,6 @@ export default function MarketplaceDiscover() {
       }
     } catch { /* ignore */ }
   }, [location.key]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  useEffect(() => {
-    if (isMobile && !MOBILE_MODES.includes(viewMode)) setViewMode('stack')
-  }, [isMobile, viewMode, setViewMode])
 
   // One-time async load: Supabase first, fall back to seed/mock if empty or errors
   useEffect(() => {
@@ -749,12 +609,6 @@ export default function MarketplaceDiscover() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  function switchView(mode) {
-    if (mode === viewMode) return
-    setTransitioning(true)
-    setTimeout(() => { setViewMode(mode); setTimeout(() => setTransitioning(false), 20) }, 150)
-  }
-
   const currentCriteria = { query: trayQuery, categories: activeCategories, salaryMin, salaryMax, experienceBands, availability, workPreference, employmentTypes, location: locationFilter }
   const salaryActive = salaryMin > SALARY_FLOOR || salaryMax < SALARY_CEIL
   const moreFiltersCount = (salaryActive ? 1 : 0) + experienceBands.length + availability.length + workPreference.length + employmentTypes.length + (locationFilter?.country ? 1 : 0)
@@ -782,11 +636,9 @@ export default function MarketplaceDiscover() {
       : `Show ${total} ${total === 1 ? 'candidate' : 'candidates'}`
   const showCandidates = discoveryConfirmed || hasActiveFilters
 
-  const visibleModes = isMobile ? VIEW_MODES.filter(m => MOBILE_MODES.includes(m.key)) : VIEW_MODES
   const candidateCountText = COPY.marketplace.candidateCount(total)
 
   const headerRef = useScrollReveal()
-  const cardsRef = useStaggerReveal({ staggerMs: 100, deps: [candidates, viewMode, loading, showCandidates] })
 
   return (
     <div className="mk-page" style={{ position: 'relative', minHeight: 'calc(100vh - 4rem)' }}>
@@ -812,14 +664,7 @@ export default function MarketplaceDiscover() {
       <p className="mk-candidate-count">{candidateCountText}</p>
 
       {/* ── View switcher ── */}
-      <div className="mk-view-switcher">
-        {visibleModes.map(m => (
-          <button key={m.key} className={`mk-view-btn ${viewMode === m.key ? 'mk-view-btn--active' : ''}`} onClick={() => switchView(m.key)}>
-            <span className="material-symbols-outlined mk-view-icon">{m.icon}</span>
-            <span className="mk-view-label">{m.label}</span>
-          </button>
-        ))}
-      </div>
+      <ViewSwitcher />
 
       {/* ── Bento grid ── */}
       <div className="mk-bento">
@@ -1085,7 +930,7 @@ export default function MarketplaceDiscover() {
               </div>
             </div>
           )}
-          <div className={transitioning ? 'mk-left--transitioning' : ''}>
+          <div>
           {showCandidates && (
             <>
               {loading && <p className="mk-loading" role="status">Loading candidates…</p>}
@@ -1097,17 +942,7 @@ export default function MarketplaceDiscover() {
               )}
 
               {!loading && !error && candidates.length > 0 && (
-                <>
-                  {viewMode === 'stack' && (
-                    <div className="mk-grid-stack" ref={cardsRef}>{candidates.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="stack" index={i} /></div>)}</div>
-                  )}
-                  {viewMode === 'carousel' && <CarouselView candidates={candidates} />}
-                  {viewMode === 'matrix' && (
-                    <div className="mk-grid-matrix" ref={cardsRef}>{candidates.map((c, i) => <div key={c.id} data-reveal><CandidateCard candidate={c} viewMode="matrix" index={i} /></div>)}</div>
-                  )}
-                  {viewMode === 'tinder' && <TinderView candidates={candidates} onSave={c => saveCandidate(c.id).catch(() => { /* card stays unsaved; user can retry from its Save button */ })} />}
-                  {viewMode === 'focus' && <FocusView candidates={candidates} />}
-                </>
+                <CandidateResults candidates={candidates} />
               )}
             </>
           )}

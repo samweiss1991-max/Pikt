@@ -2,9 +2,9 @@ import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { mapCandidate } from '../lib/candidateUtils'
 import { useNewSearch } from '../hooks/useNewSearch'
-import CandidateCard from '../components/CandidateCard'
+import CandidateResults, { ViewSwitcher } from '../components/results/CandidateResults'
 import EmptyState from '../components/shared/EmptyState'
-import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
+import { useScrollReveal } from '../hooks/useScrollReveal'
 import './MarketplaceMatches.css'
 
 function CriteriaSummary({ parsed, totalConsidered, matchCount }) {
@@ -71,12 +71,8 @@ export default function MarketplaceMatches() {
   const navigate = useNavigate()
   const newSearch = useNewSearch()
 
-  // Arrives from the bottom of the upload form, so start at the top of the page
-  useEffect(() => { window.scrollTo(0, 0) }, [])
-
   const location = useLocation()
   const headerRef = useScrollReveal()
-  const cardsRef = useStaggerReveal({ staggerMs: 80 })
 
   const state = location.state || {}
   const parsed = state.parsed
@@ -90,13 +86,29 @@ export default function MarketplaceMatches() {
     }
   }, [parsed, rawCandidates.length, navigate])
 
-  const matched = rawCandidates.map((c) => ({
-    ...mapCandidate(c),
-    _score: c._score,
-    _matched: c._matched,
-  }))
+  // Highest match first
+  const matched = rawCandidates
+    .map((c) => ({
+      ...mapCandidate(c),
+      _score: c._score,
+      _matched: c._matched,
+    }))
+    .sort((a, b) => (b._score || 0) - (a._score || 0))
 
   const maxScore = matched.length > 0 ? matched[0]._score : 0
+
+  function renderMatchBar(c) {
+    const relevance = maxScore > 0 ? Math.round((c._score / maxScore) * 100) : 0
+    return (
+      <div className="mm-match">
+        <span className="mm-match-score">{relevance}% match</span>
+        <span className="mm-match-track" aria-hidden="true">
+          <span className="mm-match-fill" style={{ width: `${relevance}%` }} />
+        </span>
+        {c._matched?.length > 0 && <span className="mm-match-reasons">Matches: {c._matched.join(', ')}</span>}
+      </div>
+    )
+  }
 
   return (
     <div className="mm-page">
@@ -123,29 +135,10 @@ export default function MarketplaceMatches() {
           onCta={() => navigate('/marketplace/discover')}
         />
       ) : (
-        <div className="mm-grid" ref={cardsRef}>
-          {matched.map((c, i) => {
-            const relevance = maxScore > 0 ? Math.round((c._score / maxScore) * 100) : 0
-            return (
-              <div key={c.id} data-reveal className="mm-card-wrap">
-                <div className="mm-relevance">
-                  <div className="mm-relevance-bar">
-                    <div className="mm-relevance-fill" style={{ width: `${relevance}%` }} />
-                  </div>
-                  <div className="mm-relevance-meta">
-                    <span className="mm-relevance-score">{relevance}% match</span>
-                    {c._matched && c._matched.length > 0 && (
-                      <span className="mm-relevance-reasons">
-                        Matches: {c._matched.join(', ')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <CandidateCard candidate={c} viewMode="stack" index={i} />
-              </div>
-            )
-          })}
-        </div>
+        <>
+          <ViewSwitcher />
+          <CandidateResults candidates={matched} renderAbove={renderMatchBar} />
+        </>
       )}
     </div>
   )

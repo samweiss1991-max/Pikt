@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 const VALID_MODES = ['stack', 'carousel', 'matrix', 'tinder', 'focus']
 const STORAGE_KEY = 'pickt_view_mode'
 
-const ViewModeContext = createContext({ viewMode: 'stack', setViewMode: () => {} })
+const ViewModeContext = createContext({ viewMode: 'stack', setViewMode: () => {}, switchView: () => {}, transitioning: false })
 
 export function ViewModeProvider({ children }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -30,8 +30,17 @@ export function ViewModeProvider({ children }) {
       const next = new URLSearchParams(prev)
       next.set('view', mode)
       return next
-    }, { replace: true })
+      // Keep the page's own state, e.g. the AI match results
+    }, { replace: true, state: window.history.state?.usr })
   }, [setSearchParams])
+
+  // Changing view with a brief fade, used by the view switcher on every results page
+  const [transitioning, setTransitioning] = useState(false)
+  const switchView = useCallback((mode) => {
+    if (mode === viewMode) return
+    setTransitioning(true)
+    setTimeout(() => { setViewMode(mode); setTimeout(() => setTransitioning(false), 20) }, 150)
+  }, [viewMode, setViewMode])
 
   // Sync URL on mount
   useEffect(() => {
@@ -41,12 +50,12 @@ export function ViewModeProvider({ children }) {
         const next = new URLSearchParams(prev)
         next.set('view', viewMode)
         return next
-      }, { replace: true })
+      }, { replace: true, state: window.history.state?.usr })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <ViewModeContext.Provider value={{ viewMode, setViewMode }}>
+    <ViewModeContext.Provider value={{ viewMode, setViewMode, switchView, transitioning }}>
       {children}
     </ViewModeContext.Provider>
   )

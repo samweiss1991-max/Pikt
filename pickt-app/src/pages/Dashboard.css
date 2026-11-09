@@ -158,3 +158,6 @@
   font-weight: 700;
 }
 .db-fab--green:hover { background: var(--color-primary-hover); }
+
+.db-promo-card { margin-top: 1.5rem; }
+.db-card-section .mk-view-switcher { margin-bottom: 1.25rem; }

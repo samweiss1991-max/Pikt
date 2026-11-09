@@ -173,7 +173,10 @@ function FlipCard({
                   {/* Narrow cards: "Referred by" is read out but not shown — the tick carries it */}
                   {t.key === 'front' && referrer && compactTabs
                     ? <><span className="cc-sr-only">{COPY.marketplace.referredBy} </span>{referrer}</>
-                    : t.label}
+                    : t.key === 'back'
+                      // Narrow cards show just the number; the word stays for screen readers and the tooltip
+                      ? <>{interviewCount}<span className="cc-ftab-word"> {interviewCount === 1 ? 'interview' : 'interviews'}</span></>
+                      : t.label}
                 </span>
               </button>
             )

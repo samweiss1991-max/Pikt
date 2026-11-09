@@ -3,7 +3,7 @@
 .up-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 6rem;
+  padding: 0 0 6rem; /* the page frame already spaces this from the header */
 }
 
 .up-back-link {

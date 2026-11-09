@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { getCandidates, getCandidatesRaw, seedCandidates } from '../lib/seedData'
 import { CANDIDATES as MOCK_CANDIDATES } from '../data/discoveryOptions'
 import { fetchCandidatesPublic, fetchDashboardStats } from '../lib/supabaseQueries'
-import CandidateCard from '../components/CandidateCard'
 import SkeletonCard from '../components/shared/SkeletonCard'
 import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import { mapCandidate } from '../lib/candidateUtils'
+import CandidateResults, { ViewSwitcher } from '../components/results/CandidateResults'
 import './Dashboard.css'
 
 const isDevMode = import.meta.env.DEV
@@ -74,8 +74,7 @@ export default function Dashboard() {
 
   const statsRef = useStaggerReveal({ staggerMs: 80 })
   const filterRef = useScrollReveal()
-  // The cards appear after loading, so these must run again once they exist
-  const cardsRef = useStaggerReveal({ staggerMs: 100, deps: [loading, candidates.length] })
+  // The promo card appears after loading, so this must run again once it exists
   const promoRef = useScrollReveal({ deps: [loading, candidates.length] })
 
   const headingWords = 'Dashboard'.split(' ')
@@ -146,12 +145,9 @@ export default function Dashboard() {
         )}
 
         {!loading && !error && displayCandidates.length > 0 && (
-          <div className="db-card-grid" ref={cardsRef}>
-            {displayCandidates.map((c, i) => (
-              <div key={c.id} data-reveal>
-                <CandidateCard candidate={c} viewMode="stack" index={i} />
-              </div>
-            ))}
+          <>
+            <ViewSwitcher />
+            <CandidateResults candidates={displayCandidates} />
 
             {/* Promo card */}
             <div className="db-promo-card pikt-card reveal-fade-up" ref={promoRef}>
@@ -160,7 +156,7 @@ export default function Dashboard() {
               <button className="db-promo-btn press-scale" onClick={() => navigate('/marketplace')}>Get Started</button>
               <div className="db-promo-corner" />
             </div>
-          </div>
+          </>
         )}
       </div>
 

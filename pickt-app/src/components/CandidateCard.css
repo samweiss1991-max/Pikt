@@ -634,7 +634,7 @@
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;           /* tabs wrap/shrink before Save moves */
+  flex-wrap: nowrap;         /* one line: the referrer tab shortens before Save moves */
   align-items: flex-end;
   gap: 4px;
 }
@@ -657,9 +657,10 @@
   transition: background 0.2s, color 0.2s, padding 0.2s;
 }
 .cc-ftab .material-symbols-outlined { font-size: 16px; flex-shrink: 0; }
-.cc-ftab-label { min-width: 0; overflow-wrap: anywhere; }
+.cc-ftab-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* Inactive: light tint */
-.cc-ftab--front { background: #DCE4F4; color: var(--color-primary); }
+.cc-ftab--front { flex: 0 1 auto; background: #DCE4F4; color: var(--color-primary); }
+.cc-ftab--back { flex: 0 0 auto; }
 .cc-ftab--back  { background: var(--color-success-tint); color: var(--color-success); }
 /* Active: solid and 6px taller */
 .cc-ftab--active { padding-top: 13px; color: #FFFFFF; }
@@ -869,3 +870,18 @@
   border-radius: 999px;
 }
 .cc-silver .material-symbols-outlined { font-size: 16px; }
+
+/* The referrer's name stays on one line. On the very narrowest cards the interviews tab
+   shrinks to its number to make room. The name always keeps a readable width, ending in "…" with the full name on hover. */
+.cc-ftab--front { min-width: 7rem; }
+.cc-flipcard--compact-tabs .cc-ftab--front { min-width: 4.5rem; }
+@container (max-width: 340px) {
+  .cc-ftab-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}

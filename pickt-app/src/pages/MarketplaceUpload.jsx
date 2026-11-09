@@ -81,6 +81,8 @@ export default function MarketplaceUpload() {
         throw new FriendlyError(READ_FAILED)
       }
 
+      // Results open at the top, not wherever the form was scrolled to
+      window.scrollTo(0, 0)
       navigate('/marketplace/matches', {
         state: { parsed: data.parsed, candidates: data.candidates, totalConsidered: data.total_considered },
       })

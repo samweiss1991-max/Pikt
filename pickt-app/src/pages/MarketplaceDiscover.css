@@ -36,37 +36,6 @@
   margin-bottom: 1rem;
 }
 
-/* ── View switcher ── */
-.mk-view-switcher {
-  display: flex; gap: 0; padding: 3px;
-  border-radius: 9999px;
-  margin-bottom: 1.5rem;
-  width: fit-content;
-  max-width: 100%;
-  overflow-x: auto; /* scroll sideways rather than widen the page on narrow screens */
-  background: #FFFFFF;
-  border: 1px solid var(--color-border-subtle);
-}
-.mk-view-btn {
-  min-height: 44px;
-  flex-shrink: 0;
-  display: flex; align-items: center; gap: 4px;
-  padding: 6px 14px; border: none; border-radius: 9999px;
-  font-size: 12px; font-weight: 600; cursor: pointer;
-  font-family: 'Manrope', sans-serif; transition: all 0.15s;
-  white-space: nowrap;
-  background: transparent;
-  color: var(--color-text);
-}
-.mk-view-btn:hover { color: var(--color-primary); background: var(--color-primary-tint); }
-.mk-view-btn--active {
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  background: var(--color-primary);
-  color: #FFFFFF;
-}
-.mk-view-icon { font-size: 18px; }
-.mk-view-label { font-size: 12px; }
-
 /* ── Bento grid ── */
 .mk-bento {
   display: grid;
@@ -84,74 +53,7 @@
   font-size: 0.875rem; font-weight: 600;
   color: var(--on-surface-variant);
 }
-.mk-left--transitioning { opacity: 0; transition: opacity 0.15s ease; }
 .mk-right { display: flex; flex-direction: column; gap: 1.5rem; }
-
-/* ── Grid layouts ── */
-.mk-grid-stack { display: flex; flex-direction: column; gap: 1.5rem; }
-.mk-grid-matrix { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
-@media (max-width: 768px) { .mk-grid-matrix { grid-template-columns: 1fr; } }
-
-/* ── Carousel ── */
-.mk-carousel { position: relative; padding: 0 52px; }
-.mk-carousel-arrow {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 48px; height: 48px; border-radius: 50%;
-  border: none; background: var(--primary); color: var(--on-primary);
-  font-size: 24px; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; z-index: 2; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: transform 0.15s;
-}
-.mk-carousel-arrow:hover { transform: translateY(-50%) scale(1.05); }
-.mk-carousel-arrow--left { left: 0; }
-.mk-carousel-arrow--right { right: 0; }
-.mk-carousel-dots { display: flex; justify-content: center; gap: 6px; margin-top: 1rem; }
-.mk-carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(55,65,81,0.3); cursor: pointer; transition: background 0.2s; }
-.mk-carousel-dot--active { background: var(--primary); }
-
-/* ── Tinder ── */
-.mk-tinder-wrap { max-width: 420px; margin: 0 auto; }
-.mk-tinder-counter { font-size: 12px; color: var(--on-surface-variant); text-align: center; margin-bottom: 0.5rem; }
-/* The front card sits in the grid cell and sets the deck's height */
-.mk-tinder-stack { position: relative; display: grid; }
-.mk-tinder-card { position: relative; grid-area: 1 / 1; transition: transform 0.05s linear; }
-/* Only the front card sets the deck's height; the cards behind are clipped to it */
-.mk-tinder-card[inert] { position: absolute; inset: 0; overflow: hidden; }
-/* Only the front card shows its tabs and Save button, so the ones behind don't peek out */
-.mk-tinder-card[inert] .cc-tabrow { visibility: hidden; }
-.mk-tinder-hint { position: absolute; top: 40%; font-size: 28px; font-weight: 900; z-index: 10; pointer-events: none; letter-spacing: 2px; }
-.mk-tinder-hint--save { right: 24px; color: var(--primary); }
-.mk-tinder-hint--skip { left: 24px; color: var(--color-critical); }
-.mk-tinder-actions { display: flex; justify-content: center; gap: 1.5rem; margin-top: 1rem; }
-.mk-tinder-btn {
-  width: 56px; height: 56px; border-radius: 50%;
-   font-size: 24px; font-weight: 700;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-  border: 2px solid currentColor;
-  background: #FFFFFF;
-}
-.mk-tinder-btn:hover { transform: scale(1.1); }
-.mk-tinder-btn--skip { color: var(--color-critical); }
-.mk-tinder-btn--skip:hover { border-color: var(--color-critical); background: var(--color-critical-tint); }
-.mk-tinder-btn--save { color: var(--primary); }
-.mk-tinder-btn--save:hover { border-color: var(--color-primary); background: var(--color-primary-tint); }
-
-/* ── Focus ── */
-.mk-focus { position: relative; padding: 0 52px; }
-.mk-focus-counter { text-align: right; margin-bottom: 0.25rem; font-size: 12px; color: var(--on-surface-variant); }
-/* Arrows sit either side of the card (like the carousel), not over it */
-.mk-focus-arrow {
-  position: absolute; top: 50%; margin-top: -24px;
-  width: 48px; height: 48px; border-radius: 50%;
-  border: none; background: var(--primary); color: var(--on-primary);
-  font-size: 24px; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: transform 0.15s;
-}
-.mk-focus-arrow:hover { transform: scale(1.05); }
-.mk-focus-arrow--left { left: 0; }
-.mk-focus-arrow--right { right: 0; }
 
 /* ═══ RIGHT INSIGHTS PANEL ═══ */
 .ri-panel { display: flex; flex-direction: column; gap: 1.5rem; }
