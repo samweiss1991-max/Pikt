@@ -923,7 +923,7 @@ export default function Refer() {
           <p className="rf-section-subtitle">Upload their CV and supporting documents.</p>
         </div>
 
-        <ErrorBox />
+        {ErrorBox()}
 
         <div>
           <label className="rf-label">CV (PDF or DOCX) *</label>
@@ -1132,6 +1132,9 @@ export default function Refer() {
   }
 
   // ── Main render ─────────────────────────────────────────
+  // These are called as plain functions, not used as <Step1 /> components: they're
+  // defined inside this one, so as components they'd be rebuilt on every keystroke
+  // and the input being typed in would lose focus.
 
   return (
     <div className="rf-page">
@@ -1149,21 +1152,21 @@ export default function Refer() {
             }}
           />
         )}
-        {step === 0 && gatePassed && !intakeMethod && <IntakeSelector />}
-        {step === 0 && intakeMethod === 'cv' && <CvDropZone />}
-        {step === 0 && intakeMethod === 'ats' && <AtsImportFlow />}
+        {step === 0 && gatePassed && !intakeMethod && IntakeSelector()}
+        {step === 0 && intakeMethod === 'cv' && CvDropZone()}
+        {step === 0 && intakeMethod === 'ats' && AtsImportFlow()}
 
         {/* Steps 1-4: Form wizard */}
         {step >= 1 && (
           <>
-            <Stepper />
-            <ErrorBox />
+            {Stepper()}
+            {ErrorBox()}
 
             <div key={step}>
-              {step === 1 && <Step1 />}
-              {step === 2 && <Step2 />}
-              {step === 3 && <Step3 />}
-              {step === 4 && <Step4 />}
+              {step === 1 && Step1()}
+              {step === 2 && Step2()}
+              {step === 3 && Step3()}
+              {step === 4 && Step4()}
             </div>
 
             <div className="rf-nav">
