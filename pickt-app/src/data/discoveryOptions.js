@@ -54,7 +54,7 @@ export const CANDIDATES = [
     { title: "Senior Frontend Engineer", company: "Buildkite", city: "Melbourne", dates: "Aug 2020 \u2013 Mar 2023" },
     { title: "Frontend Developer", company: "Culture Amp", city: "Melbourne", dates: "Jan 2018 \u2013 Jul 2020" },
   ]},
-  { id: "4", role: "Data Engineer", seniority: "Senior", city: "Sydney", company: "Zip Co", skills: ["Python","Spark","Airflow","dbt"], interviews: 3, fee: 10, salaryLow: 155000, salaryHigh: 175000, years: 6, daysAgo: 14, popular: false, workHistory: [
+  { id: "4", role: "Data Engineer", seniority: "Senior", city: "Sydney", company: "Zip Co", skills: ["Python","Spark","Airflow","dbt"], interviews: 3, fee: 8, salaryLow: 155000, salaryHigh: 175000, years: 6, daysAgo: 14, popular: false, workHistory: [
     { title: "Senior Data Engineer", company: "Zip Co", city: "Sydney", dates: "Mar 2022 \u2013 Present" },
     { title: "Data Engineer", company: "Quantium", city: "Sydney", dates: "Jun 2020 \u2013 Feb 2022" },
     { title: "Junior Data Engineer", company: "Woolworths Group", city: "Sydney", dates: "Jan 2019 \u2013 May 2020" },

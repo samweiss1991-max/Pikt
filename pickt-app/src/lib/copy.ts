@@ -15,6 +15,7 @@ export const COPY = {
     earnings: 'Earnings',
     integrations: 'Integrations',
     refer: 'Refer a candidate',
+    adminCommissions: 'Commissions (admin)',
   },
   user: {
     name: 'Admin Terminal',

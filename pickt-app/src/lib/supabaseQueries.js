@@ -127,16 +127,9 @@ export async function fetchDashboardStats() {
         return new Set(data.map(r => r.role_applied_for).filter(Boolean)).size
       })
       .catch(() => null),
-    supabase
-      .from('placements')
-      .select('annual_salary, fee_amount')
-      .then(({ data, error }) => {
-        if (error || !data || data.length === 0) return null
-        // Savings vs a 22% agency baseline
-        const baseline = data.reduce((sum, p) => sum + (p.annual_salary || 0) * 0.22, 0)
-        const actual = data.reduce((sum, p) => sum + (p.fee_amount || 0), 0)
-        return Math.max(0, baseline - actual)
-      })
+    // The signed-in company's own hires only, worked out by the server
+    Promise.resolve(supabase.rpc('my_hire_savings'))
+      .then(({ data, error }) => (error || data == null ? null : Number(data)))
       .catch(() => null),
   ])
   return { verifiedReferrals, activeRoles, savedAmount }
@@ -188,13 +181,7 @@ export async function fetchCompanyPublic(companyId) {
     .single()
 
   if (error) throw error
-
-  const { count: placementCount } = await supabase
-    .from('placements')
-    .select('id', { count: 'exact', head: true })
-    .eq('company_id', companyId)
-
-  return { ...data, placementCount: placementCount ?? 0 }
+  return data
 }
 
 // ── Unlocks ────────────────────────────────────────────────
@@ -225,23 +212,51 @@ export async function fetchUnlockedCandidate(candidateId) {
 
 // ── Server-only operations (via Edge Functions) ────────────
 
-/** Unlock a candidate (creates record, triggers email + ATS push) */
-export async function unlockCandidate(candidateId) {
-  const { data, error } = await supabase.functions.invoke('unlock-candidate', {
-    body: { candidateId },
-  })
+/** Calls an edge function, surfacing its structured error body when present */
+async function invokeFunction(name, body) {
+  const { data, error } = await supabase.functions.invoke(name, { body })
   if (error) {
-    // Surface the edge function's structured error body when present
     let message = error.message
     try {
-      const body = await error.context?.json?.()
-      if (body?.error) message = body.error
+      const errorBody = await error.context?.json?.()
+      if (errorBody?.error) message = errorBody.error
     } catch { /* fall back to error.message */ }
     const wrapped = new Error(message)
     wrapped.status = error.context?.status
     throw wrapped
   }
   return data
+}
+
+/** Unlock a candidate (creates record, triggers email + ATS push) */
+export function unlockCandidate(candidateId) {
+  return invokeFunction('unlock-candidate', { candidateId })
+}
+
+/** Employer records a hire. Returns the total fee only. */
+export function recordHire({ candidateId, salary, startDate }) {
+  return invokeFunction('record-hire', { candidateId, salary, startDate })
+}
+
+/** Is this person already on Pickt, and what would this company earn? Own rate only. */
+export function checkReferralStatus({ email, mobile, candidateId }) {
+  return invokeFunction('referral-status', { email, mobile, candidateId })
+}
+
+/** This company's referrals with status and its own commission */
+export function fetchMyReferrals() {
+  return invokeFunction('my-referrals', {})
+}
+
+/** Pickt admins only: every other caller gets a 403 from the server */
+export function adminCommissions(action, params = {}) {
+  return invokeFunction('admin-commissions', { action, ...params })
+}
+
+/** Whether to show the Admin menu link. The server still checks every request. */
+export async function amIPicktAdmin() {
+  const { data, error } = await supabase.rpc('am_i_pickt_admin')
+  return !error && data === true
 }
 
 /** Get a signed URL for downloading a candidate's CV */

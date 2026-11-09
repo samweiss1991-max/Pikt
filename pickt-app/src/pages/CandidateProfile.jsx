@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getCvUrl } from '../lib/supabaseQueries'
-import { fetchCandidateProfile } from '../lib/candidateProfile'
+import { fetchCandidateProfile, isDemoCandidateId } from '../lib/candidateProfile'
 import UnlockModal from '../components/unlock/UnlockModal'
+import RecordHireModal from '../components/hire/RecordHireModal'
 import './CandidateProfile.css'
 
 // ── Activity wording ──
@@ -160,6 +161,7 @@ export default function CandidateProfile() {
   const [profile, setProfile] = useState(null)
   const [loadError, setLoadError] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [showHireModal, setShowHireModal] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -181,6 +183,11 @@ export default function CandidateProfile() {
   async function handleUnlockSuccess() {
     setShowModal(false)
     await load() // server now returns the unlocked version
+  }
+
+  async function handleHireSuccess() {
+    setShowHireModal(false)
+    await load()
   }
 
   async function handleCvDownload() {
@@ -301,7 +308,18 @@ export default function CandidateProfile() {
 
         {/* ── SIDE COLUMN (sticky on desktop) ── */}
         <aside className="pp-aside">
-          {!unlocked && (
+          {profile.viewerIsReferrer && (
+            <section className="pp-card pp-side-actions" aria-label="Your referral">
+              <p className="pp-referred-title"><Icon name="verified" /> You referred this candidate</p>
+              {profile.viewerReferrer?.rate != null && (
+                <p className="pp-muted">
+                  As the {profile.viewerReferrer.position === 1 ? '1st' : '2nd'} referrer, you'll earn {Number(profile.viewerReferrer.rate)}% of their first-year salary if they're hired.
+                </p>
+              )}
+            </section>
+          )}
+
+          {!unlocked && !profile.viewerIsReferrer && (
             <section className="pp-unlock" aria-labelledby="pp-unlock-title">
               <p className="pp-unlock-big">
                 <span className="pp-unlock-num">{stats.employers}</span>
@@ -328,6 +346,9 @@ export default function CandidateProfile() {
 
               {unlockButton}
               {profile.fee != null && <p className="pp-unlock-fee">{profile.fee}% placement fee · only charged on a successful hire</p>}
+              <button type="button" className="pp-secondary-btn press-scale pp-refer-btn" onClick={() => navigate(`/refer?candidate=${profile.id}`)}>
+                <Icon name="person_add" /> Refer this candidate
+              </button>
             </section>
           )}
 
@@ -340,22 +361,43 @@ export default function CandidateProfile() {
                   <Icon name="download" /> Download CV
                 </button>
               )}
-              <button type="button" className="pp-secondary-btn press-scale">
-                <Icon name="how_to_reg" /> Mark as hired
-              </button>
+              {profile.hire ? (
+                <div className="pp-hire-summary" role="status">
+                  <strong><Icon name="how_to_reg" /> Hire recorded</strong>
+                  <span>Start date: {profile.hire.startDate}</span>
+                  <span>First-year salary: ${Number(profile.hire.salary).toLocaleString('en-AU')}</span>
+                  <span>Placement fee: {Number(profile.hire.totalFeePercentage)}% (${Number(profile.hire.totalFeeAmount).toLocaleString('en-AU')})</span>
+                </div>
+              ) : profile.isHired ? (
+                <p className="pp-muted">This candidate has already been hired.</p>
+              ) : isDemoCandidateId(profile.id) ? (
+                <p className="pp-muted">This is a demo candidate, so a hire can't be recorded.</p>
+              ) : (
+                <button type="button" className="pp-secondary-btn press-scale" onClick={() => setShowHireModal(true)}>
+                  <Icon name="how_to_reg" /> Mark as hired
+                </button>
+              )}
             </section>
           )}
         </aside>
       </div>
 
       {/* Mobile: sticky bottom bar with the unlock button */}
-      {!unlocked && (
+      {!unlocked && !profile.viewerIsReferrer && (
         <div className="pp-mobile-bar">
           <p className="pp-mobile-bar-text">
             <strong>{plural(stats.employers, 'employer', 'employers')}</strong> already vetted them
           </p>
           {unlockButton}
         </div>
+      )}
+
+      {showHireModal && (
+        <RecordHireModal
+          candidateId={profile.id}
+          onSuccess={handleHireSuccess}
+          onCancel={() => setShowHireModal(false)}
+        />
       )}
 
       {showModal && (

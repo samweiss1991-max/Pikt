@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { COPY } from '../../lib/copy'
+import { amIPicktAdmin } from '../../lib/supabaseQueries'
 import NavBadge from '../shared/NavBadge'
 import './Sidebar.css'
 
@@ -15,11 +16,22 @@ const NAV_ITEMS = [
   { label: COPY.nav.integrations,  icon: 'extension',       path: '/integrations' },
 ]
 
+const ADMIN_NAV_ITEM = { label: COPY.nav.adminCommissions, icon: 'admin_panel_settings', path: '/admin/commissions' }
+
 // `open` / `onNavigate` only matter on mobile, where the sidebar is a slide-in drawer
 export default function Sidebar({ badges = {}, open = false, onNavigate }) {
   const location = useLocation()
   const navigate = useNavigate()
   const navRef = useRef(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    amIPicktAdmin().then(result => { if (!cancelled) setIsAdmin(result) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS
 
   // Move focus into the drawer when it opens (next frame, once it's visible)
   useEffect(() => {
@@ -46,7 +58,7 @@ export default function Sidebar({ badges = {}, open = false, onNavigate }) {
 
       {/* Navigation */}
       <nav className="sidebar-nav" ref={navRef} aria-label="Main">
-        {NAV_ITEMS.map(item => {
+        {navItems.map(item => {
           const active = isActive(item)
           return (
             <a

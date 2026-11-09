@@ -82,10 +82,18 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Can't unlock your own candidate
-  if (candidate.uploaded_by_company_id === userData.company_id) {
+  // Can't unlock a candidate your company referred (1st or 2nd referrer), so a
+  // company can't earn commission on its own hire
+  const { data: ownReferral } = await adminClient
+    .from("candidate_referrers")
+    .select("id")
+    .eq("candidate_id", candidateId)
+    .eq("company_id", userData.company_id)
+    .maybeSingle();
+
+  if (candidate.uploaded_by_company_id === userData.company_id || ownReferral) {
     return new Response(
-      JSON.stringify({ error: "You cannot unlock your own candidate" }),
+      JSON.stringify({ error: "You cannot unlock a candidate your company referred" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -118,22 +126,13 @@ Deno.serve(async (req) => {
 
   // ── Post-unlock side effects (best-effort) ──────────────
 
-  // Send Resend notification to referring company
+  // Tell every referrer (1st and 2nd). No fee or commission figures in this email.
   if (resendApiKey) {
     try {
-      const { data: referringCompany } = await adminClient
-        .from("companies")
-        .select("name")
-        .eq("id", candidate.uploaded_by_company_id)
-        .single();
-
-      const { data: referringAdmin } = await adminClient
-        .from("users")
-        .select("email, full_name")
-        .eq("company_id", candidate.uploaded_by_company_id)
-        .eq("role", "admin")
-        .limit(1)
-        .single();
+      const { data: referrers } = await adminClient
+        .from("candidate_referrers")
+        .select("company_id")
+        .eq("candidate_id", candidateId);
 
       const { data: requestingCompany } = await adminClient
         .from("companies")
@@ -141,25 +140,41 @@ Deno.serve(async (req) => {
         .eq("id", userData.company_id)
         .single();
 
-      if (referringAdmin?.email) {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "pickt <notifications@pickt.com>",
-            to: referringAdmin.email,
-            subject: "A candidate you referred has been unlocked",
-            html: `
-              <p>Hi ${referringAdmin.full_name || referringCompany?.name || "there"},</p>
-              <p><strong>${requestingCompany?.name || "A company"}</strong> has unlocked one of your referred candidates on pickt.</p>
-              <p>If they make a successful hire, you'll earn your placement fee automatically.</p>
-              <p>— The pickt team</p>
-            `,
-          }),
-        });
+      for (const referrer of referrers ?? []) {
+        const { data: referringCompany } = await adminClient
+          .from("companies")
+          .select("name")
+          .eq("id", referrer.company_id)
+          .single();
+
+        const { data: referringAdmin } = await adminClient
+          .from("users")
+          .select("email, full_name")
+          .eq("company_id", referrer.company_id)
+          .eq("role", "admin")
+          .limit(1)
+          .maybeSingle();
+
+        if (referringAdmin?.email) {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "pickt <notifications@pickt.com>",
+              to: referringAdmin.email,
+              subject: "A candidate you referred has been unlocked",
+              html: `
+                <p>Hi ${referringAdmin.full_name || referringCompany?.name || "there"},</p>
+                <p><strong>${requestingCompany?.name || "A company"}</strong> has unlocked one of your referred candidates on pickt.</p>
+                <p>If they hire this candidate, you'll earn your commission on their first-year salary.</p>
+                <p>— The pickt team</p>
+              `,
+            }),
+          });
+        }
       }
     } catch {
       // Notification is best-effort

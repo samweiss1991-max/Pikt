@@ -29,10 +29,10 @@ export default function Earnings() {
         </div>
         <div className="placeholder-card pikt-card">
           <div className="placeholder-card-icon">
-            <span className="material-symbols-outlined" style={{ fontSize: 24, color: 'var(--color-success)' }}>savings</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 24, color: 'var(--color-success)' }}>paid</span>
           </div>
-          <div className="placeholder-card-title">Savings Impact</div>
-          <div className="placeholder-card-desc">Compare your fees vs traditional agency rates and total client savings.</div>
+          <div className="placeholder-card-title">Commission Summary</div>
+          <div className="placeholder-card-desc">See the commission you have earned from your referrals.</div>
         </div>
       </div>
     </div>

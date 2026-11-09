@@ -14,7 +14,7 @@ export function mapCandidate(c) {
     skills: c.skills || [],
     interviews: c.interviews_completed ?? c.interviews ?? 0,
     interview_stage_reached: c.interview_stage_reached || c.stage || 'Technical screen',
-    fee: c.fee_percentage ?? c.fee ?? 8,
+    fee: c.fee_percentage ?? c.fee ?? null,
     salaryLow: c.salary_expectation_min ?? c.salaryLow ?? 0,
     salaryHigh: c.salary_expectation_max ?? c.salaryHigh ?? 0,
     years: c.years_experience ?? c.years ?? 0,

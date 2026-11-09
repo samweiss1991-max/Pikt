@@ -8,7 +8,7 @@ export default function UnlockModal({ candidateId, candidate: c, onSuccess, onCa
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const saving = c.salaryLow && c.salaryHigh
+  const saving = c.fee != null && c.salaryLow && c.salaryHigh
     ? Math.round(((0.22 - c.fee / 100) * (c.salaryLow + c.salaryHigh) / 2) / 1000)
     : null
 
@@ -29,7 +29,7 @@ export default function UnlockModal({ candidateId, candidate: c, onSuccess, onCa
   }
 
   const rows = [
-    ['Placement fee', `${c.fee}% of first-year salary`, true],
+    ...(c.fee != null ? [['Placement fee', `${c.fee}% of first-year salary`, true]] : []),
     ['When charged', 'On successful hire only', false],
     ['Referred by', `${c.referringCompany || c.company || 'Unknown'} \u00B7 \u2605 4.6`, false],
     ['Interviews completed', `${c.interviews} interviews`, false],
