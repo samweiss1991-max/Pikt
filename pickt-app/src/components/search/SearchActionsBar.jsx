@@ -1,12 +1,13 @@
-import { useLocation, useNavigate } from 'react-router-dom'
-import { useSearch } from '../../context/SearchContext'
-import { clearRememberedSearch } from '../../lib/searchCriteria'
+import { useLocation } from 'react-router-dom'
+import { useNewSearch } from '../../hooks/useNewSearch'
 import './SearchActions.css'
-
-export const MARKETPLACE_SEARCH_PATH = '/marketplace/discover'
 
 // Pages with search controls or a candidate list get the "New search" button
 const PAGES_WITH_SEARCH = [/^\/$/, /^\/marketplace(\/|$)/, /^\/candidates\//, /^\/shortlist$/, /^\/my-candidates$/]
+
+// The job description pages: upload has no search to reset, and the results page has
+// its own "New search" next to Back
+const HIDDEN_ON = ['/marketplace/upload', '/marketplace/matches']
 
 /**
  * Top-right action bar, in the same place on every page with search controls
@@ -15,21 +16,9 @@ const PAGES_WITH_SEARCH = [/^\/$/, /^\/marketplace(\/|$)/, /^\/candidates\//, /^
  */
 export default function SearchActionsBar() {
   const { pathname } = useLocation()
-  const navigate = useNavigate()
-  const { setQuery, sendSearchCommand } = useSearch()
+  const newSearch = useNewSearch()
 
-  if (!PAGES_WITH_SEARCH.some(re => re.test(pathname))) return null
-
-  function newSearch() {
-    // Forget the remembered last search so it doesn't come back after a reload
-    clearRememberedSearch()
-    setQuery('')
-    if (pathname === MARKETPLACE_SEARCH_PATH) {
-      sendSearchCommand({ type: 'reset' })          // reset in place, no reload
-    } else {
-      navigate(MARKETPLACE_SEARCH_PATH, { state: { newSearch: true } })
-    }
-  }
+  if (!PAGES_WITH_SEARCH.some(re => re.test(pathname)) || HIDDEN_ON.includes(pathname)) return null
 
   return (
     <div className="sa-bar" role="toolbar" aria-label="Search actions">

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { mapCandidate } from '../lib/candidateUtils'
+import { useNewSearch } from '../hooks/useNewSearch'
 import CandidateCard from '../components/CandidateCard'
 import EmptyState from '../components/shared/EmptyState'
 import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
@@ -68,6 +69,11 @@ function CriteriaSummary({ parsed, totalConsidered, matchCount }) {
 
 export default function MarketplaceMatches() {
   const navigate = useNavigate()
+  const newSearch = useNewSearch()
+
+  // Arrives from the bottom of the upload form, so start at the top of the page
+  useEffect(() => { window.scrollTo(0, 0) }, [])
+
   const location = useLocation()
   const headerRef = useScrollReveal()
   const cardsRef = useStaggerReveal({ staggerMs: 80 })
@@ -99,7 +105,7 @@ export default function MarketplaceMatches() {
           <span className="material-symbols-outlined">arrow_back</span>
           Back
         </button>
-        <button className="mm-new-search press-scale" onClick={() => navigate('/marketplace/upload')}>
+        <button className="mm-new-search press-scale" onClick={newSearch}>
           <span className="material-symbols-outlined">refresh</span>
           New search
         </button>
