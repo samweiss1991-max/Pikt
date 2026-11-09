@@ -4,8 +4,7 @@
 //
 // Repeat referrals: if the candidate's email or mobile matches someone already
 // on Pickt, no new candidate is created. Instead this employer's interview is
-// added to the existing profile (candidate_interviews) and the referrer earns
-// points rather than a fee.
+// added to the existing profile (candidate_interviews).
 //
 // Env: IDENTITY_HASH_SECRET — secret key for hashing email/mobile (set it with
 //      `supabase secrets set IDENTITY_HASH_SECRET=<long random string>`).
@@ -13,8 +12,6 @@
 // Deploy: supabase functions deploy create-candidate
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const REPEAT_REFERRAL_POINTS = 100;
 
 // ── Identity matching (email / mobile) ──────────────────────
 // Only keyed hashes are stored for matching, so the raw values can't be
@@ -191,11 +188,9 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (existing) {
-    const { data: interview, error: interviewError } = await adminClient
+    const { error: interviewError } = await adminClient
       .from("candidate_interviews")
-      .insert({ candidate_id: existing.id, ...interviewFields, is_original_referral: false })
-      .select("id")
-      .single();
+      .insert({ candidate_id: existing.id, ...interviewFields, is_original_referral: false });
 
     if (interviewError) {
       const alreadyReferred = interviewError.code === "23505";
@@ -209,22 +204,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { error: pointsError } = await adminClient.from("referral_points").insert({
-      company_id: companyId,
-      candidate_id: existing.id,
-      interview_id: interview.id,
-      points: REPEAT_REFERRAL_POINTS,
-      reason: "repeat_referral",
-    });
-    if (pointsError) console.error("[create-candidate] points not recorded:", pointsError.message);
-
     return new Response(
       JSON.stringify({
         id: existing.id,
         success: true,
         merged: true,
         feeEligible: false,
-        pointsAwarded: pointsError ? 0 : REPEAT_REFERRAL_POINTS,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

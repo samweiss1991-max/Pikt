@@ -328,9 +328,9 @@ export default function Refer() {
       }
 
       localStorage.removeItem(STORAGE_KEY);
-      // Already on Pickt: tell the referrer their interview was added and points earned
+      // Already on Pickt: tell the referrer their interview was added
       if (data?.merged) {
-        setMergedResult({ points: data.pointsAwarded ?? 0 });
+        setMergedResult(true);
         setSubmitting(false);
         return;
       }
@@ -991,7 +991,7 @@ export default function Refer() {
           <label className="rf-label" htmlFor="rf-mobile">Mobile number</label>
           <input id="rf-mobile" className="rf-input" style={{ maxWidth: 300 }} placeholder="+61 4XX XXX XXX" value={form.mobile_number} onChange={(e) => set("mobile_number", e.target.value)} />
           <p style={{ marginTop: '0.375rem', fontSize: '0.8125rem', color: 'var(--on-surface-variant)' }}>
-            Email or mobile is required. If this candidate is already on Pickt, your interview is added to their profile and you earn points instead of a fee.
+            Email or mobile is required. If this candidate is already on Pickt, your interview is added to their profile.
           </p>
         </div>
 
@@ -1099,7 +1099,7 @@ export default function Refer() {
           <div role="status" style={{ padding: '1rem 1.25rem', borderRadius: '0.75rem', background: 'var(--color-success-tint)', color: 'var(--color-success)', border: '1px solid var(--color-success)' }}>
             <p style={{ fontWeight: 800, margin: 0 }}>This candidate is already on Pickt</p>
             <p style={{ margin: '0.25rem 0 0.75rem' }}>
-              Your interview has been added to their profile{mergedResult.points > 0 ? ` and you've earned ${mergedResult.points} points` : ''}. Repeat referrals earn points instead of a placement fee.
+              Your interview has been added to their profile.
             </p>
             <a href="/my-candidates" style={{ fontWeight: 700, color: 'var(--color-success)', textDecoration: 'underline' }}>Go to my candidates</a>
           </div>
