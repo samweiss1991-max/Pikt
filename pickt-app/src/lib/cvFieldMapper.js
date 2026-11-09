@@ -17,7 +17,8 @@ export function mapParsedDataToForm(parsed, initial) {
     skills: (parsed.skills && parsed.skills.length > 0) ? parsed.skills : initial.skills,
     current_employer: parsed.current_employer || initial.current_employer,
     current_job_title: parsed.current_job_title || initial.current_job_title,
-    mobile_number: parsed.phone || parsed.mobile_number || initial.mobile_number,
+    // Checked at the start of the form, so a CV never replaces it
+    mobile_number: initial.mobile_number || parsed.phone || parsed.mobile_number || '',
     linkedin_url: parsed.linkedin_url || initial.linkedin_url,
     portfolio_url: parsed.portfolio_url || initial.portfolio_url,
     experience_band: bandFromYears(parsed.years_experience) || initial.experience_band,

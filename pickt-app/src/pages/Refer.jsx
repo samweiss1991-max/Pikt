@@ -96,6 +96,12 @@ export default function Refer() {
   const [form, dispatch] = useReducer(reducer, INITIAL);
   // The email + mobile check has to pass before the form opens
   const [gatePassed, setGatePassed] = useState(false);
+  // Set when the check step is opened from part-way through the form: where to go back to
+  const [returnStep, setReturnStep] = useState(null);
+  // Bumped when a draft loads, so the check step picks up the draft's email and mobile
+  const [draftVersion, setDraftVersion] = useState(0);
+  const [focusRequest, setFocusRequest] = useState(null);
+  const formTopRef = useRef(null);
   // Fresh referral status for the Review step, in case the details changed
   const [reviewStatus, setReviewStatus] = useState(null);
   const [step, setStep] = useState(0);
@@ -129,10 +135,18 @@ export default function Refer() {
         const parsed = JSON.parse(saved);
         const hasData = parsed.role_applied_for || parsed.industry || (parsed.skills && parsed.skills.length > 0);
         dispatch({ type: "RESTORE", state: upgradeReferDraft(parsed, INITIAL) });
+        setDraftVersion((v) => v + 1);
         if (hasData) {
-          setGatePassed(true);
-          setStep(1);
           setIntakeMethod(parsed._intakeMethod || 'manual');
+          if (parsed.email?.trim() && parsed.mobile_number?.trim()) {
+            setGatePassed(true);
+            setStep(1);
+          } else {
+            // Older drafts may not have these yet: check first, then back to the draft
+            setReturnStep(1);
+          }
+          // Resuming a draft isn't a step change, so it shouldn't move the page
+          skipNextMove.current = true;
         }
       }
     } catch { /* ignore */ }
@@ -149,6 +163,78 @@ export default function Refer() {
     }, 500);
     return () => clearTimeout(saveTimer.current);
   }, [form]);
+
+  // ── Moving between steps ────────────────────────────────
+
+  const skipNextMove = useRef(false);
+  const lastView = useRef(null);
+  const view = `${step}|${gatePassed}|${intakeMethod}`;
+
+  function scrollBehaviour() {
+    try {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    } catch {
+      return "auto";
+    }
+  }
+
+  // After a step change: top of the form, focus on the heading so screen readers say
+  // which step this is. After a failed Continue: the first problem field instead.
+  useEffect(() => {
+    if (focusRequest) {
+      const { target } = focusRequest;
+      const fromEnd = target.startsWith("last:");
+      const matches = [...document.querySelectorAll(fromEnd ? target.slice(5) : target)].filter((el) => !el.disabled);
+      const field = fromEnd ? matches[matches.length - 1] : matches[0];
+      if (field) {
+        field.scrollIntoView({ block: "center", behavior: scrollBehaviour() });
+        field.focus({ preventScroll: true });
+      }
+      lastView.current = view;
+      setFocusRequest(null);
+      return;
+    }
+    if (lastView.current === view) return;
+    const isFirstRender = lastView.current === null;
+    lastView.current = view;
+    if (isFirstRender) return;
+    if (skipNextMove.current) {
+      skipNextMove.current = false;
+      return;
+    }
+    formTopRef.current?.scrollIntoView({ block: "start", behavior: scrollBehaviour() });
+    const heading = formTopRef.current?.querySelector(".rf-section-title, h1, h2");
+    if (heading) {
+      heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
+  }, [view, focusRequest]);
+
+  // Email and mobile live on the check step, because changing them can change who the
+  // candidate is and this company's referrer position. Everything else typed is kept.
+  function changeCandidateDetails() {
+    setErrors([]);
+    setReturnStep(step);
+    setGatePassed(false);
+    setStep(0);
+  }
+
+  function CandidateSummary() {
+    const hasDetails = form.email.trim() && form.mobile_number.trim();
+    return (
+      <p className="rf-candidate-line">
+        <span>
+          {hasDetails
+            ? <>Candidate: {form.email} &middot; {form.mobile_number}</>
+            : "We still need the candidate's email and mobile number."}
+        </span>
+        <button id="rf-candidate-change" type="button" className="rf-link-btn" onClick={changeCandidateDetails}>
+          {hasDetails ? "Change" : "Add"}
+          {hasDetails && <span className="fc-sr-only"> candidate email and mobile</span>}
+        </button>
+      </p>
+    );
+  }
 
   // ── File upload ─────────────────────────────────────────
 
@@ -230,47 +316,50 @@ export default function Refer() {
 
   // ── Validation ──────────────────────────────────────────
 
+  // Each error names the field to take the referrer to. Listed in the order the
+  // fields appear on the step, so the first error is the first problem on the page.
   function validateStep(s) {
     const errs = [];
+    const add = (message, target) => errs.push({ message, target });
     if (s === 1) {
-      if (!form.industry) errs.push("Industry is required.");
-      if (!form.role_applied_for) errs.push("Current role title is required.");
-      if (!form.seniority_level) errs.push("Seniority level is required.");
-      if (!form.location_country) errs.push("Country is required.");
-      if (!form.location_city) errs.push("City is required.");
-      if (VISA_STATUSES.includes(form.residency_status) && !form.visa_type.trim()) errs.push("Visa type is required.");
-      if (form.preferred_work_types.length === 0) errs.push("Choose at least one work preference.");
-      if (form.employment_types.length === 0) errs.push("Choose at least one employment type.");
+      if (!form.industry) add("Industry is required.", "#rf-industry");
+      if (!form.role_applied_for) add("Current role title is required.", "#rf-role");
+      if (!form.seniority_level) add("Seniority level is required.", "#rf-seniority");
+      if (!form.location_country) add("Country is required.", "#rf-location [role=combobox]");
+      if (!form.location_city) add("City is required.", "last:#rf-location [role=combobox]");
+      if (VISA_STATUSES.includes(form.residency_status) && !form.visa_type.trim()) add("Visa type is required.", "#rf-visa-type");
+      if (form.preferred_work_types.length === 0) add("Choose at least one work preference.", "#rf-work input");
+      if (form.employment_types.length === 0) add("Choose at least one employment type.", "#rf-employment input");
       if (form.notice_period_weeks !== "" && !(Number.isInteger(Number(form.notice_period_weeks)) && Number(form.notice_period_weeks) >= 0 && Number(form.notice_period_weeks) <= NOTICE_WEEKS_MAX))
-        errs.push(`Notice period must be a whole number of weeks from 0 to ${NOTICE_WEEKS_MAX}.`);
-      if (form.skills.length === 0) errs.push("Add at least one skill.");
-      if (!form.interview_stage_reached) errs.push("Interview stage is required.");
+        add(`Notice period must be a whole number of weeks from 0 to ${NOTICE_WEEKS_MAX}.`, "#rf-notice");
       if (
         form.salary_expectation_min !== "" &&
         form.salary_expectation_max !== "" &&
         Number(form.salary_expectation_min) > Number(form.salary_expectation_max)
       ) {
-        errs.push("Salary min cannot exceed max.");
+        add("Salary min cannot exceed max.", "#rf-salary-min");
       }
+      if (form.skills.length === 0) add("Add at least one skill.", "#rf-skill");
+      if (!form.interview_stage_reached) add("Interview stage is required.", "#rf-stage button");
     }
     if (s === 2) {
-      if (!form.outcome) errs.push("Interview outcome is required.");
-      if (form.outcome === OTHER_OUTCOME && !form.outcome_other.trim()) errs.push("Please describe the outcome.");
-      if (form.strengths_list.length === 0) errs.push("Add at least one key strength.");
-      if (form.development_areas.length === 0) errs.push("Add at least one development area.");
-      if (!form.note_impressed.trim()) errs.push("Answer 'What impressed you most?'.");
-      if (!form.note_why_not_offer.trim()) errs.push("Answer 'Why didn't they get the offer?'.");
-      if (!form.recommendation) errs.push("Recommendation is required.");
+      if (!form.outcome) add("Interview outcome is required.", "#rf-outcome");
+      if (form.outcome === OTHER_OUTCOME && !form.outcome_other.trim()) add("Please describe the outcome.", "#rf-outcome-other");
+      if (form.strengths_list.length === 0) add("Add at least one key strength.", "#rf-strengths input");
+      if (form.development_areas.length === 0) add("Add at least one development area.", "#rf-development input");
+      if (!form.note_impressed.trim()) add("Answer 'What impressed you most?'.", "#in-note_impressed");
+      if (!form.note_why_not_offer.trim()) add("Answer 'Why didn't they get the offer?'.", "#in-note_why_not_offer");
+      if (!form.recommendation) add("Recommendation is required.", "#rf-recommendation button");
     }
     if (s === 3) {
-      if (!form.cv) errs.push("CV upload is required.");
       if (!form.email.trim() || !form.mobile_number.trim())
-        errs.push("Add the candidate's email and mobile number — it's how we recognise candidates already on Pickt.");
-      if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
-        errs.push("Enter a valid candidate email.");
+        add("Add the candidate's email and mobile number — it's how we recognise candidates already on Pickt.", "#rf-candidate-change");
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+        add("Enter a valid candidate email.", "#rf-candidate-change");
+      if (!form.cv) add("CV upload is required.", "#rf-cv-upload");
     }
     if (s === 4) {
-      if (!form.consent_given) errs.push("Candidate consent is required.");
+      if (!form.consent_given) add("Candidate consent is required.", "#rf-consent");
     }
     return errs;
   }
@@ -279,6 +368,7 @@ export default function Refer() {
     const errs = validateStep(step);
     if (errs.length > 0) {
       setErrors(errs);
+      setFocusRequest({ target: errs[0].target });
       return;
     }
     setErrors([]);
@@ -304,9 +394,13 @@ export default function Refer() {
   // ── Submit ──────────────────────────────────────────────
 
   async function handlePublish() {
-    const allErrors = [1, 2, 3, 4].flatMap(validateStep);
-    if (allErrors.length > 0) {
-      setErrors(allErrors);
+    // Take the referrer to the first step with a problem, showing that step's errors
+    const firstBadStep = [1, 2, 3, 4].find((n) => validateStep(n).length > 0);
+    if (firstBadStep) {
+      const errs = validateStep(firstBadStep);
+      setStep(firstBadStep);
+      setErrors(errs);
+      setFocusRequest({ target: errs[0].target });
       return;
     }
     setSubmitting(true);
@@ -448,7 +542,7 @@ export default function Refer() {
       if (parseError) throw new Error(parseError.message);
 
       if (parseResult?.parsed) {
-        const mapped = mapParsedDataToForm(parseResult.parsed, { ...INITIAL, cv: { url: uploadData.path, filename: file.name, uploading: false, progress: 100 } });
+        const mapped = mapParsedDataToForm(parseResult.parsed, { ...form, cv: { url: uploadData.path, filename: file.name, uploading: false, progress: 100 } });
         dispatch({ type: "RESTORE", state: mapped });
         setCvParsed(parseResult.parsed);
       } else {
@@ -686,8 +780,8 @@ export default function Refer() {
   function ErrorBox() {
     if (errors.length === 0) return null;
     return (
-      <div className="rf-errors">
-        <ul>{errors.map((e) => <li key={e}>{e}</li>)}</ul>
+      <div className="rf-errors" role="alert">
+        <ul>{errors.map((e) => <li key={e.message || e}>{e.message || e}</li>)}</ul>
       </div>
     );
   }
@@ -704,8 +798,8 @@ export default function Refer() {
 
         <div className="rf-row">
           <div>
-            <label className="rf-label">Industry *</label>
-            <select className="rf-select" value={form.industry} onChange={(e) => set("industry", e.target.value)}>
+            <label className="rf-label" htmlFor="rf-industry">Industry *</label>
+            <select id="rf-industry" className="rf-select" value={form.industry} onChange={(e) => set("industry", e.target.value)}>
               <option value="">Select industry</option>
               {INDUSTRIES.map((i) => <option key={i}>{i}</option>)}
             </select>
@@ -715,8 +809,8 @@ export default function Refer() {
             <input id="rf-role" className="rf-input" placeholder="e.g. Senior Frontend Engineer" value={form.role_applied_for} onChange={(e) => set("role_applied_for", e.target.value)} />
           </div>
           <div>
-            <label className="rf-label">Seniority level *</label>
-            <select className="rf-select" value={form.seniority_level} onChange={(e) => set("seniority_level", e.target.value)}>
+            <label className="rf-label" htmlFor="rf-seniority">Seniority level *</label>
+            <select id="rf-seniority" className="rf-select" value={form.seniority_level} onChange={(e) => set("seniority_level", e.target.value)}>
               <option value="">Select level</option>
               {SENIORITY.map((s) => <option key={s}>{s}</option>)}
             </select>
@@ -730,6 +824,7 @@ export default function Refer() {
           </div>
         </div>
 
+        <div id="rf-location">
         <LocationSelect
           required
           value={{
@@ -750,6 +845,7 @@ export default function Refer() {
             },
           })}
         />
+        </div>
 
         <div className="rf-row">
           <div>
@@ -792,20 +888,24 @@ export default function Refer() {
         </div>
 
         <div className="rf-row">
-          <CheckboxGroup
-            label="Work preferences"
-            required
-            options={WORK_PREFERENCES}
-            value={form.preferred_work_types}
-            onChange={(v) => set("preferred_work_types", v)}
-          />
-          <CheckboxGroup
-            label="Employment type"
-            required
-            options={EMPLOYMENT_TYPES}
-            value={form.employment_types}
-            onChange={(v) => set("employment_types", v)}
-          />
+          <div id="rf-work">
+            <CheckboxGroup
+              label="Work preferences"
+              required
+              options={WORK_PREFERENCES}
+              value={form.preferred_work_types}
+              onChange={(v) => set("preferred_work_types", v)}
+            />
+          </div>
+          <div id="rf-employment">
+            <CheckboxGroup
+              label="Employment type"
+              required
+              options={EMPLOYMENT_TYPES}
+              value={form.employment_types}
+              onChange={(v) => set("employment_types", v)}
+            />
+          </div>
         </div>
 
         <div className="rf-row rf-row--3">
@@ -827,19 +927,19 @@ export default function Refer() {
 
         <div className="rf-row">
           <div>
-            <label className="rf-label">Salary expectation (min)</label>
-            <input className="rf-input" type="number" min={0} placeholder="e.g. 120000" value={form.salary_expectation_min} onChange={(e) => set("salary_expectation_min", e.target.value ? Number(e.target.value) : "")} />
+            <label className="rf-label" htmlFor="rf-salary-min">Salary expectation (min)</label>
+            <input id="rf-salary-min" className="rf-input" type="number" min={0} placeholder="e.g. 120000" value={form.salary_expectation_min} onChange={(e) => set("salary_expectation_min", e.target.value ? Number(e.target.value) : "")} />
           </div>
           <div>
-            <label className="rf-label">Salary expectation (max)</label>
-            <input className="rf-input" type="number" min={0} placeholder="e.g. 150000" value={form.salary_expectation_max} onChange={(e) => set("salary_expectation_max", e.target.value ? Number(e.target.value) : "")} />
+            <label className="rf-label" htmlFor="rf-salary-max">Salary expectation (max)</label>
+            <input id="rf-salary-max" className="rf-input" type="number" min={0} placeholder="e.g. 150000" value={form.salary_expectation_max} onChange={(e) => set("salary_expectation_max", e.target.value ? Number(e.target.value) : "")} />
           </div>
         </div>
 
         <div>
-          <label className="rf-label">Skills *</label>
+          <label className="rf-label" htmlFor="rf-skill">Skills *</label>
           <div className="rf-skill-row">
-            <input className="rf-input" placeholder="Type a skill and press Enter" value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }} />
+            <input id="rf-skill" className="rf-input" placeholder="Type a skill and press Enter" value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }} />
             <button type="button" onClick={addSkill} className="rf-skill-add">Add</button>
           </div>
           {form.skills.length > 0 && (
@@ -855,8 +955,8 @@ export default function Refer() {
         </div>
 
         <div>
-          <label className="rf-label">Interview stage reached *</label>
-          <div className="rf-card-grid rf-card-grid--4">
+          <p className="rf-label" id="rf-stage-label">Interview stage reached *</p>
+          <div id="rf-stage" role="group" aria-labelledby="rf-stage-label" className="rf-card-grid rf-card-grid--4">
             {STAGES.map((s) => (
               <button key={s} type="button" onClick={() => set("interview_stage_reached", s)} className={`rf-card-option ${form.interview_stage_reached === s ? 'rf-card-option--active' : ''}`}>
                 {s}
@@ -911,29 +1011,33 @@ export default function Refer() {
           </div>
         </div>
 
-        <ChipPicker
-          label="Key strengths"
-          required
-          groups={STRENGTH_GROUPS}
-          value={form.strengths_list}
-          onChange={(v) => set("strengths_list", v)}
-          placeholder="Search strengths, or type your own"
-        />
+        <div id="rf-strengths">
+          <ChipPicker
+            label="Key strengths"
+            required
+            groups={STRENGTH_GROUPS}
+            value={form.strengths_list}
+            onChange={(v) => set("strengths_list", v)}
+            placeholder="Search strengths, or type your own"
+          />
+        </div>
 
-        <ChipPicker
-          label="Development areas"
-          required
-          groups={DEVELOPMENT_GROUPS}
-          value={form.development_areas}
-          onChange={(v) => set("development_areas", v)}
-          placeholder="Search development areas, or type your own"
-        />
+        <div id="rf-development">
+          <ChipPicker
+            label="Development areas"
+            required
+            groups={DEVELOPMENT_GROUPS}
+            value={form.development_areas}
+            onChange={(v) => set("development_areas", v)}
+            placeholder="Search development areas, or type your own"
+          />
+        </div>
 
         <InterviewNotesCard values={form} onChange={set} />
 
         <div>
-          <label className="rf-label">Your recommendation *</label>
-          <div className="rf-card-grid rf-card-grid--3">
+          <p className="rf-label" id="rf-recommendation-label">Your recommendation *</p>
+          <div id="rf-recommendation" role="group" aria-labelledby="rf-recommendation-label" className="rf-card-grid rf-card-grid--3">
             {RECOMMENDATIONS.map((r) => (
               <button key={r} type="button" aria-pressed={form.recommendation === r} onClick={() => set("recommendation", r)} className={`rf-card-option ${form.recommendation === r ? 'rf-card-option--active' : ''}`}>
                 {r}
@@ -976,7 +1080,7 @@ export default function Refer() {
           <p className="rf-section-subtitle">Upload their CV and supporting documents.</p>
         </div>
 
-        {ErrorBox()}
+        {CandidateSummary()}
 
         <div>
           <label className="rf-label">CV (PDF or DOCX) *</label>
@@ -990,7 +1094,7 @@ export default function Refer() {
               )}
             </div>
           ) : (
-            <label className="rf-upload-zone">
+            <label id="rf-cv-upload" className="rf-upload-zone" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.querySelector("input")?.click(); } }}>
               <span>Click to upload CV</span>
               <input type="file" style={{ display: 'none' }} accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(file, "cv"); }} />
             </label>
@@ -1050,18 +1154,6 @@ export default function Refer() {
             <label className="rf-label" htmlFor="rf-full-name">Candidate full name</label>
             <input id="rf-full-name" className="rf-input" placeholder="First and last name" autoComplete="off" value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
           </div>
-          <div>
-            <label className="rf-label" htmlFor="rf-email">Candidate email</label>
-            <input id="rf-email" type="email" className="rf-input" placeholder="name@example.com" autoComplete="off" value={form.email} onChange={(e) => set("email", e.target.value)} />
-          </div>
-        </div>
-
-        <div>
-          <label className="rf-label" htmlFor="rf-mobile">Mobile number</label>
-          <input id="rf-mobile" className="rf-input" style={{ maxWidth: 300 }} placeholder="+61 4XX XXX XXX" value={form.mobile_number} onChange={(e) => set("mobile_number", e.target.value)} />
-          <p style={{ marginTop: '0.375rem', fontSize: '0.8125rem', color: 'var(--on-surface-variant)' }}>
-            Email and mobile are both required. If this candidate is already on Pickt, your interview is added to their profile.
-          </p>
         </div>
 
         <div>
@@ -1113,6 +1205,8 @@ export default function Refer() {
           <h2 className="rf-section-title">Review & publish</h2>
           <p className="rf-section-subtitle">Review the anonymised listing that will appear on the marketplace.</p>
         </div>
+
+        {CandidateSummary()}
 
         <div className="rf-preview pikt-card">
           <h3 className="rf-preview-role">{form.role_applied_for || "Role title"}</h3>
@@ -1174,7 +1268,7 @@ export default function Refer() {
         </div>
 
         <label className="rf-consent">
-          <input type="checkbox" checked={form.consent_given} onChange={(e) => set("consent_given", e.target.checked)} />
+          <input id="rf-consent" type="checkbox" checked={form.consent_given} onChange={(e) => set("consent_given", e.target.checked)} />
           <span>
             This candidate has consented to being referred through pickt. Their PII will be redacted until a company unlocks their profile.
           </span>
@@ -1207,18 +1301,25 @@ export default function Refer() {
 
   return (
     <div className="rf-page">
-      <div className="rf-container">
+      <div className="rf-container" ref={formTopRef}>
         {/* Step 0: Intake method selection */}
         {step === 0 && !gatePassed && (
           <ReferGate
+            key={draftVersion}
             candidateId={searchParams.get("candidate") || undefined}
             initialEmail={form.email}
             initialMobile={form.mobile_number}
             onContinue={({ email, mobile }) => {
-              set("email", email);
-              set("mobile_number", mobile);
+              dispatch({ type: "MERGE", values: { email, mobile_number: mobile } });
               setGatePassed(true);
+              if (returnStep) setStep(returnStep);
+              setReturnStep(null);
             }}
+            onCancel={returnStep && form.email.trim() && form.mobile_number.trim() ? () => {
+              setStep(returnStep);
+              setGatePassed(true);
+              setReturnStep(null);
+            } : undefined}
           />
         )}
         {step === 0 && gatePassed && !intakeMethod && IntakeSelector()}
@@ -1242,7 +1343,7 @@ export default function Refer() {
               {step > 1 ? (
                 <button type="button" onClick={prevStep} className="rf-btn-back press-scale">Back</button>
               ) : (
-                <button type="button" onClick={() => { setStep(0); setIntakeMethod(null); setGatePassed(false); }} className="rf-btn-back press-scale">
+                <button type="button" onClick={() => { setStep(0); setIntakeMethod(null); setGatePassed(false); setReturnStep(null); setErrors([]); }} className="rf-btn-back press-scale">
                   <span className="material-symbols-outlined" style={{ fontSize: 16, marginRight: 4 }}>arrow_back</span>
                   Start over
                 </button>

@@ -8,7 +8,7 @@ import './ReferralPanel.css'
  * a referral spot is open and what it would earn, before filling in the long form.
  * A separate component so the fields keep focus while typing.
  */
-export default function ReferGate({ candidateId, initialEmail = '', initialMobile = '', onContinue }) {
+export default function ReferGate({ candidateId, initialEmail = '', initialMobile = '', onContinue, onCancel }) {
   const [email, setEmail] = useState(initialEmail)
   const [mobile, setMobile] = useState(initialMobile)
   const [checking, setChecking] = useState(false)
@@ -78,6 +78,12 @@ export default function ReferGate({ candidateId, initialEmail = '', initialMobil
           </button>
         }
       />
+
+      {onCancel && (
+        <button type="button" className="rf-link-btn" style={{ alignSelf: 'flex-start' }} onClick={onCancel}>
+          Keep the existing details and go back
+        </button>
+      )}
 
       {status?.state === 'review' && (
         <button type="button" className="rp-btn rp-btn--secondary press-scale" onClick={() => onContinue({ email: email.trim(), mobile: mobile.trim() })}>

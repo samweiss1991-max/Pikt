@@ -719,3 +719,36 @@
   line-height: 1.2;
   flex-shrink: 0;
 }
+
+/* Read-only candidate details, from the check step */
+.rf-candidate-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background: var(--color-primary-tint);
+  border-radius: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.rf-link-btn {
+  padding: 0.25rem 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.rf-upload-zone:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+
+/* Keeps a step's top clear of the sticky header when scrolled to */
+.rf-container { scroll-margin-top: 5.5rem; }
+.rf-fields [role="combobox"], .rf-fields .rf-input, .rf-fields .rf-select, .rf-fields .rf-textarea { scroll-margin-top: 6rem; }
+/* The heading gets focus by script after a step change, not by tabbing */
+.rf-container [tabindex="-1"]:focus { outline: none; }
