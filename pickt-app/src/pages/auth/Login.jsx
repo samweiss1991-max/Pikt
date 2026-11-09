@@ -76,7 +76,7 @@ export default function Login() {
           Don't have an account? <Link to="/signup" className="auth-link">Sign up</Link>
         </p>
 
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border-subtle)', textAlign: 'center' }}>
+        {import.meta.env.DEV && <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border-subtle)', textAlign: 'center' }}>
           <button
             onClick={() => {
               localStorage.setItem('pickt_dev_auth', 'true')
@@ -92,9 +92,9 @@ export default function Login() {
             Skip to demo →
           </button>
           <p style={{ fontSize: 11, color: 'var(--on-surface-variant)', marginTop: 6 }}>
-            Browse with test data, no account needed
+            Browse with test data, no account needed (only shown in local development)
           </p>
-        </div>
+        </div>}
       </div>
     </div>
   )

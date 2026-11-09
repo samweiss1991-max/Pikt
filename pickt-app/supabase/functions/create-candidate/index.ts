@@ -20,6 +20,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { identityHash, normaliseEmail, normaliseMobile } from "../_shared/identity.ts";
+import { isAllowedUploadPath, storagePathFrom } from "../_shared/uploads.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,6 +135,21 @@ Deno.serve(async (req) => {
   if (!body.cv_file_url) {
     return new Response(
       JSON.stringify({ error: "CV upload is required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Documents must be this user's own uploads, otherwise cv-url could be used
+  // to reach someone else's file
+  const cvPath = storagePathFrom(body.cv_file_url);
+  const coverLetterPath = storagePathFrom(body.cover_letter_url);
+  const additionalDocuments = (Array.isArray(body.additional_documents) ? body.additional_documents : [])
+    .map((d: { url?: unknown; filename?: unknown }) => ({ url: storagePathFrom(d?.url), filename: d?.filename ?? null }));
+
+  const documentPaths = [cvPath, ...(body.cover_letter_url ? [coverLetterPath] : []), ...additionalDocuments.map((d: { url: string | null }) => d.url)];
+  if (documentPaths.some((path) => !isAllowedUploadPath(path, user.id))) {
+    return new Response(
+      JSON.stringify({ error: "Please upload the documents again." }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -268,10 +284,10 @@ Deno.serve(async (req) => {
       recommendation: body.recommendation,
       interview_notes: body.interview_notes || null,
       skill_ratings: body.skill_ratings || null,
-      cv_file_url: body.cv_file_url,
+      cv_file_url: cvPath,
       cv_filename: body.cv_filename || null,
-      cover_letter_url: body.cover_letter_url || null,
-      additional_documents: body.additional_documents || null,
+      cover_letter_url: coverLetterPath,
+      additional_documents: additionalDocuments.length > 0 ? additionalDocuments : null,
       linkedin_url: body.linkedin_url || null,
       portfolio_url: body.portfolio_url || null,
       current_employer: body.current_employer || null,

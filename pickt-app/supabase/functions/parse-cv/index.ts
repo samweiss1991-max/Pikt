@@ -8,6 +8,7 @@
 // Required secret: ANTHROPIC_API_KEY (see https://console.anthropic.com/settings/keys)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isAllowedUploadPath } from "../_shared/uploads.ts";
 import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.30.0";
 
 const corsHeaders = {
@@ -271,6 +272,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "storagePath is required" }), {
         status: 400,
         headers: jsonHeaders,
+      });
+    }
+
+    // This function reads storage with full access, so it must only read the caller's own uploads
+    if (!isAllowedUploadPath(storagePath, user.id)) {
+      return new Response(JSON.stringify({ error: "You can only read files you uploaded" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

@@ -71,7 +71,7 @@ export default function MyCandidates() {
       .catch(err => {
         if (cancelled) return
         let devBypass = false
-        try { devBypass = localStorage.getItem('pickt_dev_auth') === 'true' } catch { /* ignore */ }
+        try { devBypass = import.meta.env.DEV && localStorage.getItem('pickt_dev_auth') === 'true' } catch { /* ignore */ }
         if (devBypass) setCandidates((getCandidates() || MOCK_CANDIDATES).map(mapDemoCandidate))
         else setLoadError(err.message || 'Could not load your referrals.')
       })

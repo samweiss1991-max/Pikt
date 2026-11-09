@@ -151,6 +151,14 @@ export default function Refer() {
     ]);
   }
 
+  // Each user's uploads go in their own folder: uploads/<user id>/<file>
+  async function ownUploadPath(file) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error("Please log in to upload documents.");
+    const safeName = file.name.replace(/[^\w.-]+/g, "_");
+    return `uploads/${session.user.id}/${Date.now()}_${safeName}`;
+  }
+
   async function uploadFile(file, field) {
     const maxSize = 10 * 1024 * 1024;
     const allowed = [
@@ -173,11 +181,11 @@ export default function Refer() {
       set(field, upload);
     }
 
-    const path = `uploads/${Date.now()}_${file.name}`;
-
-    const { data, error } = await withUploadTimeout(
-      supabase.storage.from("candidate-documents").upload(path, file, { upsert: false })
-    ).catch((err) => ({ data: null, error: err }));
+    const { data, error } = await ownUploadPath(file)
+      .then((path) => withUploadTimeout(
+        supabase.storage.from("candidate-documents").upload(path, file, { upsert: false })
+      ))
+      .catch((err) => ({ data: null, error: err }));
 
     if (error) {
       console.error('[Refer] CV upload failed:', error)
@@ -186,12 +194,8 @@ export default function Refer() {
       return;
     }
 
-    const { data: urlData } = supabase.storage
-      .from("candidate-documents")
-      .getPublicUrl(data.path);
-
     const done = {
-      url: urlData.publicUrl,
+      url: data.path,
       filename: file.name,
       uploading: false,
       progress: 100,
@@ -411,21 +415,17 @@ export default function Refer() {
     setCvError(null);
     setCvUploading(true);
 
-    const storagePath = `uploads/${Date.now()}_${file.name}`;
-
     try {
+      const storagePath = await ownUploadPath(file);
+
       const { data: uploadData, error: uploadError } = await withUploadTimeout(
         supabase.storage.from("candidate-documents").upload(storagePath, file, { upsert: false })
       );
 
       if (uploadError) throw new Error(uploadError.message);
 
-      const { data: urlData } = supabase.storage
-        .from("candidate-documents")
-        .getPublicUrl(uploadData.path);
-
       // Set CV on form so it's pre-attached in Step 3
-      set("cv", { url: urlData.publicUrl, filename: file.name, uploading: false, progress: 100 });
+      set("cv", { url: uploadData.path, filename: file.name, uploading: false, progress: 100 });
 
       setCvUploading(false);
       setCvParsing(true);
@@ -438,7 +438,7 @@ export default function Refer() {
       if (parseError) throw new Error(parseError.message);
 
       if (parseResult?.parsed) {
-        const mapped = mapParsedDataToForm(parseResult.parsed, { ...INITIAL, cv: { url: urlData.publicUrl, filename: file.name, uploading: false, progress: 100 } });
+        const mapped = mapParsedDataToForm(parseResult.parsed, { ...INITIAL, cv: { url: uploadData.path, filename: file.name, uploading: false, progress: 100 } });
         dispatch({ type: "RESTORE", state: mapped });
         setCvParsed(parseResult.parsed);
       } else {

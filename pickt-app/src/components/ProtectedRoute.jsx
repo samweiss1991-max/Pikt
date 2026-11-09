@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext'
 export default function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
 
-  // Allow bypass with localStorage flag for testing
-  const devBypass = localStorage.getItem('pickt_dev_auth') === 'true'
+  // Test shortcut for local development only. A built site always requires login.
+  const devBypass = import.meta.env.DEV && localStorage.getItem('pickt_dev_auth') === 'true'
 
   if (loading && !devBypass) {
     return (

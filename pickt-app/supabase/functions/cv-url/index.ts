@@ -1,10 +1,12 @@
 // Supabase Edge Function: cv-url
-// Generates signed Storage URLs for candidate CVs.
+// Generates short-lived signed Storage URLs for candidate CVs. This is the only way
+// to reach a CV: only the candidate's referrers and employers who have unlocked them.
 // Requires service role key (createSignedUrl is not available to anon).
 //
 // Deploy: supabase functions deploy cv-url
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { DOCUMENTS_BUCKET, storagePathFrom } from "../_shared/uploads.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,17 +83,23 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Must be owner or have an unlock record
-  const isOwner = candidate.uploaded_by_company_id === userData.company_id;
+  // Must be one of the candidate's referrers, or have an unlock record
+  const { data: referral } = await adminClient
+    .from("candidate_referrers")
+    .select("id")
+    .eq("candidate_id", candidateId)
+    .eq("company_id", userData.company_id)
+    .maybeSingle();
+  const isReferrer = Boolean(referral) || candidate.uploaded_by_company_id === userData.company_id;
 
-  if (!isOwner) {
+  if (!isReferrer) {
     const { data: unlock } = await adminClient
       .from("candidate_unlocks")
       .select("id")
       .eq("candidate_id", candidateId)
       .eq("requesting_company_id", userData.company_id)
       .eq("status", "approved")
-      .single();
+      .maybeSingle();
 
     if (!unlock) {
       return new Response(
@@ -101,7 +109,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (!candidate.cv_file_url) {
+  const cvPath = storagePathFrom(candidate.cv_file_url);
+  if (!cvPath) {
     return new Response(JSON.stringify({ error: "No CV available" }), {
       status: 404,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -110,8 +119,8 @@ Deno.serve(async (req) => {
 
   // Generate signed URL (1 hour expiry)
   const { data: signedUrl, error } = await adminClient.storage
-    .from("candidate-files")
-    .createSignedUrl(candidate.cv_file_url, 3600);
+    .from(DOCUMENTS_BUCKET)
+    .createSignedUrl(cvPath, 3600);
 
   if (error || !signedUrl) {
     return new Response(
