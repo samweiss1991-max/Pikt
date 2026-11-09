@@ -93,9 +93,11 @@ export default function MyCandidates() {
     return { total: candidates.length, unlocked, hired, earned }
   }, [candidates])
 
-  const headerRef = useScrollReveal()
-  const statsRef = useStaggerReveal({ staggerMs: 80 })
-  const tableRef = useStaggerReveal({ staggerMs: 60 })
+  // The page shows "Loading" first, so these must run again once the content exists,
+  // and the rows again whenever a filter changes them. Otherwise they stay invisible.
+  const headerRef = useScrollReveal({ deps: [loading, candidates.length] })
+  const statsRef = useStaggerReveal({ staggerMs: 80, deps: [loading, candidates.length] })
+  const tableRef = useStaggerReveal({ staggerMs: 60, deps: [loading, filtered] })
 
   if (loading) {
     return (

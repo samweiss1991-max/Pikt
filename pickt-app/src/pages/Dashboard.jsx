@@ -74,8 +74,9 @@ export default function Dashboard() {
 
   const statsRef = useStaggerReveal({ staggerMs: 80 })
   const filterRef = useScrollReveal()
-  const cardsRef = useStaggerReveal({ staggerMs: 100 })
-  const promoRef = useScrollReveal()
+  // The cards appear after loading, so these must run again once they exist
+  const cardsRef = useStaggerReveal({ staggerMs: 100, deps: [loading, candidates.length] })
+  const promoRef = useScrollReveal({ deps: [loading, candidates.length] })
 
   const headingWords = 'Dashboard'.split(' ')
 
