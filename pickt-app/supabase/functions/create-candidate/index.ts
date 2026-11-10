@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
         merged: true,
         referrerPosition: referral.position,
         // Members get no figures unless the Owner's setting is on
-        referrerRate: access.canSeeMoney ? referral.rate : null,
+        referrerRate: access.canSeeCommission ? referral.rate : null,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -335,7 +335,7 @@ Deno.serve(async (req) => {
       merged: false,
       referrerPosition: referral.position,
       // Members get no figures unless the Owner's setting is on
-        referrerRate: access.canSeeMoney ? referral.rate : null,
+        referrerRate: access.canSeeCommission ? referral.rate : null,
     }),
     {
       status: 200,

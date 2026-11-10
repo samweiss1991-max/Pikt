@@ -381,7 +381,7 @@ function LegacyCard({ index = 0, role = '', skills = [], efficiencyMetric, ctaLa
 function NewCard({ candidate: c, viewMode }) {
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
-  const { canApprove } = useAccount()
+  const { canUnlock } = useAccount()
   // Unlocks belong to the whole company, whoever approved them
   const [unlocked, setUnlocked] = useState(c.viewer_unlocked === true || c.status === 'unlocked' || checkUnlocked(c.id))
   const [expanded, setExpanded] = useState(false)
@@ -430,7 +430,7 @@ function NewCard({ candidate: c, viewMode }) {
     </button>
   )
   // Members ask their company's Owners and Admins instead of unlocking
-  const unlockModal = showModal && (canApprove
+  const unlockModal = showModal && (canUnlock
     ? <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />
     : <RequestUnlockModal candidateId={c.id} onCancel={() => setShowModal(false)} />)
 
@@ -439,8 +439,8 @@ function NewCard({ candidate: c, viewMode }) {
     c,
     unlocked,
     onUnlock: () => setShowModal(true),
-    unlockLabel: canApprove ? 'Unlock' : 'Request unlock',
-    unlockProfileLabel: canApprove ? 'Unlock profile' : 'Request unlock',
+    unlockLabel: canUnlock ? 'Unlock' : 'Request unlock',
+    unlockProfileLabel: canUnlock ? 'Unlock profile' : 'Request unlock',
     onViewProfile: goToProfile,
     saved,
     saving,
@@ -504,7 +504,7 @@ function NewCard({ candidate: c, viewMode }) {
             {unlocked ? (
               <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}><span aria-hidden="true">{'\u2713'}</span>View full profile</button>
             ) : (
-              <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>{canApprove ? 'Unlock candidate' : 'Request unlock'}</button>
+              <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>{canUnlock ? 'Unlock candidate' : 'Request unlock'}</button>
             )}
             {viewProfileButton()}
           </>}
@@ -541,7 +541,7 @@ function NewCard({ candidate: c, viewMode }) {
           actions={unlocked ? (
             <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={goToProfile}><span aria-hidden="true">{'\u2713'}</span>Unlocked</button>
           ) : (
-            <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={() => setShowModal(true)}>{canApprove ? COPY.marketplace.requestInterview : 'Request unlock'}</button>
+            <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={() => setShowModal(true)}>{canUnlock ? COPY.marketplace.requestInterview : 'Request unlock'}</button>
           )}
         />
         {unlockModal}

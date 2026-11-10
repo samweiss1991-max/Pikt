@@ -54,10 +54,10 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  // Members can't unlock, however the request reaches this function
-  if (!access.canApprove) {
+  // Only roles allowed to unlock, however the request reaches this function
+  if (!access.perms.unlock) {
     return new Response(
-      JSON.stringify({ code: "approval_required", error: "Only an Owner or Admin can unlock a profile. Please request approval instead." }),
+      JSON.stringify({ code: "approval_required", error: "You don't have permission to unlock profiles. Please request an unlock instead." }),
       { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

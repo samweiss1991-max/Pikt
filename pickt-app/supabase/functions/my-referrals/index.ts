@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     .eq("company_id", companyId)
     .order("referred_at", { ascending: false });
   if (error) return json({ error: error.message }, 500);
-  if (!rows?.length) return json({ referrals: [], canSeeMoney: access.canSeeMoney });
+  if (!rows?.length) return json({ referrals: [], canSeeMoney: access.canSeeCommission });
 
   const ids = rows.map((r) => r.candidate_id);
 
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
   for (const u of unlocks.data ?? []) unlockCounts.set(u.candidate_id, (unlockCounts.get(u.candidate_id) ?? 0) + 1);
 
   return json({
-    canSeeMoney: access.canSeeMoney,
+    canSeeMoney: access.canSeeCommission,
     referrals: rows.map((r) => {
       const c = candidateById.get(r.candidate_id);
       const commission = commissionByCandidate.get(r.candidate_id);
@@ -105,9 +105,9 @@ Deno.serve(async (req) => {
         referredAt: r.referred_at,
         position: r.referrer_position,
         // Commission goes to the company. Members get no figures unless the Owner's setting is on.
-        rate: access.canSeeMoney ? commission?.rate ?? rateByPosition.get(r.referrer_position) ?? null : null,
+        rate: access.canSeeCommission ? commission?.rate ?? rateByPosition.get(r.referrer_position) ?? null : null,
         status: commission?.status === "paid" ? "paid" : hiredIds.has(r.candidate_id) ? "hired" : "referred",
-        commissionAmount: access.canSeeMoney ? commission?.amount ?? null : null,
+        commissionAmount: access.canSeeCommission ? commission?.amount ?? null : null,
         paidAt: commission?.paid_at ?? null,
         unlocks: unlockCounts.get(r.candidate_id) ?? 0,
       };

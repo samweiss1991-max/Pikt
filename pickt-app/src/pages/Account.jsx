@@ -4,10 +4,11 @@ import ProfileTab from '../components/account/ProfileTab'
 import TeamTab from '../components/account/TeamTab'
 import PreferencesTab from '../components/account/PreferencesTab'
 import BillingTab from '../components/account/BillingTab'
+import AccessTab from '../components/account/AccessTab'
 import './Account.css'
 
 export default function Account() {
-  const { account, loading, canApprove, demo } = useAccount()
+  const { account, loading, canSeeBilling, isOwner, demo } = useAccount()
   const [params, setParams] = useSearchParams()
 
   if (demo) return <div className="ac2-page"><h1 className="ac2-title">Account settings</h1><p className="ac2-note">Log in to see your account.</p></div>
@@ -20,7 +21,8 @@ export default function Account() {
     { key: 'profile', label: 'Profile' },
     { key: 'team', label: 'Company & team' },
     { key: 'preferences', label: 'Preferences' },
-    ...(canApprove ? [{ key: 'billing', label: 'Billing & unlocks' }] : []),
+    ...(canSeeBilling ? [{ key: 'billing', label: 'Billing & unlocks' }] : []),
+    ...(isOwner ? [{ key: 'access', label: 'Manage access' }] : []),
   ]
   const active = tabs.some(t => t.key === params.get('tab')) ? params.get('tab') : 'profile'
 
@@ -64,6 +66,7 @@ export default function Account() {
         {active === 'team' && <TeamTab />}
         {active === 'preferences' && <PreferencesTab />}
         {active === 'billing' && <BillingTab />}
+        {active === 'access' && <AccessTab />}
       </div>
     </div>
   )

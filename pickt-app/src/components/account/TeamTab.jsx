@@ -91,7 +91,7 @@ function RequestRow({ request: r, canApprove, onChanged }) {
 }
 
 export default function TeamTab() {
-  const { account, canApprove, refresh } = useAccount()
+  const { account, canApprove, canManageUsers, refresh } = useAccount()
   const [team, setTeam] = useState(null)
   const [requests, setRequests] = useState([])
   const [error, setError] = useState(null)
@@ -155,7 +155,7 @@ export default function TeamTab() {
   const n = team.members.length
   const pending = requests.filter(r => r.status === 'pending')
   const decided = requests.filter(r => r.status !== 'pending')
-  const canManage = m => canApprove && (isOwner || m.role !== 'owner')
+  const canManage = m => canManageUsers && (isOwner || m.role !== 'owner')
 
   return (
     <div className="ac2-stack">
@@ -170,7 +170,7 @@ export default function TeamTab() {
         {actionError && <p className="ac2-error" role="alert">{actionError}</p>}
         <div className="ac2-table-wrap" tabIndex={0} role="region" aria-label="Team members">
           <table className="ac2-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th>{canApprove && <th><span className="fc-sr-only">Actions</span></th>}</tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th>{canManageUsers && <th><span className="fc-sr-only">Actions</span></th>}</tr></thead>
             <tbody>
               {team.members.map(m => (
                 <tr key={m.id}>
@@ -186,7 +186,7 @@ export default function TeamTab() {
                     ) : ROLE_LABELS[m.role]}
                   </td>
                   <td>{day(m.created_at)}</td>
-                  {canApprove && (
+                  {canManageUsers && (
                     <td>
                       {canManage(m) && (
                         <button type="button" className="ac2-btn ac2-btn--small" onClick={() => { if (window.confirm(`Remove ${m.email} from ${account.company.name}?`)) act('remove_member', { userId: m.id }) }}>Remove</button>
@@ -200,7 +200,7 @@ export default function TeamTab() {
         </div>
       </section>
 
-      {canApprove && (
+      {canManageUsers && (
         <form className="ac2-card" onSubmit={invite}>
           <h2 className="ac2-h2">Invite someone</h2>
           <div className="ac2-row">
@@ -232,17 +232,6 @@ export default function TeamTab() {
             </>
           )}
         </form>
-      )}
-
-      {isOwner && (
-        <section className="ac2-card">
-          <h2 className="ac2-h2">Fees and commission</h2>
-          <label className="ac2-check">
-            <input type="checkbox" checked={account.company.membersSeeFees} onChange={e => act('set_members_see_fees', { enabled: e.target.checked })} />
-            Let Members see fees and commission amounts
-          </label>
-          <p className="ac2-note">Members still can't unlock or record a hire without approval.</p>
-        </section>
       )}
 
       <section className="ac2-card" aria-labelledby="ac2-requests">

@@ -71,8 +71,8 @@ Deno.serve(async (req) => {
   switch (body.action) {
     case "request_unlock":
     case "request_hire": {
-      if (access.canApprove) return json({ error: "As an Owner or Admin you can do this directly." }, 400);
       const isHire = body.action === "request_hire";
+      if (isHire ? access.perms.record_hire : access.perms.unlock) return json({ error: "You can do this directly." }, 400);
       const salary = isHire ? Number(body.salary) : null;
       if (isHire && !validSalary(salary as number)) return json({ error: ERRORS.invalid_salary[1] }, 400);
       if (isHire && !isRealDate(body.startDate)) return json({ error: ERRORS.invalid_start_date[1] }, 400);
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
           decidedAt: r.decided_at, declineReason: r.decline_reason, createdAt: r.created_at,
           startDate: r.approved_start_date ?? r.proposed_start_date,
         };
-        if (access.canSeeMoney) {
+        if (access.canSeeFees) {
           row.salary = r.approved_salary ?? r.proposed_salary;
         }
         // What the approver needs in order to decide: the total fee and its amount
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
         });
       }
       await notifyReferrers(admin, req_.candidate_id, existing.type === "hire"
-        ? { kind: "referral_status", pref: "referral_status", title: `A candidate you referred has been hired: ${role}`, body: "See Billing & unlocks for your commission.", link: "/account?tab=billing" }
+        ? { kind: "referral_status", pref: "referral_status", title: `A candidate you referred has been hired: ${role}`, body: "See Placements for the details.", link: "/placements?tab=referred" }
         : { kind: "referral_status", pref: "referral_status", title: `A candidate you referred has been unlocked: ${role}`, link: "/my-candidates" });
       return json({ success: true });
     }

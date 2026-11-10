@@ -12,7 +12,7 @@ const ROLE_LABELS = { owner: 'Owner', admin: 'Admin', member: 'Member' }
  */
 export default function AccountMenu() {
   const navigate = useNavigate()
-  const { account, canApprove } = useAccount()
+  const { account, canApprove, isOwner } = useAccount()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
   const triggerRef = useRef(null)
@@ -25,6 +25,7 @@ export default function AccountMenu() {
     { label: 'Account settings', icon: 'person', go: () => navigate('/account?tab=profile') },
     { label: 'Preferences', icon: 'tune', go: () => navigate('/account?tab=preferences') },
     { label: 'Company & team', icon: 'groups', go: () => navigate('/account?tab=team'), badge: pending },
+    ...(isOwner ? [{ label: 'Manage access', icon: 'admin_panel_settings', go: () => navigate('/account?tab=access') }] : []),
     ...(account?.isPicktAdmin ? [{ label: 'Pickt admin (Commissions)', icon: 'admin_panel_settings', go: () => navigate('/admin/commissions') }] : []),
     { label: 'Log out', icon: 'logout', separate: true, go: () => logOut() },
   ]

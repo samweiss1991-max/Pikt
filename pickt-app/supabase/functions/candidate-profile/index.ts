@@ -113,9 +113,9 @@ Deno.serve(async (req) => {
       .select("referrer_rate")
       .eq("referrer_position", ownReferral.referrer_position)
       .single();
-    // Members get no figures unless the Owner's setting is on
-    viewerReferrer = { position: ownReferral.referrer_position, rate: access.canSeeMoney ? rateRow?.referrer_rate ?? null : null };
-  } else if (!viewerIsReferrer && access.canSeeMoney) {
+    // The rate only for roles the Owner lets see commission
+    viewerReferrer = { position: ownReferral.referrer_position, rate: access.canSeeCommission ? rateRow?.referrer_rate ?? null : null };
+  } else if (!viewerIsReferrer && access.canSeeFees) {
     const { data: total } = await adminClient.rpc("employer_fee_for", {
       p_referrer_count: Math.max(1, referrerRows?.length ?? 0),
     });
@@ -136,7 +136,10 @@ Deno.serve(async (req) => {
     viewer: {
       role: access.role,
       canApprove: access.canApprove,
-      canSeeMoney: access.canSeeMoney,
+      canUnlock: access.perms.unlock,
+      canRecordHire: access.perms.record_hire,
+      canSeeMoney: access.canSeeFees,
+      canSeeCommission: access.canSeeCommission,
       pendingUnlock: (pending ?? []).some((r) => r.type === "unlock"),
       pendingHire: (pending ?? []).some((r) => r.type === "hire"),
     },
@@ -147,8 +150,8 @@ Deno.serve(async (req) => {
     viewerIsReferrer,
     viewerReferrer,
     isHired: Boolean(hireRow),
-    // Members are told a hire was recorded, without the figures
-    hire: ownHire && !access.canSeeMoney
+    // Without the approve permission: told a hire was recorded, without the figures
+    hire: ownHire && !access.canSeeFees
       ? { start_date: ownHire.start_date, first_year_salary: null, total_fee_percentage: null, total_fee_amount: null }
       : ownHire,
   }));

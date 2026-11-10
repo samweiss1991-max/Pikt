@@ -5,7 +5,8 @@
 // Deploy: supabase functions deploy account
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { companyAccess } from "../_shared/companyAccess.ts";
+import { companyAccess, PERMISSIONS } from "../_shared/companyAccess.ts";
+import { placementsFor, placementsCsv } from "./placements.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,7 @@ const TEAM_ERRORS: Record<string, string> = {
   last_owner: "A company must keep at least one Owner.",
   invalid_role: "Choose a valid role.",
 };
+const OWNER_ONLY = "Only your company's Owner can manage access.";
 const teamError = (message: string) => {
   const code = Object.keys(TEAM_ERRORS).find((k) => message.includes(k));
   return code ? json({ code, error: TEAM_ERRORS[code] }, code === "last_owner" ? 409 : 403) : json({ error: "That didn't work. Please try again." }, 500);
@@ -58,7 +60,7 @@ Deno.serve(async (req) => {
       const { data: picktAdmin } = await admin.from("pickt_admins").select("user_id").eq("user_id", user.id).maybeSingle();
       const { data: prefs } = await admin.from("user_preferences").select("homepage, default_view, email_prefs").eq("user_id", user.id).maybeSingle();
       let pendingCount = 0;
-      if (access.canApprove) {
+      if (access.perms.approve) {
         const { count } = await admin.from("company_requests").select("id", { count: "exact", head: true })
           .eq("company_id", access.companyId).eq("status", "pending");
         pendingCount = count ?? 0;
@@ -73,11 +75,14 @@ Deno.serve(async (req) => {
           jobTitle: access.row?.job_title ?? null,
         },
         company: access.companyId
-          ? { id: access.companyId, name: access.company?.name ?? null, logoUrl: access.company?.logo_url ?? null, membersSeeFees: Boolean(access.company?.members_see_fees) }
+          ? { id: access.companyId, name: access.company?.name ?? null, logoUrl: access.company?.logo_url ?? null }
           : null,
         role: access.role,
         canApprove: access.canApprove,
-        canSeeMoney: access.canSeeMoney,
+        canSeeMoney: access.canSeeFees,
+        canSeeCommission: access.canSeeCommission,
+        isOwner: access.isOwner,
+        permissions: access.perms,
         isPicktAdmin: Boolean(picktAdmin),
         pendingCount,
         unreadNotifications: unread ?? 0,
@@ -131,7 +136,7 @@ Deno.serve(async (req) => {
       const { data: members } = await admin.from("users").select("id, full_name, email, role, job_title, created_at")
         .eq("company_id", access.companyId).order("created_at");
       let invites: unknown[] = [];
-      if (access.canApprove) {
+      if (access.perms.manage_users) {
         const { data } = await admin.from("company_invites").select("id, email, role, created_at")
           .eq("company_id", access.companyId).is("accepted_at", null).is("cancelled_at", null).order("created_at");
         invites = data ?? [];
@@ -140,7 +145,7 @@ Deno.serve(async (req) => {
     }
 
     case "invite": {
-      if (!access.canApprove) return json({ error: TEAM_ERRORS.not_allowed }, 403);
+      if (!access.perms.manage_users) return json({ error: TEAM_ERRORS.not_allowed }, 403);
       const email = String(body.email ?? "").trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
       if (!["admin", "member"].includes(body.role)) return json({ error: "Choose Admin or Member." }, 400);
@@ -165,7 +170,7 @@ Deno.serve(async (req) => {
     }
 
     case "cancel_invite": {
-      if (!access.canApprove) return json({ error: TEAM_ERRORS.not_allowed }, 403);
+      if (!access.perms.manage_users) return json({ error: TEAM_ERRORS.not_allowed }, 403);
       await admin.from("company_invites").update({ cancelled_at: new Date().toISOString() })
         .eq("id", body.inviteId).eq("company_id", access.companyId);
       return json({ success: true });
@@ -181,15 +186,51 @@ Deno.serve(async (req) => {
       return error ? teamError(error.message) : json({ success: true });
     }
 
-    case "set_members_see_fees": {
-      if (access.role !== "owner") return json({ error: "Only an Owner can change this setting." }, 403);
-      const { error } = await admin.from("companies").update({ members_see_fees: body.enabled === true }).eq("id", access.companyId);
-      if (error) return json({ error: "Could not save that setting. Please try again." }, 500);
-      return json({ success: true });
+    // Manage access: Owners only, enforced here and again in the database
+    case "permissions": {
+      if (!access.isOwner) return json({ error: OWNER_ONLY }, 403);
+      const [{ data: rows }, { data: log }] = await Promise.all([
+        admin.from("company_permissions").select("role, permission, allowed").eq("company_id", access.companyId),
+        admin.from("permission_changes").select("id, changed_by, role, permission, allowed, automatic, created_at")
+          .eq("company_id", access.companyId).order("created_at", { ascending: false }).limit(100),
+      ]);
+      const grid: Record<string, Record<string, boolean>> = { admin: {}, member: {} };
+      for (const role of ["admin", "member"]) for (const p of PERMISSIONS) grid[role][p] = false;
+      for (const r of rows ?? []) if (grid[r.role] && r.permission in grid[r.role]) grid[r.role][r.permission] = Boolean(r.allowed);
+      const ids = [...new Set((log ?? []).map((l) => l.changed_by).filter(Boolean))];
+      const { data: people } = ids.length ? await admin.from("users").select("id, full_name, email").in("id", ids) : { data: [] };
+      const nameOf = new Map((people ?? []).map((u: { id: string; full_name: string | null; email: string }) => [u.id, u.full_name || u.email]));
+      return json({
+        grid,
+        log: (log ?? []).map((l) => ({
+          id: l.id, by: nameOf.get(l.changed_by) ?? "A former team member", role: l.role,
+          permission: l.permission, allowed: l.allowed, automatic: l.automatic, at: l.created_at,
+        })),
+      });
+    }
+
+    case "set_permission": {
+      if (!access.isOwner) return json({ error: OWNER_ONLY }, 403);
+      if (!["admin", "member"].includes(body.role)) return json({ error: "Choose Admin or Member." }, 400);
+      if (!(PERMISSIONS as readonly string[]).includes(body.permission)) return json({ error: "Unknown permission." }, 400);
+      const { data, error } = await admin.rpc("set_role_permission", {
+        p_actor: user.id, p_role: body.role, p_permission: body.permission, p_allowed: body.allowed === true,
+      });
+      if (error) return error.message.includes("owners_only") ? json({ error: OWNER_ONLY }, 403) : json({ error: "Could not save that change. Please try again." }, 500);
+      return json({ success: true, changes: data ?? [] });
+    }
+
+    case "placements": {
+      return json(await placementsFor(admin, access));
+    }
+
+    case "export": {
+      if (!access.perms.export) return json({ error: "You don't have permission to export data." }, 403);
+      return json({ filename: "pickt-placements.csv", csv: placementsCsv(await placementsFor(admin, access)) });
     }
 
     case "billing": {
-      if (!access.canApprove) return json({ error: "Only Owners and Admins can see billing." }, 403);
+      if (!access.perms.see_billing) return json({ error: "You don't have permission to see billing." }, 403);
       const companyId = access.companyId;
       const [unlocks, hires, commissions] = await Promise.all([
         admin.from("candidate_unlocks").select("candidate_id, unlocked_at, created_at, approved_by, requested_by, candidates(role_applied_for)")
@@ -213,13 +254,15 @@ Deno.serve(async (req) => {
           approvedBy: nameOf.get(u.approved_by) ?? null, requestedBy: nameOf.get(u.requested_by) ?? null,
         })),
         hires: (hires.data ?? []).map((h) => ({
-          id: h.id, candidateId: h.candidate_id, role: role(h), salary: h.first_year_salary, startDate: h.start_date,
-          feePercentage: h.total_fee_percentage, feeAmount: h.total_fee_amount,
+          id: h.id, candidateId: h.candidate_id, role: role(h), startDate: h.start_date,
+          // Placement fees only with the approve permission
+          salary: access.canSeeFees ? h.first_year_salary : null,
+          feePercentage: access.canSeeFees ? h.total_fee_percentage : null, feeAmount: access.canSeeFees ? h.total_fee_amount : null,
           approvedBy: nameOf.get(h.recorded_by) ?? null, requestedBy: nameOf.get(h.requested_by) ?? null, date: h.created_at,
         })),
         commissions: (commissions.data ?? []).map((c) => ({
           id: c.id, candidateId: c.candidate_id, role: role(c), position: c.referrer_position,
-          rate: c.rate, amount: c.amount, status: c.status, paidAt: c.paid_at, date: c.created_at,
+          rate: access.canSeeCommission ? c.rate : null, amount: access.canSeeCommission ? c.amount : null, status: c.status, paidAt: c.paid_at, date: c.created_at,
         })),
       });
     }

@@ -1,0 +1,55 @@
+/* Manage access: permissions grid and change log */
+.ma-status:empty { display: none; }
+.ma-grid-wrap { margin: 0.25rem 0; }
+.ma-grid { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.ma-grid th, .ma-grid td { padding: 0.625rem 0.5rem; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--color-border-subtle); }
+.ma-grid thead th { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-muted); }
+.ma-grid tbody th { font-weight: 400; }
+.ma-perm { display: block; font-weight: 700; color: var(--color-text); }
+.ma-perm-detail { display: block; margin-top: 0.125rem; font-size: 0.75rem; color: var(--color-text-muted); }
+.ma-always { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 44px; font-weight: 700; color: var(--color-success); }
+.ma-always .material-symbols-outlined { font-size: 18px; }
+
+.ma-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.ma-switch:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.ma-switch:disabled { cursor: progress; }
+.ma-switch-track { position: relative; width: 40px; height: 22px; background: var(--color-border-input); border-radius: 999px; transition: background 0.15s; }
+.ma-switch-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #FFFFFF; border-radius: 50%; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
+.ma-switch--on { color: var(--color-primary); }
+.ma-switch--on .ma-switch-track { background: var(--color-primary); }
+.ma-switch--on .ma-switch-thumb { transform: translateX(18px); }
+@media (prefers-reduced-motion: reduce) {
+  .ma-switch-track, .ma-switch-thumb { transition: none; }
+}
+
+.ma-log { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.ma-log-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; padding: 0.625rem 0; font-size: 0.875rem; border-bottom: 1px solid var(--color-border-subtle); }
+.ma-log-row:last-child { border-bottom: 0; }
+.ma-log-what { overflow-wrap: anywhere; }
+.ma-log-auto { color: var(--color-text-muted); }
+.ma-log-when { font-size: 0.8125rem; color: var(--color-text-muted); white-space: nowrap; }
+
+/* Phones: each permission becomes a small card with one line per role */
+@media (max-width: 640px) {
+  .ma-grid thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .ma-grid, .ma-grid tbody, .ma-grid tr, .ma-grid th, .ma-grid td { display: block; width: 100%; }
+  .ma-grid tr { padding: 0.5rem 0; border-bottom: 1px solid var(--color-border-subtle); }
+  .ma-grid th, .ma-grid td { padding: 0.25rem 0; border-bottom: 0; }
+  .ma-grid td { display: flex; align-items: center; justify-content: space-between; }
+  .ma-grid td::before { content: attr(data-role); font-size: 0.8125rem; font-weight: 700; color: var(--color-text-muted); }
+}

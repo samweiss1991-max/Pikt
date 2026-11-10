@@ -62,9 +62,9 @@ Deno.serve(async (req) => {
 
   const access = await companyAccess(adminClient, user.id);
   if (!access.companyId) return json({ error: "User not found" }, 404);
-  // Members can never record a hire, however the request reaches this function
-  if (!access.canApprove) {
-    return json({ code: "approval_required", error: "Only an Owner or Admin can record a hire. Please request approval instead." }, 403);
+  // Only roles allowed to record hires, however the request reaches this function
+  if (!access.perms.record_hire) {
+    return json({ code: "approval_required", error: "You don't have permission to record hires. Please request hire approval instead." }, 403);
   }
 
   const { candidateId, salary, startDate } = await req.json().catch(() => ({}));

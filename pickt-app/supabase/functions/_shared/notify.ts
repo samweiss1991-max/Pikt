@@ -46,11 +46,12 @@ export async function notifyUsers(admin: any, recipients: { id: string; email: s
 
 // deno-lint-ignore no-explicit-any
 export async function notifyApprovers(admin: any, companyId: string, message: Message) {
-  const { data } = await admin.from("users").select("id, email").eq("company_id", companyId).in("role", ["owner", "admin"]);
+  // The Owners, plus every role the Owner allows to approve (migration 037)
+  const { data } = await admin.rpc("company_approvers", { p_company: companyId });
   await notifyUsers(admin, data ?? [], message);
 }
 
-/** Tells the Owners and Admins of each company that referred this candidate. No figures. */
+/** Tells the Owners and approvers of each company that referred this candidate. No figures. */
 // deno-lint-ignore no-explicit-any
 export async function notifyReferrers(admin: any, candidateId: string, message: Message) {
   const { data: referrers } = await admin.from("candidate_referrers").select("company_id").eq("candidate_id", candidateId);

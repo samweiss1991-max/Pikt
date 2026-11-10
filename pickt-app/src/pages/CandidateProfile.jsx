@@ -282,13 +282,14 @@ export default function CandidateProfile() {
 
   // The server says what this person may do; the screen just follows it.
   // Demo candidates have no server, so they follow the signed-in person's account.
-  const canApprove = profile.viewer ? profile.viewer.canApprove : account.canApprove
+  const canUnlock = profile.viewer ? profile.viewer.canUnlock === true : account.canUnlock
+  const canRecordHire = profile.viewer ? profile.viewer.canRecordHire === true : account.canRecordHire
   const canSeeMoney = profile.viewer ? profile.viewer.canSeeMoney : account.canSeeMoney
   const unlockButton = profile.viewer?.pendingUnlock ? (
     <button type="button" className="pp-unlock-btn" disabled>Unlock requested</button>
   ) : (
     <button type="button" className="pp-unlock-btn press-scale" onClick={() => setShowModal(true)}>
-      {canApprove ? 'Unlock profile' : 'Request unlock'} <Icon name="arrow_forward" />
+      {canUnlock ? 'Unlock profile' : 'Request unlock'} <Icon name="arrow_forward" />
     </button>
   )
 
@@ -442,7 +443,7 @@ export default function CandidateProfile() {
                 <p className="pp-muted">This is a demo candidate, so a hire can't be recorded.</p>
               ) : (
                 <button type="button" className="pp-secondary-btn press-scale" onClick={() => setShowHireModal(true)}>
-                  <Icon name="how_to_reg" /> {canApprove ? 'Mark as hired' : 'Request hire approval'}
+                  <Icon name="how_to_reg" /> {canRecordHire ? 'Mark as hired' : 'Request hire approval'}
                 </button>
               )}
             </section>
@@ -460,7 +461,7 @@ export default function CandidateProfile() {
         </div>
       )}
 
-      {showHireModal && (canApprove ? (
+      {showHireModal && (canRecordHire ? (
         <RecordHireModal
           candidateId={profile.id}
           onSuccess={handleHireSuccess}
@@ -474,7 +475,7 @@ export default function CandidateProfile() {
         />
       ))}
 
-      {showModal && !canApprove && (
+      {showModal && !canUnlock && (
         <RequestUnlockModal
           candidateId={profile.id}
           onSuccess={load}
@@ -482,7 +483,7 @@ export default function CandidateProfile() {
         />
       )}
 
-      {showModal && canApprove && (
+      {showModal && canUnlock && (
         <UnlockModal
           candidate={modalCandidate}
           candidateId={profile.id}

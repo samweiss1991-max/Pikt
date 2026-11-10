@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     .order("referrer_position");
   if (ratesError) return json({ error: ratesError.message }, 500);
   // Members get no figures unless the Owner's setting is on
-  const rateFor = (position: number) => !access.canSeeMoney ? null :
+  const rateFor = (position: number) => !access.canSeeCommission ? null :
     (rates ?? []).find((r) => r.referrer_position === position)?.referrer_rate ?? null;
   const maxReferrers = (rates ?? []).length;
 
