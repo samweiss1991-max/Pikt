@@ -14,6 +14,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { identityHash, normaliseEmail, normaliseMobile } from "../_shared/identity.ts";
+import { companyAccess } from "../_shared/companyAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,13 +46,9 @@ Deno.serve(async (req) => {
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: "Unauthorized" }, 401);
 
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("company_id")
-    .eq("id", user.id)
-    .single();
-  if (!userData?.company_id) return json({ error: "User not found" }, 404);
-  const companyId = userData.company_id;
+  const access = await companyAccess(adminClient, user.id);
+  if (!access.companyId) return json({ error: "User not found" }, 404);
+  const companyId = access.companyId;
 
   const body = await req.json().catch(() => ({}));
   const email = normaliseEmail(body.email);
@@ -84,7 +81,8 @@ Deno.serve(async (req) => {
     .select("referrer_position, referrer_rate")
     .order("referrer_position");
   if (ratesError) return json({ error: ratesError.message }, 500);
-  const rateFor = (position: number) =>
+  // Members get no figures unless the Owner's setting is on
+  const rateFor = (position: number) => !access.canSeeMoney ? null :
     (rates ?? []).find((r) => r.referrer_position === position)?.referrer_rate ?? null;
   const maxReferrers = (rates ?? []).length;
 

@@ -12,6 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { shapeProfile } from "../_shared/profileShape.js";
+import { companyAccess } from "../_shared/companyAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,12 +44,9 @@ Deno.serve(async (req) => {
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: "Unauthorized" }, 401);
 
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("company_id")
-    .eq("id", user.id)
-    .single();
-  if (!userData) return json({ error: "User not found" }, 404);
+  const access = await companyAccess(adminClient, user.id);
+  if (!access.companyId) return json({ error: "User not found" }, 404);
+  const userData = { company_id: access.companyId };
 
   const { candidateId } = await req.json().catch(() => ({}));
   if (!candidateId) return json({ error: "candidateId is required" }, 400);
@@ -115,16 +113,33 @@ Deno.serve(async (req) => {
       .select("referrer_rate")
       .eq("referrer_position", ownReferral.referrer_position)
       .single();
-    viewerReferrer = { position: ownReferral.referrer_position, rate: rateRow?.referrer_rate ?? null };
-  } else if (!viewerIsReferrer) {
+    // Members get no figures unless the Owner's setting is on
+    viewerReferrer = { position: ownReferral.referrer_position, rate: access.canSeeMoney ? rateRow?.referrer_rate ?? null : null };
+  } else if (!viewerIsReferrer && access.canSeeMoney) {
     const { data: total } = await adminClient.rpc("employer_fee_for", {
       p_referrer_count: Math.max(1, referrerRows?.length ?? 0),
     });
     fee = total ?? null;
   }
 
+  const { data: pending } = await adminClient
+    .from("company_requests")
+    .select("type")
+    .eq("company_id", access.companyId)
+    .eq("candidate_id", candidateId)
+    .eq("status", "pending");
+
+  const ownHire = hireRow && hireRow.hiring_company_id === userData.company_id ? hireRow : null;
+
   // shapeProfile drops everything a locked viewer must not see
   return json(shapeProfile({
+    viewer: {
+      role: access.role,
+      canApprove: access.canApprove,
+      canSeeMoney: access.canSeeMoney,
+      pendingUnlock: (pending ?? []).some((r) => r.type === "unlock"),
+      pendingHire: (pending ?? []).some((r) => r.type === "hire"),
+    },
     candidate,
     interviews,
     unlocked,
@@ -132,6 +147,9 @@ Deno.serve(async (req) => {
     viewerIsReferrer,
     viewerReferrer,
     isHired: Boolean(hireRow),
-    hire: hireRow && hireRow.hiring_company_id === userData.company_id ? hireRow : null,
+    // Members are told a hire was recorded, without the figures
+    hire: ownHire && !access.canSeeMoney
+      ? { start_date: ownHire.start_date, first_year_salary: null, total_fee_percentage: null, total_fee_amount: null }
+      : ownHire,
   }));
 });

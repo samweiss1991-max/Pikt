@@ -6,6 +6,7 @@
 // Deploy: supabase functions deploy my-referrals
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { companyAccess } from "../_shared/companyAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,13 +38,9 @@ Deno.serve(async (req) => {
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: "Unauthorized" }, 401);
 
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("company_id")
-    .eq("id", user.id)
-    .single();
-  if (!userData?.company_id) return json({ error: "User not found" }, 404);
-  const companyId = userData.company_id;
+  const access = await companyAccess(adminClient, user.id);
+  if (!access.companyId) return json({ error: "User not found" }, 404);
+  const companyId = access.companyId;
 
   const { data: rows, error } = await adminClient
     .from("candidate_referrers")
@@ -51,7 +48,7 @@ Deno.serve(async (req) => {
     .eq("company_id", companyId)
     .order("referred_at", { ascending: false });
   if (error) return json({ error: error.message }, 500);
-  if (!rows?.length) return json({ referrals: [] });
+  if (!rows?.length) return json({ referrals: [], canSeeMoney: access.canSeeMoney });
 
   const ids = rows.map((r) => r.candidate_id);
 
@@ -82,6 +79,7 @@ Deno.serve(async (req) => {
   for (const u of unlocks.data ?? []) unlockCounts.set(u.candidate_id, (unlockCounts.get(u.candidate_id) ?? 0) + 1);
 
   return json({
+    canSeeMoney: access.canSeeMoney,
     referrals: rows.map((r) => {
       const c = candidateById.get(r.candidate_id);
       const commission = commissionByCandidate.get(r.candidate_id);
@@ -106,9 +104,10 @@ Deno.serve(async (req) => {
         recommendation: wroteAssessment ? c?.recommendation ?? null : null,
         referredAt: r.referred_at,
         position: r.referrer_position,
-        rate: commission?.rate ?? rateByPosition.get(r.referrer_position) ?? null,
+        // Commission goes to the company. Members get no figures unless the Owner's setting is on.
+        rate: access.canSeeMoney ? commission?.rate ?? rateByPosition.get(r.referrer_position) ?? null : null,
         status: commission?.status === "paid" ? "paid" : hiredIds.has(r.candidate_id) ? "hired" : "referred",
-        commissionAmount: commission?.amount ?? null,
+        commissionAmount: access.canSeeMoney ? commission?.amount ?? null : null,
         paidAt: commission?.paid_at ?? null,
         unlocks: unlockCounts.get(r.candidate_id) ?? 0,
       };

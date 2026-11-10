@@ -11,6 +11,7 @@ import { isDemoCandidateId } from '../lib/candidateProfile'
 import EmptyState from '../components/shared/EmptyState'
 import { useStaggerReveal } from '../hooks/useScrollReveal'
 import { experienceBandOf, locationLabelOf, mapCandidate } from '../lib/candidateUtils'
+import { useAccount } from '../context/AccountContext'
 import './Shortlist.css'
 
 function getDefaultStage(c) {
@@ -97,6 +98,7 @@ function CandidateCardInline({ c, i, navigate, onRemove, draggable, onDragStart 
 
 export default function Shortlist() {
   const navigate = useNavigate()
+  const { canSeeMoney } = useAccount()
   const [tab, setTab] = useState('all')
   const [view, setView] = useState('kanban')
   const [search, setSearch] = useState('')
@@ -266,7 +268,7 @@ export default function Shortlist() {
                 <div className="sl-compare-stats">
                   <div className="sl-compare-stat"><span className="sl-compare-stat-label">Experience</span><span className="sl-compare-stat-value">{experienceBandOf(c) || '—'}</span></div>
                   <div className="sl-compare-stat"><span className="sl-compare-stat-label">Interviews</span><span className="sl-compare-stat-value">{c.interviews}</span></div>
-                  {c.fee != null && <div className="sl-compare-stat"><span className="sl-compare-stat-label">Fee</span><span className="sl-compare-stat-value">{c.fee}%</span></div>}
+                  {(c.fee != null || !canSeeMoney) && <div className="sl-compare-stat"><span className="sl-compare-stat-label">Fee</span><span className="sl-compare-stat-value">{c.fee != null ? `${c.fee}%` : 'Fee applies'}</span></div>}
                   <div className="sl-compare-stat"><span className="sl-compare-stat-label">Salary</span><span className="sl-compare-stat-value">${Math.round((c.salaryLow || 0) / 1000)}k{'\u2013'}${Math.round((c.salaryHigh || 0) / 1000)}k</span></div>
                 </div>
                 <div className="sl-compare-section-title">Skills</div>

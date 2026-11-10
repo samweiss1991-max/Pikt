@@ -22,6 +22,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { identityHash, normaliseEmail, normaliseMobile } from "../_shared/identity.ts";
 import { isAllowedUploadPath, storagePathFrom } from "../_shared/uploads.ts";
 import { candidateFieldsFromRequest, feedbackFieldsFromRequest } from "../_shared/candidateFields.js";
+import { companyAccess } from "../_shared/companyAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -97,6 +98,7 @@ Deno.serve(async (req) => {
     });
   }
 
+  const access = await companyAccess(adminClient, user.id);
   const companyId = userData.company_id;
   const companyName = (userData.companies as { name: string })?.name;
 
@@ -249,7 +251,8 @@ Deno.serve(async (req) => {
         success: true,
         merged: true,
         referrerPosition: referral.position,
-        referrerRate: referral.rate,
+        // Members get no figures unless the Owner's setting is on
+        referrerRate: access.canSeeMoney ? referral.rate : null,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -331,7 +334,8 @@ Deno.serve(async (req) => {
       success: true,
       merged: false,
       referrerPosition: referral.position,
-      referrerRate: referral.rate,
+      // Members get no figures unless the Owner's setting is on
+        referrerRate: access.canSeeMoney ? referral.rate : null,
     }),
     {
       status: 200,

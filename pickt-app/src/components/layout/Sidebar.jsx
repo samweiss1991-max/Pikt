@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { COPY } from '../../lib/copy'
-import { amIPicktAdmin } from '../../lib/supabaseQueries'
+import { useAccount } from '../../context/AccountContext'
 import NavBadge from '../shared/NavBadge'
 import './Sidebar.css'
 
@@ -16,22 +16,12 @@ const NAV_ITEMS = [
   { label: COPY.nav.integrations,  icon: 'extension',       path: '/integrations' },
 ]
 
-const ADMIN_NAV_ITEM = { label: COPY.nav.adminCommissions, icon: 'admin_panel_settings', path: '/admin/commissions' }
-
 // `open` / `onNavigate` only matter on mobile, where the sidebar is a slide-in drawer
 export default function Sidebar({ badges = {}, open = false, onNavigate }) {
   const location = useLocation()
   const navigate = useNavigate()
   const navRef = useRef(null)
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    amIPicktAdmin().then(result => { if (!cancelled) setIsAdmin(result) }).catch(() => {})
-    return () => { cancelled = true }
-  }, [])
-
-  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS
+  const { account } = useAccount()
 
   // Move focus into the drawer when it opens (next frame, once it's visible)
   useEffect(() => {
@@ -58,7 +48,7 @@ export default function Sidebar({ badges = {}, open = false, onNavigate }) {
 
       {/* Navigation */}
       <nav className="sidebar-nav" ref={navRef} aria-label="Main">
-        {navItems.map(item => {
+        {NAV_ITEMS.map(item => {
           const active = isActive(item)
           return (
             <a
@@ -100,8 +90,8 @@ export default function Sidebar({ badges = {}, open = false, onNavigate }) {
             <span className="material-symbols-outlined">account_circle</span>
           </div>
           <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{COPY.user.name}</div>
-            <div className="sidebar-user-plan">{COPY.user.plan}</div>
+            <div className="sidebar-user-name">{account?.user?.fullName || account?.user?.email || COPY.user.name}</div>
+            <div className="sidebar-user-plan">{account?.company?.name || COPY.user.plan}</div>
           </div>
         </div>
       </div>

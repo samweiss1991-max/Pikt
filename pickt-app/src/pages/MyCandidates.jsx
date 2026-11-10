@@ -62,13 +62,14 @@ export default function MyCandidates() {
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
+  const [canSeeMoney, setCanSeeMoney] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [expandedId, setExpandedId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
     fetchMyReferrals()
-      .then(data => { if (!cancelled) setCandidates(data.referrals.map(mapReferral)) })
+      .then(data => { if (!cancelled) { setCandidates(data.referrals.map(mapReferral)); setCanSeeMoney(data.canSeeMoney !== false) } })
       .catch(err => {
         if (cancelled) return
         let devBypass = false
@@ -178,7 +179,7 @@ export default function MyCandidates() {
         <div className="mc-stat mc-stat--stone hover-lift" data-reveal>
           <span className="material-symbols-outlined mc-stat-icon">payments</span>
           <div className="mc-stat-label">Commission earned</div>
-          <div className="mc-stat-value">{money(stats.earned)}</div>
+          <div className="mc-stat-value">{canSeeMoney ? money(stats.earned) : '—'}</div>
         </div>
       </div>
 
@@ -246,7 +247,8 @@ export default function MyCandidates() {
                 <div className="mc-col mc-col--fee">
                   {c.commissionAmount != null
                     ? `${money(c.commissionAmount)} (${Number(c.rate)}%)`
-                    : c.rate != null ? `${Number(c.rate)}% if hired` : '—'}
+                    : c.rate != null ? `${Number(c.rate)}% if hired`
+                      : !canSeeMoney ? (c.status === 'referred' ? 'Commission if hired' : 'Commission earned') : '—'}
                 </div>
                 <div className="mc-col mc-col--actions">
                   <button

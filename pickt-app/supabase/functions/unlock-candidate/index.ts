@@ -1,10 +1,12 @@
 // Supabase Edge Function: unlock-candidate
-// Creates an unlock record, sends an email notification via Resend,
-// and triggers an ATS push (best-effort).
+// Creates an unlock record and notifies the referrers. Owners and Admins only:
+// Members use company-requests to ask for approval.
 //
 // Deploy: supabase functions deploy unlock-candidate
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { companyAccess } from "../_shared/companyAccess.ts";
+import { notifyReferrers } from "../_shared/notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +29,6 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
   const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authHeader } },
@@ -46,18 +47,21 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("company_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData) {
+  const access = await companyAccess(adminClient, user.id);
+  if (!access.companyId) {
     return new Response(JSON.stringify({ error: "User not found" }), {
       status: 404,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+  // Members can't unlock, however the request reaches this function
+  if (!access.canApprove) {
+    return new Response(
+      JSON.stringify({ code: "approval_required", error: "Only an Owner or Admin can unlock a profile. Please request approval instead." }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  const userData = { company_id: access.companyId };
 
   const { candidateId } = await req.json();
 
@@ -107,6 +111,7 @@ Deno.serve(async (req) => {
       requesting_company_id: userData.company_id,
       status: "approved",
       unlocked_at: unlockedAt,
+      approved_by: user.id,
     })
     .select("id")
     .single();
@@ -126,60 +131,14 @@ Deno.serve(async (req) => {
 
   // ── Post-unlock side effects (best-effort) ──────────────
 
-  // Tell every referrer (1st and 2nd). No fee or commission figures in this email.
-  if (resendApiKey) {
-    try {
-      const { data: referrers } = await adminClient
-        .from("candidate_referrers")
-        .select("company_id")
-        .eq("candidate_id", candidateId);
-
-      const { data: requestingCompany } = await adminClient
-        .from("companies")
-        .select("name")
-        .eq("id", userData.company_id)
-        .single();
-
-      for (const referrer of referrers ?? []) {
-        const { data: referringCompany } = await adminClient
-          .from("companies")
-          .select("name")
-          .eq("id", referrer.company_id)
-          .single();
-
-        const { data: referringAdmin } = await adminClient
-          .from("users")
-          .select("email, full_name")
-          .eq("company_id", referrer.company_id)
-          .eq("role", "admin")
-          .limit(1)
-          .maybeSingle();
-
-        if (referringAdmin?.email) {
-          await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "pickt <notifications@pickt.com>",
-              to: referringAdmin.email,
-              subject: "A candidate you referred has been unlocked",
-              html: `
-                <p>Hi ${referringAdmin.full_name || referringCompany?.name || "there"},</p>
-                <p><strong>${requestingCompany?.name || "A company"}</strong> has unlocked one of your referred candidates on pickt.</p>
-                <p>If they hire this candidate, you'll earn your commission on their first-year salary.</p>
-                <p>— The pickt team</p>
-              `,
-            }),
-          });
-        }
-      }
-    } catch {
-      // Notification is best-effort
-    }
-  }
+  // Tell every referrer (1st and 2nd). No fee or commission figures.
+  await notifyReferrers(adminClient, candidateId, {
+    kind: "referral_status",
+    pref: "referral_status",
+    title: "A candidate you referred has been unlocked",
+    body: "If they're hired, you'll earn your commission on their first-year salary.",
+    link: "/my-candidates",
+  });
 
   return new Response(
     JSON.stringify({

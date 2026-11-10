@@ -32,7 +32,18 @@ export function AuthProvider({ children }) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    // The browser's Back button can restore an earlier page straight from memory,
+    // logged-in screens, data and all, even after logging out. Reload it, so the
+    // normal login check runs against the current session.
+    function onPageShow(e) {
+      if (e.persisted) window.location.reload()
+    }
+    window.addEventListener('pageshow', onPageShow)
+
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('pageshow', onPageShow)
+    }
   }, [])
 
   async function signUp(email, password, fullName) {

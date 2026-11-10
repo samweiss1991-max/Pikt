@@ -34,7 +34,7 @@ export default function ReferralPanel({ status, salaryLow, salaryHigh, action })
       <section className="rp rp--info" aria-label="Referral status">
         <h2 className="rp-title">You've already referred this candidate</h2>
         <p className="rp-text">
-          You're the {status.position === 1 ? '1st' : '2nd'} referrer, and you'll earn {Number(status.rate)}% of their first-year salary if they're hired.
+          You're the {status.position === 1 ? '1st' : '2nd'} referrer{status.rate != null ? `, and you'll earn ${Number(status.rate)}% of their first-year salary if they're hired` : ', and your company earns commission if they\'re hired'}.
         </p>
         <a className="rp-link" href="/my-candidates">Go to my candidates</a>
       </section>
@@ -61,8 +61,10 @@ export default function ReferralPanel({ status, salaryLow, salaryHigh, action })
 
   const low = salaryLow ?? status.salaryLow
   const high = salaryHigh ?? status.salaryHigh
+  // No rate from the server means this person doesn't see figures
+  const hasRate = status.rate != null
   const rate = Number(status.rate)
-  const hasEstimate = low > 0 && high > 0
+  const hasEstimate = hasRate && low > 0 && high > 0
   const isFirst = status.position === 1
 
   return (
@@ -78,11 +80,17 @@ export default function ReferralPanel({ status, salaryLow, salaryHigh, action })
         </div>
       )}
       <h2 className="rp-title">{isFirst ? 'Be the first referrer' : 'Be the second referrer'}</h2>
-      <p className="rp-big">{rate}%</p>
-      <p className="rp-text">of their first-year salary if they're hired</p>
+      {hasRate ? (
+        <>
+          <p className="rp-big">{rate}%</p>
+          <p className="rp-text">of their first-year salary if they're hired</p>
+        </>
+      ) : (
+        <p className="rp-text">Your company earns commission if they're hired.</p>
+      )}
       {hasEstimate ? (
         <p className="rp-estimate">Estimated earnings {money(low * rate / 100)} – {money(high * rate / 100)}</p>
-      ) : (
+      ) : hasRate && (
         <p className="rp-text rp-note">You'll see estimated earnings once a salary range has been added.</p>
       )}
       {!isFirst && (

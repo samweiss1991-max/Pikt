@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { homepagePath, takeLoggedOutMessage } from '../../lib/account'
 import './Auth.css'
 
 export default function Login() {
@@ -13,8 +14,9 @@ export default function Login() {
   const [searchParams] = useSearchParams()
   // Where to go after signing in, e.g. back to the marketplace to finish saving a search.
   // Only in-app paths are allowed (no "//evil.com" style redirects).
-  const nextParam = searchParams.get('next') || '/'
-  const next = nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/'
+  const nextParam = searchParams.get('next')
+  const next = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null
+  const [loggedOut] = useState(takeLoggedOutMessage)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -26,7 +28,8 @@ export default function Login() {
     setLoading(true)
     try {
       await signIn(email, password)
-      navigate(next)
+      // Otherwise, the homepage they chose in Preferences
+      navigate(next || await homepagePath(), { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -43,6 +46,7 @@ export default function Login() {
         </div>
         <h1 className="auth-title">Welcome back</h1>
         <p className="auth-sub">Sign in to your account</p>
+        {loggedOut && <p role="status" style={{ margin: '0 0 1rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-success)', background: 'var(--color-success-tint)', borderRadius: '0.5rem' }}>You've been logged out</p>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label className="auth-label">Email</label>

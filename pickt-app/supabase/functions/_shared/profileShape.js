@@ -70,7 +70,7 @@ export function daysSince(date, now = Date.now()) {
  */
 export function shapeProfile({
   candidate: c, interviews = [], unlocked = false, isHired = false, hire = null,
-  fee, viewerIsReferrer = false, viewerReferrer = null, now = Date.now(),
+  fee, viewerIsReferrer = false, viewerReferrer = null, viewer = null, now = Date.now(),
 }) {
   const lastActiveAt = c.last_active_at || c.referred_at || c.created_at || null
 
@@ -133,6 +133,7 @@ export function shapeProfile({
     fee: fee !== undefined ? fee : (c.fee_percentage ?? c.fee ?? null),
     viewerIsReferrer,
     viewerReferrer,
+    viewer,
     // Public by product decision: the referrer is shown on marketplace cards
     referringCompany: c.referring_company || c.referringCompany || null,
     activity: {

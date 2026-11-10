@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useSearch } from '../../context/SearchContext'
 import NotificationPanel from '../shared/NotificationPanel'
+import AccountMenu from './AccountMenu'
+import { useAccount } from '../../context/AccountContext'
 import './Topbar.css'
 
 export default function Topbar({ menuButtonRef, navOpen = false, onMenuClick }) {
   const { query, setQuery } = useSearch()
   const [showNotifications, setShowNotifications] = useState(false)
+  const { account } = useAccount()
 
   return (
     <header className="topbar">
@@ -44,7 +47,7 @@ export default function Topbar({ menuButtonRef, navOpen = false, onMenuClick }) 
         <div className="topbar-notif-wrap">
           <button className="topbar-icon-btn" title="Notifications" onClick={() => setShowNotifications(!showNotifications)}>
             <span className="material-symbols-outlined">notifications</span>
-            <div className="topbar-notif-dot" />
+            {account?.unreadNotifications > 0 && <div className="topbar-notif-dot" />}
           </button>
           {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
         </div>
@@ -52,10 +55,7 @@ export default function Topbar({ menuButtonRef, navOpen = false, onMenuClick }) 
           <span className="material-symbols-outlined">help_outline</span>
         </button>
         <div className="topbar-divider" />
-        <span className="topbar-profile-label">Profile</span>
-        <div className="topbar-avatar">
-          <span className="material-symbols-outlined">person</span>
-        </div>
+        <AccountMenu />
       </div>
     </header>
   )

@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import UnlockModal from './unlock/UnlockModal'
+import RequestUnlockModal from './unlock/RequestUnlockModal'
+import { useAccount } from '../context/AccountContext'
 import { isUnlocked as checkUnlocked } from '../lib/sanitizeCandidate'
 import { isInShortlist, saveCandidate, unsaveCandidate } from '../lib/shortlist'
 import { getInterviewSnapshot, isSilverMedallist } from '../lib/interviewSnapshot'
@@ -103,6 +105,7 @@ function FlipCard({
   c, unlocked, onUnlock, onViewProfile, saved, saving, saveError, onToggleSave,
   variant = 'stack', stacked = false, skillsLimit, climbMax = 150, meta: metaOverride,
   extraTop, actions, below, onFrontClick, showDetails = true,
+  unlockLabel = 'Unlock', unlockProfileLabel = 'Unlock profile',
 }) {
   const [side, setSide] = useState('front')
   const tabRefs = useRef({})
@@ -252,7 +255,7 @@ function FlipCard({
                       {unlocked ? (
                         <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={onViewProfile}><span aria-hidden="true">{'\u2713'}</span>View full profile</button>
                       ) : (
-                        <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={onUnlock}>Unlock</button>
+                        <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={onUnlock}>{unlockLabel}</button>
                       )}
                       <button className="cc-stack-btn cc-stack-btn--outline press-scale" onClick={onViewProfile}>
                         View profile <span className="material-symbols-outlined cc-arrow" aria-hidden="true">arrow_forward</span>
@@ -315,7 +318,7 @@ function FlipCard({
                 {unlocked ? (
                   <button className="cc-snap-unlock press-scale" onClick={onViewProfile}>View full profile <span aria-hidden="true">→</span></button>
                 ) : (
-                  <button className="cc-snap-unlock press-scale" onClick={onUnlock}>Unlock profile <span aria-hidden="true">→</span></button>
+                  <button className="cc-snap-unlock press-scale" onClick={onUnlock}>{unlockProfileLabel} <span aria-hidden="true">→</span></button>
                 )}
               </div>
             </div>
@@ -378,7 +381,9 @@ function LegacyCard({ index = 0, role = '', skills = [], efficiencyMetric, ctaLa
 function NewCard({ candidate: c, viewMode }) {
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
-  const [unlocked, setUnlocked] = useState(c.status === 'unlocked' || checkUnlocked(c.id))
+  const { canApprove } = useAccount()
+  // Unlocks belong to the whole company, whoever approved them
+  const [unlocked, setUnlocked] = useState(c.viewer_unlocked === true || c.status === 'unlocked' || checkUnlocked(c.id))
   const [expanded, setExpanded] = useState(false)
   const [saved, setSaved] = useState(isInShortlist(c.id))
   const [saving, setSaving] = useState(false)
@@ -424,13 +429,18 @@ function NewCard({ candidate: c, viewMode }) {
       View profile <span className="material-symbols-outlined cc-arrow" aria-hidden="true">arrow_forward</span>
     </button>
   )
-  const unlockModal = showModal && <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />
+  // Members ask their company's Owners and Admins instead of unlocking
+  const unlockModal = showModal && (canApprove
+    ? <UnlockModal candidate={c} candidateId={c.id} onSuccess={handleUnlockSuccess} onCancel={() => setShowModal(false)} />
+    : <RequestUnlockModal candidateId={c.id} onCancel={() => setShowModal(false)} />)
 
   // Shared by every flip-card view
   const flipProps = {
     c,
     unlocked,
     onUnlock: () => setShowModal(true),
+    unlockLabel: canApprove ? 'Unlock' : 'Request unlock',
+    unlockProfileLabel: canApprove ? 'Unlock profile' : 'Request unlock',
     onViewProfile: goToProfile,
     saved,
     saving,
@@ -494,7 +504,7 @@ function NewCard({ candidate: c, viewMode }) {
             {unlocked ? (
               <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={goToProfile}><span aria-hidden="true">{'\u2713'}</span>View full profile</button>
             ) : (
-              <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>Unlock candidate</button>
+              <button className="cc-stack-btn cc-stack-btn--solid press-scale" onClick={() => setShowModal(true)}>{canApprove ? 'Unlock candidate' : 'Request unlock'}</button>
             )}
             {viewProfileButton()}
           </>}
@@ -531,7 +541,7 @@ function NewCard({ candidate: c, viewMode }) {
           actions={unlocked ? (
             <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={goToProfile}><span aria-hidden="true">{'\u2713'}</span>Unlocked</button>
           ) : (
-            <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={() => setShowModal(true)}>{COPY.marketplace.requestInterview}</button>
+            <button className="cc-stack-btn cc-stack-btn--solid cc-stack-btn--wide press-scale" onClick={() => setShowModal(true)}>{canApprove ? COPY.marketplace.requestInterview : 'Request unlock'}</button>
           )}
         />
         {unlockModal}

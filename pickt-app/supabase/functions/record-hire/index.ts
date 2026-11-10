@@ -9,6 +9,8 @@
 // Deploy: supabase functions deploy record-hire
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { companyAccess } from "../_shared/companyAccess.ts";
+import { notifyReferrers } from "../_shared/notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,12 +60,12 @@ Deno.serve(async (req) => {
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: "Unauthorized" }, 401);
 
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("company_id")
-    .eq("id", user.id)
-    .single();
-  if (!userData?.company_id) return json({ error: "User not found" }, 404);
+  const access = await companyAccess(adminClient, user.id);
+  if (!access.companyId) return json({ error: "User not found" }, 404);
+  // Members can never record a hire, however the request reaches this function
+  if (!access.canApprove) {
+    return json({ code: "approval_required", error: "Only an Owner or Admin can record a hire. Please request approval instead." }, 403);
+  }
 
   const { candidateId, salary, startDate } = await req.json().catch(() => ({}));
   if (!candidateId) return json({ error: "candidateId is required" }, 400);
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
 
   const { data, error } = await adminClient.rpc("record_hire", {
     p_candidate_id: candidateId,
-    p_company_id: userData.company_id,
+    p_company_id: access.companyId,
     p_user_id: user.id,
     p_salary: salaryNumber,
     p_start_date: startDate,
@@ -88,6 +90,14 @@ Deno.serve(async (req) => {
     console.error("[record-hire] failed:", error.message);
     return json({ error: "Could not record this hire. Please try again." }, 500);
   }
+
+  await notifyReferrers(adminClient, candidateId, {
+    kind: "referral_status",
+    pref: "referral_status",
+    title: "A candidate you referred has been hired",
+    body: "See Billing & unlocks for your commission.",
+    link: "/account?tab=billing",
+  });
 
   return json({
     hireId: data.hire_id,

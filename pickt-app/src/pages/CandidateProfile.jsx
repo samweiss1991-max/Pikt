@@ -4,6 +4,9 @@ import { getCvUrl } from '../lib/supabaseQueries'
 import { fetchCandidateProfile, isDemoCandidateId } from '../lib/candidateProfile'
 import UnlockModal from '../components/unlock/UnlockModal'
 import RecordHireModal from '../components/hire/RecordHireModal'
+import RequestHireModal from '../components/hire/RequestHireModal'
+import RequestUnlockModal from '../components/unlock/RequestUnlockModal'
+import { useAccount } from '../context/AccountContext'
 import './CandidateProfile.css'
 
 // ── Activity wording ──
@@ -205,6 +208,7 @@ export default function CandidateProfile() {
   const [loadError, setLoadError] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [showHireModal, setShowHireModal] = useState(false)
+  const account = useAccount()
 
   const load = useCallback(async () => {
     try {
@@ -276,9 +280,15 @@ export default function CandidateProfile() {
     interviews: stats.interviews,
   }
 
-  const unlockButton = (
+  // The server says what this person may do; the screen just follows it.
+  // Demo candidates have no server, so they follow the signed-in person's account.
+  const canApprove = profile.viewer ? profile.viewer.canApprove : account.canApprove
+  const canSeeMoney = profile.viewer ? profile.viewer.canSeeMoney : account.canSeeMoney
+  const unlockButton = profile.viewer?.pendingUnlock ? (
+    <button type="button" className="pp-unlock-btn" disabled>Unlock requested</button>
+  ) : (
     <button type="button" className="pp-unlock-btn press-scale" onClick={() => setShowModal(true)}>
-      Unlock profile <Icon name="arrow_forward" />
+      {canApprove ? 'Unlock profile' : 'Request unlock'} <Icon name="arrow_forward" />
     </button>
   )
 
@@ -365,6 +375,9 @@ export default function CandidateProfile() {
                   As the {profile.viewerReferrer.position === 1 ? '1st' : '2nd'} referrer, you'll earn {Number(profile.viewerReferrer.rate)}% of their first-year salary if they're hired.
                 </p>
               )}
+              {profile.viewerReferrer && profile.viewerReferrer.rate == null && (
+                <p className="pp-muted">Commission is earned by your company if they're hired.</p>
+              )}
             </section>
           )}
 
@@ -394,7 +407,9 @@ export default function CandidateProfile() {
               </div>
 
               {unlockButton}
-              {profile.fee != null && <p className="pp-unlock-fee">{profile.fee}% placement fee · only charged on a successful hire</p>}
+              {profile.fee != null
+                ? <p className="pp-unlock-fee">{profile.fee}% placement fee · only charged on a successful hire</p>
+                : !canSeeMoney && <p className="pp-unlock-fee">Fee applies · only charged on a successful hire</p>}
               <button type="button" className="pp-secondary-btn press-scale pp-refer-btn" onClick={() => navigate(`/refer?candidate=${profile.id}`)}>
                 <Icon name="person_add" /> Refer this candidate
               </button>
@@ -414,16 +429,20 @@ export default function CandidateProfile() {
                 <div className="pp-hire-summary" role="status">
                   <strong><Icon name="how_to_reg" /> Hire recorded</strong>
                   <span>Start date: {profile.hire.startDate}</span>
-                  <span>First-year salary: ${Number(profile.hire.salary).toLocaleString('en-AU')}</span>
-                  <span>Placement fee: {Number(profile.hire.totalFeePercentage)}% (${Number(profile.hire.totalFeeAmount).toLocaleString('en-AU')})</span>
+                  {profile.hire.salary != null && <span>First-year salary: ${Number(profile.hire.salary).toLocaleString('en-AU')}</span>}
+                  {profile.hire.totalFeePercentage != null
+                    ? <span>Placement fee: {Number(profile.hire.totalFeePercentage)}% (${Number(profile.hire.totalFeeAmount).toLocaleString('en-AU')})</span>
+                    : <span>Fee applies</span>}
                 </div>
               ) : profile.isHired ? (
                 <p className="pp-muted">This candidate has already been hired.</p>
+              ) : profile.viewer?.pendingHire ? (
+                <p className="pp-muted">A hire request is waiting for approval.</p>
               ) : isDemoCandidateId(profile.id) ? (
                 <p className="pp-muted">This is a demo candidate, so a hire can't be recorded.</p>
               ) : (
                 <button type="button" className="pp-secondary-btn press-scale" onClick={() => setShowHireModal(true)}>
-                  <Icon name="how_to_reg" /> Mark as hired
+                  <Icon name="how_to_reg" /> {canApprove ? 'Mark as hired' : 'Request hire approval'}
                 </button>
               )}
             </section>
@@ -441,15 +460,29 @@ export default function CandidateProfile() {
         </div>
       )}
 
-      {showHireModal && (
+      {showHireModal && (canApprove ? (
         <RecordHireModal
           candidateId={profile.id}
           onSuccess={handleHireSuccess}
           onCancel={() => setShowHireModal(false)}
         />
+      ) : (
+        <RequestHireModal
+          candidateId={profile.id}
+          onSuccess={handleHireSuccess}
+          onCancel={() => setShowHireModal(false)}
+        />
+      ))}
+
+      {showModal && !canApprove && (
+        <RequestUnlockModal
+          candidateId={profile.id}
+          onSuccess={load}
+          onCancel={() => setShowModal(false)}
+        />
       )}
 
-      {showModal && (
+      {showModal && canApprove && (
         <UnlockModal
           candidate={modalCandidate}
           candidateId={profile.id}
