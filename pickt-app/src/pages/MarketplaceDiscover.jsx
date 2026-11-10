@@ -12,15 +12,15 @@ import EmptyState from '../components/shared/EmptyState'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { computeCategoryCounts, ROLE_TO_CATEGORY } from '../lib/roleCategories'
-import {
-  employmentTypesOf, experienceBandOf, locationLabelOf, mapCandidate, matchesLocation, noticeWeeksOf, workPreferencesOf,
-} from '../lib/candidateUtils'
+import { mapCandidate } from '../lib/candidateUtils'
 import LocationSelect from '../components/forms/LocationSelect'
 import { EMPTY_LOCATION } from '../lib/locations'
 import { EMPLOYMENT_TYPES, EXPERIENCE_BANDS, formatLocation, WORK_PREFERENCES } from '../../supabase/functions/_shared/candidateFields.js'
 import SaveSearchControls from '../components/search/SaveSearchControls'
 import { SALARY_FLOOR, SALARY_CEIL, REMEMBERED_SEARCH_KEY, clearRememberedSearch, isDefaultCriteria } from '../lib/searchCriteria'
 import CandidateResults, { ViewSwitcher } from '../components/results/CandidateResults'
+import { filterCandidates } from '../../supabase/functions/_shared/matchCriteria.js'
+import { openRole } from '../lib/dashboard'
 import './MarketplaceDiscover.css'
 
 const isDevMode = import.meta.env.DEV
@@ -189,89 +189,9 @@ export default function MarketplaceDiscover() {
   const allCandidatesRef = useRef([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
-  function fetchCandidates({
-    categories = [],
-    query = '',
-    salaryMin = null,
-    salaryMax = null,
-    bands = [],
-    workPreferences = [],
-    employment = [],
-    place = null,
-    interviewDepth = null,
-    availability = [],
-  } = {}) {
-    let result = allCandidatesRef.current
-
-    // Filter by category (role → category mapping)
-    if (categories.length > 0) {
-      result = result.filter(c => categories.includes(ROLE_TO_CATEGORY[c.role]))
-    }
-
-    // Work preference and employment type: candidates with ANY of the selected options
-    if (workPreferences.length > 0) {
-      result = result.filter(c => workPreferencesOf(c).some(w => workPreferences.includes(w)))
-    }
-    if (employment.length > 0) {
-      result = result.filter(c => employmentTypesOf(c).some(t => employment.includes(t)))
-    }
-
-    // Location: Country, then State, then City, as far as chosen
-    if (place?.country) {
-      result = result.filter(c => matchesLocation(c, place))
-    }
-
-    // Filter by salary: the candidate's expected range must overlap the selected range
-    if (salaryMax != null) {
-      result = result.filter(c => (c.salaryLow || 0) <= salaryMax)
-    }
-    if (salaryMin != null) {
-      result = result.filter(c => (c.salaryHigh || c.salaryLow || 0) >= salaryMin)
-    }
-
-    // Experience: candidates in ANY of the selected bands
-    if (bands.length > 0) {
-      result = result.filter(c => bands.includes(experienceBandOf(c)))
-    }
-
-    // Filter by interview depth
-    if (interviewDepth) {
-      if (interviewDepth === '2+') {
-        result = result.filter(c => (c.interviews || 0) >= 2)
-      } else if (interviewDepth === '3+') {
-        result = result.filter(c => (c.interviews || 0) >= 3)
-      } else if (interviewDepth === 'Final only') {
-        result = result.filter(c => (c.interview_stage_reached || '').toLowerCase().includes('final'))
-      }
-    }
-
-    // Filter by availability (based on notice period in weeks; unknown counts as 4)
-    if (availability.length > 0) {
-      result = result.filter(c => {
-        const notice = noticeWeeksOf(c) ?? 4
-        return availability.some(a => {
-          if (a === 'Available now') return notice <= 0
-          if (a === '2 weeks') return notice <= 2
-          if (a === '1 month') return notice <= 4
-          if (a === 'Flexible') return true
-          if (a === 'Final round') return (c.interview_stage_reached || '').toLowerCase().includes('final')
-          return false
-        })
-      })
-    }
-
-    // Filter by search query (role, city, skills, seniority)
-    if (query.trim()) {
-      const q = query.toLowerCase()
-      result = result.filter(c =>
-        c.role.toLowerCase().includes(q) ||
-        locationLabelOf(c).toLowerCase().includes(q) ||
-        (c.skills || []).some(s => s.toLowerCase().includes(q)) ||
-        (c.seniority || '').toLowerCase().includes(q)
-      )
-    }
-
-    return { candidates: result, total: result.length }
+  // The filtering rules live in one shared file, also used by the Dashboard on the server
+  function fetchCandidates(options = {}) {
+    return filterCandidates(allCandidatesRef.current, options)
   }
 
   function loadCandidates() {
@@ -425,6 +345,20 @@ export default function MarketplaceDiscover() {
     window.history.replaceState({ ...window.history.state, usr: null }, '')
     focusAfterReset.current = true
     Promise.resolve().then(() => setResetTick(t => t + 1))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // From the Dashboard: ?search=<role> runs that company role (saved search);
+  // ?searches=open opens the saved searches menu
+  const [openSearchesMenu] = useState(() => new URLSearchParams(location.search).get('searches') === 'open')
+  const [roleNotice, setRoleNotice] = useState(null)
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get('search')
+    if (!id) return undefined
+    let cancelled = false
+    openRole(id)
+      .then(role => { if (!cancelled) { runSavedSearch(role.criteria); setRoleNotice(`Showing matches for: ${role.name}`) } })
+      .catch(() => { if (!cancelled) setRoleNotice("That role couldn't be opened. It may have been deleted.") })
+    return () => { cancelled = true }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Run a saved search: apply its text + filters (results and count update as usual)
@@ -644,10 +578,11 @@ export default function MarketplaceDiscover() {
     <div className="mk-page" style={{ position: 'relative', minHeight: 'calc(100vh - 4rem)' }}>
       {/* Saved searches + Save search, shown next to "New search" in the actions bar */}
       {actionsSlot && createPortal(
-        <SaveSearchControls criteria={currentCriteria} hasCriteria={!isDefaultCriteria(currentCriteria)} onRun={runSavedSearch} />,
+        <SaveSearchControls criteria={currentCriteria} hasCriteria={!isDefaultCriteria(currentCriteria)} onRun={runSavedSearch} openMenu={openSearchesMenu} />,
         actionsSlot,
       )}
       <p className="mk-sr-only" role="status" aria-live="polite">{announcement}</p>
+      {roleNotice && <p className="mk-role-notice" role="status">{roleNotice}</p>}
       {/* ── Page header ── */}
       <header className="mk-header reveal-fade-up" ref={headerRef} data-parallax-speed="0.08">
         <div className="mk-header-left">

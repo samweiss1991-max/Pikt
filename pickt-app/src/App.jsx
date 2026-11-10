@@ -15,6 +15,7 @@ const CandidateProfile = lazy(() => import('./pages/CandidateProfile'))
 const Shortlist = lazy(() => import('./pages/Shortlist'))
 const MyCandidates = lazy(() => import('./pages/MyCandidates'))
 const Placements = lazy(() => import('./pages/Placements'))
+const Unlocked = lazy(() => import('./pages/Unlocked'))
 const Earnings = lazy(() => import('./pages/Earnings'))
 const Integrations = lazy(() => import('./pages/Integrations'))
 const Refer = lazy(() => import('./pages/Refer'))
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="shortlist" element={<Shortlist />} />
         <Route path="my-candidates" element={<MyCandidates />} />
         <Route path="placements" element={<Placements />} />
+        <Route path="unlocked" element={<Unlocked />} />
         <Route path="earnings" element={<Earnings />} />
         <Route path="refer" element={<Refer />} />
         <Route path="integrations" element={<Integrations />} />

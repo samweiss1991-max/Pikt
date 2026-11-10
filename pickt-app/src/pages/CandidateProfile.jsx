@@ -8,6 +8,7 @@ import RequestHireModal from '../components/hire/RequestHireModal'
 import RequestUnlockModal from '../components/unlock/RequestUnlockModal'
 import { useAccount } from '../context/AccountContext'
 import './CandidateProfile.css'
+import { setCandidateStage } from '../lib/dashboard'
 
 // ── Activity wording ──
 // Header uses ranges; the unlock panel uses the exact day count.
@@ -198,6 +199,36 @@ function ContactCard({ profile }) {
         ))}
       </dl>
     </section>
+  )
+}
+
+/** Contact tracking for an unlocked candidate: shown on the Dashboard and Unlocked list */
+function ContactTracking({ candidateId, stage, onChange }) {
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const label = { unlocked: 'Not contacted yet', contacted: 'Contacted', interviewing: 'Interviewing' }[stage]
+  async function set(next) {
+    setSaving(true)
+    setError(null)
+    try {
+      await setCandidateStage(candidateId, next)
+      onChange(next)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className="pp-contact" aria-live="polite">
+      <p className="pp-muted"><strong>Status:</strong> {label}</p>
+      <div className="pp-contact-actions">
+        {stage === 'unlocked' && <button type="button" className="pp-secondary-btn press-scale" disabled={saving} onClick={() => set('contacted')}><Icon name="mail" /> Mark as contacted</button>}
+        {stage !== 'interviewing' && <button type="button" className="pp-secondary-btn press-scale" disabled={saving} onClick={() => set('interviewing')}><Icon name="groups" /> Interviewing</button>}
+        {stage === 'interviewing' && <button type="button" className="pp-secondary-btn press-scale" disabled={saving} onClick={() => set('contacted')}>Not interviewing</button>}
+      </div>
+      {error && <p className="pp-error" role="alert">{error}</p>}
+    </div>
   )
 }
 
@@ -425,6 +456,9 @@ export default function CandidateProfile() {
                 <button type="button" className="pp-secondary-btn press-scale" onClick={handleCvDownload}>
                   <Icon name="download" /> Download CV
                 </button>
+              )}
+              {profile.viewer?.stage && !profile.isHired && !isDemoCandidateId(profile.id) && (
+                <ContactTracking candidateId={profile.id} stage={profile.viewer.stage} onChange={stage => setProfile(p => ({ ...p, viewer: { ...p.viewer, stage } }))} />
               )}
               {profile.hire ? (
                 <div className="pp-hire-summary" role="status">

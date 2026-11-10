@@ -61,7 +61,8 @@ Deno.serve(async (req) => {
   // Unlocked only if THIS company has an approved unlock record
   const { data: unlock } = await adminClient
     .from("candidate_unlocks")
-    .select("id")
+    // Every column, so this still works before migration 039 adds the contact-tracking ones
+    .select("*")
     .eq("candidate_id", candidateId)
     .eq("requesting_company_id", userData.company_id)
     .eq("status", "approved")
@@ -142,6 +143,8 @@ Deno.serve(async (req) => {
       canSeeCommission: access.canSeeCommission,
       pendingUnlock: (pending ?? []).some((r) => r.type === "unlock"),
       pendingHire: (pending ?? []).some((r) => r.type === "hire"),
+      // Contact tracking for this company (migration 039)
+      stage: !unlocked ? null : unlock?.interviewing_at ? "interviewing" : unlock?.contacted_at ? "contacted" : "unlocked",
     },
     candidate,
     interviews,

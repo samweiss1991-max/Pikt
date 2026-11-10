@@ -3,7 +3,8 @@ import { useNewSearch } from '../../hooks/useNewSearch'
 import './SearchActions.css'
 
 // Pages with search controls or a candidate list get the "New search" button
-const PAGES_WITH_SEARCH = [/^\/$/, /^\/marketplace(\/|$)/, /^\/candidates\//, /^\/shortlist$/, /^\/my-candidates$/]
+// (not the Dashboard: it's an overview, with no search or candidate list)
+const PAGES_WITH_SEARCH = [/^\/marketplace(\/|$)/, /^\/candidates\//, /^\/shortlist$/, /^\/my-candidates$/]
 
 // The job description pages: upload has no search to reset, and the results page has
 // its own "New search" next to Back

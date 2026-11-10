@@ -19,14 +19,15 @@ let pendingSaveJob = null
  * "Saved searches" dropdown + "Save search" button (marketplace search page).
  * Saved searches live on the employer's account (server), so they need a real login.
  */
-export default function SaveSearchControls({ criteria, hasCriteria, onRun }) {
+export default function SaveSearchControls({ criteria, hasCriteria, onRun, openMenu = false }) {
   const navigate = useNavigate()
   const [user, setUser] = useState(undefined) // undefined = still checking
   const [saved, setSaved] = useState([])
   const [status, setStatus] = useState('idle') // idle | saving | saved | duplicate
   const [error, setError] = useState(null)
   const [dialog, setDialog] = useState(null)   // { mode: 'name', name } | { mode: 'login' }
-  const [menuOpen, setMenuOpen] = useState(false)
+  // Opened straight away when arriving from the Dashboard's "Manage roles"
+  const [menuOpen, setMenuOpen] = useState(openMenu)
   const [confirmId, setConfirmId] = useState(null)
   const menuRef = useRef(null)
   const statusTimer = useRef(null)

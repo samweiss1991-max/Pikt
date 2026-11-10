@@ -7,7 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { companyAccess, PERMISSIONS } from "../_shared/companyAccess.ts";
 import { placementsFor, placementsCsv } from "./placements.ts";
-import { earningsFor, earningsCsv } from "./earnings.ts";
+import { earningsFor, earningsCsv } from "../_shared/earnings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

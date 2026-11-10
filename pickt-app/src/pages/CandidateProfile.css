@@ -392,3 +392,7 @@
 /* Strengths navy, development areas neutral grey: growth areas, never red */
 .pp-chip--strength { color: #FFFFFF; background: #002366; }
 .pp-chip--growth { color: #374151; background: #E5E7EB; }
+
+/* Contact tracking on unlocked profiles */
+.pp-contact { display: flex; flex-direction: column; gap: 0.5rem; }
+.pp-contact-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }

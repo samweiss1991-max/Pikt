@@ -651,3 +651,6 @@ legend.mk-tray-salary-label { padding: 0; }
   .mk-header { flex-direction: column; align-items: flex-start; }
   .mk-heading { font-size: 2rem; }
 }
+
+/* "Showing matches for: <role>" when arriving from the Dashboard */
+.mk-role-notice { margin: 0 0 0.75rem; padding: 0.625rem 0.875rem; font-size: 0.875rem; font-weight: 700; color: var(--color-primary); background: var(--color-primary-tint); border-radius: 0.625rem; }

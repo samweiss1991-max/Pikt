@@ -1,0 +1,17 @@
+/* Unlocked candidates list (shares Dashboard.css) */
+.ul-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.ul-filter { min-height: 44px; padding: 0 1rem; font-family: inherit; font-size: 0.875rem; font-weight: 700; color: var(--color-text); background: #FFFFFF; border: 1px solid var(--color-border-input); border-radius: 999px; cursor: pointer; }
+.ul-filter--on { color: #FFFFFF; background: var(--color-primary); border-color: var(--color-primary); }
+.ul-filter:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.ul-status:empty { display: none; }
+.ul-list { margin: 0; padding: 0; list-style: none; }
+.ul-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; padding: 0.875rem 0; border-top: 1px solid var(--color-border-subtle); }
+.ul-row:first-child { border-top: 0; padding-top: 0; }
+.ul-main { flex: 1; min-width: 12rem; }
+.ul-role { display: inline-flex; align-items: center; min-height: 32px; font-size: 0.9375rem; font-weight: 800; color: var(--color-primary); }
+.ul-role:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.ul-stage { padding: 0.125rem 0.625rem; font-size: 0.75rem; font-weight: 800; border-radius: 999px; color: #855B00; background: #FEF3C7; }
+.ul-stage--contacted { color: var(--color-primary); background: #E8EEFA; }
+.ul-stage--interviewing { color: #FFFFFF; background: #3B5A99; }
+.ul-stage--hired, .ul-stage--hired_elsewhere { color: #065F46; background: #D1FAE5; }
+.ul-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
