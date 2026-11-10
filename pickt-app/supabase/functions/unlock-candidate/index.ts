@@ -5,6 +5,7 @@
 // Deploy: supabase functions deploy unlock-candidate
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isLive } from "../_shared/consent.ts";
 import { companyAccess } from "../_shared/companyAccess.ts";
 import { notifyReferrers } from "../_shared/notify.ts";
 
@@ -68,6 +69,14 @@ Deno.serve(async (req) => {
   if (!candidateId) {
     return new Response(JSON.stringify({ error: "candidateId is required" }), {
       status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Only candidates who confirmed their profile can be unlocked
+  if (!(await isLive(adminClient, candidateId))) {
+    return new Response(JSON.stringify({ error: "This candidate isn't available." }), {
+      status: 404,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

@@ -2,11 +2,7 @@
 // turned that kind off. Never carries fee or commission figures. Best-effort: a failed
 // notification must never undo the action that caused it.
 
-function escapeHtml(text: unknown) {
-  return String(text ?? "").replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string
-  ));
-}
+import { brandedEmail, sendEmail } from "./email.ts";
 
 type Message = { kind: string; pref: string; title: string; body?: string; link?: string };
 
@@ -18,8 +14,7 @@ export async function notifyUsers(admin: any, recipients: { id: string; email: s
       user_id: r.id, kind: message.kind, title: message.title, body: message.body ?? null, link: message.link ?? null,
     })));
 
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendKey) return;
+    if (!Deno.env.get("RESEND_API_KEY")) return;
 
     const { data: prefs } = await admin
       .from("user_preferences").select("user_id, email_prefs").in("user_id", recipients.map((r) => r.id));
@@ -28,16 +23,13 @@ export async function notifyUsers(admin: any, recipients: { id: string; email: s
     for (const r of recipients) {
       // Everything is on until someone turns it off
       if (!r.email || (prefFor.get(r.id) as Record<string, boolean> | undefined)?.[message.pref] === false) continue;
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: "pickt <notifications@pickt.com>",
-          to: r.email,
-          subject: message.title,
-          html: `<p>${escapeHtml(message.title)}</p>${message.body ? `<p>${escapeHtml(message.body)}</p>` : ""}<p>— The pickt team</p>`,
-        }),
+      const { html, text } = brandedEmail({
+        preheader: message.title,
+        heading: message.title,
+        paragraphs: message.body ? [message.body] : [],
       });
+      const result = await sendEmail({ to: r.email, subject: message.title, html, text });
+      if (!result.sent) console.error("[notify] email not sent:", result.error);
     }
   } catch (err) {
     console.error("[notify] failed:", err);

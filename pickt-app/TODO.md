@@ -31,3 +31,12 @@ Things deliberately left for later. Each says what exists today and what's missi
   record which user made them yet.
 - **Matching runs on every Dashboard visit.** Fine at today's size; with many thousands of
   candidates, match counts should be worked out in the database or cached.
+
+## Candidate consent (Stage 5A)
+
+- **Existing candidates** (on Pickt before consent emails) are kept live and haven't been emailed.
+  Decision pending: email them the same message and keep them live unless they decline.
+- **Re-sending a failed consent email** has no button yet: failures are saved in
+  candidate_consent_requests.email_error for the Pickt team to see.
+- **Someone who declined** keeps a scrambled (hashed) copy of their email and mobile on file so
+  they're never referred again. If they later want a profile, the Pickt team must clear it.

@@ -22,6 +22,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { identityHash, normaliseEmail, normaliseMobile } from "../_shared/identity.ts";
 import { isAllowedUploadPath, storagePathFrom } from "../_shared/uploads.ts";
 import { candidateFieldsFromRequest, feedbackFieldsFromRequest } from "../_shared/candidateFields.js";
+import { sendConsentEmail, siteUrlFrom } from "../_shared/consent.ts";
 import { companyAccess } from "../_shared/companyAccess.ts";
 
 const corsHeaders = {
@@ -39,6 +40,8 @@ function referralErrorResponse(dbMessage: string) {
     },
     already_referred: { status: 409, error: "Your company has already referred this candidate" },
     already_hired: { status: 409, error: "This candidate has already been hired, so they can't be referred." },
+    // They said no to Pickt, or removed their profile: we don't contact them again
+    candidate_unavailable: { status: 409, error: "This person can't be referred to Pickt." },
   };
   const code = Object.keys(known).find((k) => dbMessage.includes(k));
   if (!code) console.error("[create-candidate] referral failed:", dbMessage);
@@ -204,7 +207,7 @@ Deno.serve(async (req) => {
   // ── Repeat referral: same person already on Pickt ─────────
   const { data: matches, error: matchError } = await adminClient
     .from("candidates")
-    .select("id, email_hash, mobile_hash")
+    .select("id, email_hash, mobile_hash, consent_status")
     .or(`email_hash.eq.${emailHash},mobile_hash.eq.${mobileHash}`)
     .limit(10);
 
@@ -236,6 +239,7 @@ Deno.serve(async (req) => {
   const existing = matches?.[0];
 
   if (existing) {
+    if (!["live", "awaiting"].includes(existing.consent_status)) return referralErrorResponse("candidate_unavailable");
     const { data: referral, error: referralError } = await adminClient.rpc("register_referral", {
       p_candidate_id: existing.id,
       p_company_id: companyId,
@@ -245,11 +249,21 @@ Deno.serve(async (req) => {
 
     if (referralError) return referralErrorResponse(referralError.message);
 
+    // Still waiting for the candidate: email them again, naming every company that referred them
+    let consent = null;
+    if (existing.consent_status === "awaiting") {
+      const siteUrl = siteUrlFrom(req);
+      consent = siteUrl ? await sendConsentEmail(adminClient, existing.id, siteUrl) : { sent: false, error: "No site address for the email link." };
+      if (!consent.sent) console.error("[create-candidate] consent email not sent:", consent.error);
+    }
+
     return new Response(
       JSON.stringify({
         id: existing.id,
         success: true,
         merged: true,
+        consentStatus: existing.consent_status,
+        consentEmailSent: consent ? consent.sent : null,
         referrerPosition: referral.position,
         // Members get no figures unless the Owner's setting is on
         referrerRate: access.canSeeCommission ? referral.rate : null,
@@ -272,6 +286,8 @@ Deno.serve(async (req) => {
       referring_company: companyName,
       pii_redacted: true,
       status: "available",
+      // Hidden from the marketplace until the candidate confirms by email
+      consent_status: "awaiting",
       source: "upload_form",
       consent_given: body.consent_given ?? true,
       referred_at: new Date().toISOString(),
@@ -328,11 +344,19 @@ Deno.serve(async (req) => {
     return referralErrorResponse(firstReferralError.message);
   }
 
+  // Ask the candidate to confirm. The referral stands even if the email fails;
+  // the Pickt team can see the error and re-send it.
+  const siteUrl = siteUrlFrom(req);
+  const consent = siteUrl ? await sendConsentEmail(adminClient, data.id, siteUrl) : { sent: false, error: "No site address for the email link." };
+  if (!consent.sent) console.error("[create-candidate] consent email not sent:", consent.error);
+
   return new Response(
     JSON.stringify({
       id: data.id,
       success: true,
       merged: false,
+      consentStatus: "awaiting",
+      consentEmailSent: consent.sent,
       referrerPosition: referral.position,
       // Members get no figures unless the Owner's setting is on
         referrerRate: access.canSeeCommission ? referral.rate : null,

@@ -9,6 +9,7 @@
 // Deploy: supabase functions deploy record-hire
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isLive } from "../_shared/consent.ts";
 import { companyAccess } from "../_shared/companyAccess.ts";
 import { notifyReferrers } from "../_shared/notify.ts";
 
@@ -69,6 +70,7 @@ Deno.serve(async (req) => {
 
   const { candidateId, salary, startDate } = await req.json().catch(() => ({}));
   if (!candidateId) return json({ error: "candidateId is required" }, 400);
+  if (!(await isLive(adminClient, candidateId))) return json({ error: "This candidate isn't available." }, 404);
 
   const salaryNumber = Number(salary);
   if (!Number.isFinite(salaryNumber) || salaryNumber <= 0 || salaryNumber > MAX_SALARY) {

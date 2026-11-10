@@ -6,6 +6,7 @@
 // Deploy: supabase functions deploy company-requests
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isLive } from "../_shared/consent.ts";
 import { companyAccess } from "../_shared/companyAccess.ts";
 import { notifyApprovers, notifyReferrers, notifyUsers } from "../_shared/notify.ts";
 
@@ -73,6 +74,7 @@ Deno.serve(async (req) => {
     case "request_hire": {
       const isHire = body.action === "request_hire";
       if (isHire ? access.perms.record_hire : access.perms.unlock) return json({ error: "You can do this directly." }, 400);
+      if (!(await isLive(admin, body.candidateId))) return json({ error: "This candidate isn't available." }, 404);
       const salary = isHire ? Number(body.salary) : null;
       if (isHire && !validSalary(salary as number)) return json({ error: ERRORS.invalid_salary[1] }, 400);
       if (isHire && !isRealDate(body.startDate)) return json({ error: ERRORS.invalid_start_date[1] }, 400);

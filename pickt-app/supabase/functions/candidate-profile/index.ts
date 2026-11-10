@@ -58,6 +58,14 @@ Deno.serve(async (req) => {
     .single();
   if (!candidate) return json({ error: "Candidate not found" }, 404);
 
+  // Not confirmed by the candidate (or removed): only the companies that referred them can open it
+  if (candidate.consent_status && candidate.consent_status !== "live") {
+    const { data: me } = await adminClient.from("users").select("company_id").eq("id", user.id).maybeSingle();
+    const { data: ownRef } = await adminClient.from("candidate_referrers").select("id")
+      .eq("candidate_id", candidateId).eq("company_id", me?.company_id ?? "").maybeSingle();
+    if (!ownRef && candidate.uploaded_by_company_id !== me?.company_id) return json({ error: "Candidate not found" }, 404);
+  }
+
   // Unlocked only if THIS company has an approved unlock record
   const { data: unlock } = await adminClient
     .from("candidate_unlocks")

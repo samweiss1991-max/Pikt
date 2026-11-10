@@ -9,6 +9,7 @@
 //   full    no spots left: { candidateId } (so they can write a testimonial)
 //   hired   already hired, no more referrals
 //   review  email and mobile match different candidates
+//   unavailable  they said no to Pickt (or removed their profile), so can't be referred
 //
 // Deploy: supabase functions deploy referral-status
 
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
 
   const { data: matches, error: matchError } = await adminClient
     .from("candidates")
-    .select("id, salary_expectation_min, salary_expectation_max")
+    .select("id, salary_expectation_min, salary_expectation_max, consent_status")
     .or(`email_hash.eq.${emailHash},mobile_hash.eq.${mobileHash}`)
     .limit(10);
   if (matchError) return json({ error: matchError.message }, 500);
@@ -87,6 +88,11 @@ Deno.serve(async (req) => {
   const maxReferrers = (rates ?? []).length;
 
   const existing = matches?.[0];
+
+  // They said no to Pickt or removed their profile: they aren't contacted again
+  if (existing && existing.consent_status && !["live", "awaiting"].includes(existing.consent_status)) {
+    return json({ state: "unavailable" });
+  }
 
   // Not on Pickt yet: this company would be the 1st referrer
   if (!existing) {

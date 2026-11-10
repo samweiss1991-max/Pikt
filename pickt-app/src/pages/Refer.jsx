@@ -471,11 +471,12 @@ export default function Refer() {
       localStorage.removeItem(STORAGE_KEY);
       // Already on Pickt: tell the referrer their interview was added
       if (data?.merged) {
-        setMergedResult({ rate: data.referrerRate });
+        setMergedResult({ rate: data.referrerRate, awaiting: data.consentStatus === 'awaiting' });
         setSubmitting(false);
         return;
       }
-      window.location.href = "/my-candidates";
+      // My Candidates explains that the candidate has been emailed to confirm
+      window.location.href = `/my-candidates?referred=${data?.consentEmailSent ? 'emailed' : 'not_emailed'}`;
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Something went wrong");
       setSubmitting(false);
@@ -1270,7 +1271,7 @@ export default function Refer() {
         <label className="rf-consent">
           <input id="rf-consent" type="checkbox" checked={form.consent_given} onChange={(e) => set("consent_given", e.target.checked)} />
           <span>
-            This candidate has consented to being referred through pickt. Their PII will be redacted until a company unlocks their profile.
+            I've told this candidate I'm referring them to Pickt. Pickt will email them to confirm.
           </span>
         </label>
 
@@ -1286,6 +1287,7 @@ export default function Refer() {
             <p style={{ margin: '0.25rem 0 0.75rem' }}>
               Your interview has been added to their profile.
               {mergedResult.rate != null && ` You'll earn ${mergedResult.rate}% of their first-year salary if they're hired.`}
+              {mergedResult.awaiting && " They haven't confirmed their Pickt profile yet, so we've emailed them again, mentioning your company too."}
             </p>
             <a href="/my-candidates" style={{ fontWeight: 700, color: 'var(--color-success)', textDecoration: 'underline' }}>Go to my candidates</a>
           </div>

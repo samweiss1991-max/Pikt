@@ -23,6 +23,7 @@ const AdminCommissions = lazy(() => import('./pages/AdminCommissions'))
 const Account = lazy(() => import('./pages/Account'))
 const Login = lazy(() => import('./pages/auth/Login'))
 const Signup = lazy(() => import('./pages/auth/Signup'))
+const CandidateConfirm = lazy(() => import('./pages/candidate/CandidateConfirm'))
 
 export default function App() {
   return (
@@ -30,6 +31,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      {/* Opened from the email a referred candidate gets: no login needed */}
+      <Route path="/candidate/confirm" element={<CandidateConfirm />} />
       <Route element={<ProtectedRoute><ViewModeProvider><AccountProvider><SearchProvider><Shell /></SearchProvider></AccountProvider></ViewModeProvider></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="marketplace" element={<Marketplace />} />

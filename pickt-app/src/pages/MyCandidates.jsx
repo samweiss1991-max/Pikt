@@ -10,19 +10,31 @@ import { useScrollReveal, useStaggerReveal } from '../hooks/useScrollReveal'
 import './MyCandidates.css'
 
 const STATUS_LABELS = {
-  referred: 'Referred',
+  awaiting: 'Awaiting candidate confirmation',
+  live: 'Live',
   hired: 'Hired',
   paid: 'Paid',
+  declined: 'Declined',
+  expired: 'No response',
+  removed: 'Removed',
 }
 
 // Reuses the existing pill colours
 const STATUS_PILLS = {
-  referred: 'available',
+  awaiting: 'awaiting',
+  live: 'available',
   hired: 'unlocked',
   paid: 'placed',
+  declined: 'withdrawn',
+  expired: 'withdrawn',
+  removed: 'withdrawn',
 }
 
-const STATUS_FILTERS = ['all', 'referred', 'hired', 'paid']
+const STATUS_FILTERS = ['all', 'awaiting', 'live', 'hired', 'paid', 'declined', 'expired', 'removed']
+
+/** One status per referral: the candidate's answer first, then hired / paid (migration 040) */
+const statusOf = c => (c.consentStatus && c.consentStatus !== 'live' ? c.consentStatus : c.status === 'referred' ? 'live' : c.status)
+const isGone = c => ['declined', 'expired', 'removed'].includes(c.consentStatus)
 
 const money = n => `$${Number(n || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -65,6 +77,8 @@ export default function MyCandidates() {
   const [canSeeMoney, setCanSeeMoney] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [expandedId, setExpandedId] = useState(null)
+  // Arriving from the Refer form
+  const [referredNotice] = useState(() => new URLSearchParams(window.location.search).get('referred'))
 
   useEffect(() => {
     let cancelled = false
@@ -83,7 +97,7 @@ export default function MyCandidates() {
 
   const filtered = useMemo(() => {
     if (statusFilter === 'all') return candidates
-    return candidates.filter(c => c.status === statusFilter)
+    return candidates.filter(c => statusOf(c) === statusFilter)
   }, [candidates, statusFilter])
 
   // Stats
@@ -159,6 +173,14 @@ export default function MyCandidates() {
         </button>
       </div>
 
+      {referredNotice && (
+        <div className={`mc-notice ${referredNotice === 'emailed' ? '' : 'mc-notice--warn'}`} role="status">
+          {referredNotice === 'emailed'
+            ? <><strong>Referral published.</strong> We've emailed the candidate to confirm. Their profile goes live in the marketplace once they say yes.</>
+            : <><strong>Referral saved, but the email to the candidate couldn't be sent.</strong> Their profile stays hidden until they confirm. Please let the Pickt team know so we can re-send it.</>}
+        </div>
+      )}
+
       {/* Stats */}
       <div className="mc-stats" ref={statsRef}>
         <div className="mc-stat mc-stat--green hover-lift" data-reveal>
@@ -185,7 +207,7 @@ export default function MyCandidates() {
 
       {/* Status filter */}
       <div className="mc-filters">
-        {STATUS_FILTERS.map(f => (
+        {STATUS_FILTERS.filter(f => f === 'all' || candidates.some(c => statusOf(c) === f)).map(f => (
           <button
             key={f}
             className={`mc-filter-chip ${statusFilter === f ? 'mc-filter-chip--active' : ''}`}
@@ -193,7 +215,7 @@ export default function MyCandidates() {
           >
             {f === 'all' ? 'All' : STATUS_LABELS[f]}
             <span className="mc-filter-count">
-              {f === 'all' ? candidates.length : candidates.filter(c => c.status === f).length}
+              {f === 'all' ? candidates.length : candidates.filter(c => statusOf(c) === f).length}
             </span>
           </button>
         ))}
@@ -238,8 +260,8 @@ export default function MyCandidates() {
                 </div>
                 <div className="mc-col mc-col--location">{formatLocation(c)}</div>
                 <div className="mc-col mc-col--status">
-                  <span className={`mc-status-pill mc-status-pill--${STATUS_PILLS[c.status]}`}>
-                    {STATUS_LABELS[c.status] || c.status}
+                  <span className={`mc-status-pill mc-status-pill--${STATUS_PILLS[statusOf(c)]}`}>
+                    {STATUS_LABELS[statusOf(c)] || statusOf(c)}
                   </span>
                 </div>
                 <div className="mc-col mc-col--unlocks">{c.unlocks}</div>
@@ -251,13 +273,13 @@ export default function MyCandidates() {
                       : !canSeeMoney ? (c.status === 'referred' ? 'Commission if hired' : 'Commission earned') : '—'}
                 </div>
                 <div className="mc-col mc-col--actions">
-                  <button
+                  {!isGone(c) && <button
                     className="mc-action-btn press-scale"
                     onClick={e => { e.stopPropagation(); navigate(`/candidates/${c.id}`, { state: { candidate: c } }) }}
                     title="View profile"
                   >
                     <span className="material-symbols-outlined">visibility</span>
-                  </button>
+                  </button>}
                   <span className="material-symbols-outlined mc-expand-icon" style={{ transform: isExpanded ? 'rotate(180deg)' : undefined }}>
                     expand_more
                   </span>

@@ -50,6 +50,15 @@ export default function ReferralPanel({ status, salaryLow, salaryHigh, action })
     )
   }
 
+  if (status.state === 'unavailable') {
+    return (
+      <section className="rp rp--full" aria-label="Referral status">
+        <h2 className="rp-title">This person can't be referred</h2>
+        <p className="rp-text">They've asked not to be on Pickt, so we won't contact them again.</p>
+      </section>
+    )
+  }
+
   if (status.state === 'review') {
     return (
       <section className="rp rp--full" aria-label="Referral status">
