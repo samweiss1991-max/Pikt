@@ -7,7 +7,7 @@ import { accountApi, VIEW_PREF_APPLIED_KEY } from '../lib/account'
 // These only decide what to show: the server makes the real decisions, and sends no
 // amounts to anyone without the permission in the first place.
 // eslint-disable-next-line react-refresh/only-export-components
-export const PERMISSION_KEYS = ['approve', 'unlock', 'record_hire', 'see_commission', 'manage_users', 'see_billing', 'export']
+export const PERMISSION_KEYS = ['approve', 'unlock', 'record_hire', 'see_commission', 'manage_users', 'see_billing', 'export', 'see_earnings']
 const allowAll = Object.fromEntries(PERMISSION_KEYS.map(k => [k, true]))
 const allowNone = Object.fromEntries(PERMISSION_KEYS.map(k => [k, false]))
 
@@ -24,6 +24,7 @@ function shape(perms, extra) {
     canManageUsers: perms.manage_users,
     canSeeBilling: perms.see_billing,
     canExport: perms.export,
+    canSeeEarnings: perms.see_earnings,
   }
 }
 

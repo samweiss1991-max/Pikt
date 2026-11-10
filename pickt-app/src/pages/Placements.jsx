@@ -132,7 +132,7 @@ function HiredPanel({ data, isOwner }) {
                 </tr>
               ))}
             </tbody>
-            <tfoot><tr><th scope="row" colSpan={3}>Total</th><td data-label="Total">{money(data.totals.fees)}</td><td aria-hidden="true" /></tr></tfoot>
+            <tfoot><tr><th scope="row" colSpan={3}>Total</th><td>{money(data.totals.fees)}</td><td aria-hidden="true" /></tr></tfoot>
           </table>
         </section>
       ) : <Locked title="Placement fees" />}
@@ -192,7 +192,7 @@ function ReferredPanel({ data, isOwner }) {
                 </tr>
               ))}
             </tbody>
-            <tfoot><tr><th scope="row" colSpan={3}>Total</th><td data-label="Total">{money(data.totals.commission)}</td><td aria-hidden="true" /></tr></tfoot>
+            <tfoot><tr><th scope="row" colSpan={3}>Total</th><td>{money(data.totals.commission)}</td><td aria-hidden="true" /></tr></tfoot>
           </table>
         </section>
       ) : <Locked title="Commission earned" />}

@@ -6,13 +6,22 @@ import './AccountMenu.css'
 
 const ROLE_LABELS = { owner: 'Owner', admin: 'Admin', member: 'Member' }
 
+/** $58k, $1.2m, $950 */
+function shortMoney(n) {
+  if (!(Number(n) > 0)) return null
+  const v = Number(n)
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1).replace(/\.0$/, '')}m`
+  if (v >= 1e3) return `$${Math.round(v / 1e3)}k`
+  return `$${Math.round(v)}`
+}
+
 /**
  * The profile icon's menu. Keyboard: Enter, Space or Down opens it, arrow keys, Home
  * and End move, Escape closes and returns to the icon.
  */
 export default function AccountMenu() {
   const navigate = useNavigate()
-  const { account, canApprove, isOwner } = useAccount()
+  const { account, canApprove, isOwner, canSeeEarnings, canSeeBilling } = useAccount()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
   const triggerRef = useRef(null)
@@ -25,6 +34,8 @@ export default function AccountMenu() {
     { label: 'Account settings', icon: 'person', go: () => navigate('/account?tab=profile') },
     { label: 'Preferences', icon: 'tune', go: () => navigate('/account?tab=preferences') },
     { label: 'Company & team', icon: 'groups', go: () => navigate('/account?tab=team'), badge: pending },
+    ...(canSeeEarnings ? [{ label: 'Earnings & savings', icon: 'attach_money', tone: 'green', go: () => navigate('/earnings'), value: shortMoney(account?.earningsValue) }] : []),
+    ...(canSeeBilling ? [{ label: 'Billing & unlocks', icon: 'receipt_long', go: () => navigate('/account?tab=billing') }] : []),
     ...(isOwner ? [{ label: 'Manage access', icon: 'admin_panel_settings', go: () => navigate('/account?tab=access') }] : []),
     ...(account?.isPicktAdmin ? [{ label: 'Pickt admin (Commissions)', icon: 'admin_panel_settings', go: () => navigate('/admin/commissions') }] : []),
     { label: 'Log out', icon: 'logout', separate: true, go: () => logOut() },
@@ -105,12 +116,13 @@ export default function AccountMenu() {
               type="button"
               role="menuitem"
               tabIndex={-1}
-              className={`am-item ${item.separate ? 'am-item--separate' : ''}`}
+              className={`am-item ${item.separate ? 'am-item--separate' : ''} ${item.tone === 'green' ? 'am-item--green' : ''}`}
               onClick={() => { setOpen(false); item.go() }}
             >
               <span className="material-symbols-outlined" aria-hidden="true">{item.icon}</span>
               <span className="am-item-label">{item.label}</span>
               {item.badge > 0 && <span className="am-item-badge">{item.badge}</span>}
+              {item.value && <span className="am-item-value">{item.value} value</span>}
             </button>
           ))}
         </div>

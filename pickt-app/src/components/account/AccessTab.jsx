@@ -12,6 +12,7 @@ const PERMISSION_ROWS = [
   { key: 'manage_users', label: 'Invite and remove users', action: 'invite and remove users' },
   { key: 'see_billing', label: 'See billing & unlock history', action: 'see billing & unlock history' },
   { key: 'export', label: 'Export data (CSV)', action: 'export data' },
+  { key: 'see_earnings', label: 'View earnings & savings', action: 'view earnings & savings' },
 ]
 const LABEL = Object.fromEntries(PERMISSION_ROWS.map(r => [r.key, r.label]))
 const ACTION = Object.fromEntries(PERMISSION_ROWS.map(r => [r.key, r.action]))

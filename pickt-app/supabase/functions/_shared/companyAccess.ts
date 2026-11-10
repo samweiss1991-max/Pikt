@@ -13,6 +13,7 @@ export const PERMISSIONS = [
   "manage_users", // Invite and remove users
   "see_billing", // See billing & unlock history
   "export", // Export data (CSV)
+  "see_earnings", // View earnings & savings (migration 038)
 ] as const;
 export type Permission = typeof PERMISSIONS[number];
 export type Permissions = Record<Permission, boolean>;

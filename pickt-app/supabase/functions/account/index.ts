@@ -7,6 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { companyAccess, PERMISSIONS } from "../_shared/companyAccess.ts";
 import { placementsFor, placementsCsv } from "./placements.ts";
+import { earningsFor, earningsCsv } from "./earnings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,7 @@ const TEAM_ERRORS: Record<string, string> = {
   last_owner: "A company must keep at least one Owner.",
   invalid_role: "Choose a valid role.",
 };
+const EARNINGS_LOCKED = "Earnings & savings are only visible to your company's Owner. Ask them if you need access.";
 const OWNER_ONLY = "Only your company's Owner can manage access.";
 const teamError = (message: string) => {
   const code = Object.keys(TEAM_ERRORS).find((k) => message.includes(k));
@@ -65,6 +67,8 @@ Deno.serve(async (req) => {
           .eq("company_id", access.companyId).eq("status", "pending");
         pendingCount = count ?? 0;
       }
+      // The value on the menu badge, only for people allowed to see it
+      const earningsValue = access.companyId && access.perms.see_earnings ? (await earningsFor(admin, access.companyId)).totals.value : null;
       const { count: unread } = await admin.from("user_notifications").select("id", { count: "exact", head: true })
         .eq("user_id", user.id).is("read_at", null);
       return json({
@@ -84,6 +88,7 @@ Deno.serve(async (req) => {
         isOwner: access.isOwner,
         permissions: access.perms,
         isPicktAdmin: Boolean(picktAdmin),
+        earningsValue,
         pendingCount,
         unreadNotifications: unread ?? 0,
         preferences: {
@@ -218,6 +223,17 @@ Deno.serve(async (req) => {
       });
       if (error) return error.message.includes("owners_only") ? json({ error: OWNER_ONLY }, 403) : json({ error: "Could not save that change. Please try again." }, 500);
       return json({ success: true, changes: data ?? [] });
+    }
+
+    case "earnings": {
+      if (!access.perms.see_earnings) return json({ code: "not_allowed", error: EARNINGS_LOCKED }, 403);
+      return json(await earningsFor(admin, access.companyId));
+    }
+
+    case "export_earnings": {
+      if (!access.perms.see_earnings) return json({ code: "not_allowed", error: EARNINGS_LOCKED }, 403);
+      if (!access.perms.export) return json({ error: "You don't have permission to export data." }, 403);
+      return json({ filename: "pickt-earnings-and-savings.csv", csv: earningsCsv(await earningsFor(admin, access.companyId)) });
     }
 
     case "placements": {

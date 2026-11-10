@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { label: COPY.nav.picktList,     icon: 'list_alt',        path: '/shortlist' },
   { label: COPY.nav.candidates,    icon: 'group',           path: '/my-candidates' },
   { label: COPY.nav.placements,    icon: 'work_history',    path: '/placements' },
-  { label: COPY.nav.earnings,      icon: 'payments',        path: '/earnings' },
   { label: COPY.nav.refer,          icon: 'person_add',      path: '/refer' },
   { label: COPY.nav.integrations,  icon: 'extension',       path: '/integrations' },
 ]

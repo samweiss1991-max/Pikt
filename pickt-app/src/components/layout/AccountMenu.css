@@ -76,3 +76,7 @@
 .am-item-badge { padding: 0 0.4375rem; font-size: 0.75rem; font-weight: 800; color: #FFFFFF; background: var(--color-critical); border-radius: 999px; }
 .am-item--separate { margin-top: 0.25rem; }
 .am-item--separate::before { content: ''; }
+
+/* Earnings & savings: green $ icon and value badge */
+.am-item--green .material-symbols-outlined { color: #065F46; }
+.am-item-value { padding: 0.0625rem 0.5rem; font-size: 0.75rem; font-weight: 800; white-space: nowrap; color: #065F46; background: #D1FAE5; border-radius: 999px; }
